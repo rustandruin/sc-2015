@@ -1,0 +1,64 @@
+This is a collection of codes for performing CX decomposition on Spark.
+
+----------------------------------------------------------------------------------
+CX decomposition:
+Given a matrix A with size m by n, CX decomposition aims at finding columns of A 
+such that linear combinations of these columns can reconstruct A well.
+Here, we use an equivalent formulation of CX decomposition. That is, we want to find matrices
+R and Y such that || A - YR || is as small as possible where R is r by n consisting r columns of A
+and Y is a matrix with size m by r. It consists of the following two three steps:
+
+1. Estimate the row leverage scores associated with rank parameter k.
+2. Choose r rows from A based on the leverage scores in a deterministic or randomized manner, denoted by R.
+3. Compute Y based on R.
+----------------------------------------------------------------------------------
+About inputs:
+We assume input matrix A is stored in plain text format and A is rectangular.
+The following three files are needed (the latter two are for testing purposes):
+{FILENAME}_A.txt       input matrix A
+{FILENAME}_U.txt       matrix U that contains the left-singluar vectors of A
+{FILENAME}_D.txt       singular values of A
+----------------------------------------------------------------------------------
+About outputs:
+As introduced above, there are three stages in the CX decomposition.
+The algorithm can be terminated at any stages by using flags (see usage).
+We respectively call the three stages as:
+leverage               return the estimated row leverage scores and evaluate its accuracy
+index                  return the selected row indices
+full                   perform the full CX decomposition and evaluate the reconstruction error
+----------------------------------------------------------------------------------
+Usage:
+./run_cx.sh [option] <argument> ... [option] <argument>
+
+Input options:
+  -h [ --help ]                     check for usage
+  -d [ --data ] arg                 arg_A.txt stores the input matrix to run CX on
+                                    arg_U.txt stores the lef-singular vectors of the input matrix (for test purpose)
+                                    arg_D.txt stores the singular values of the input matrix (for test purpose)
+  -m, -n arg                        the size of the input matrix is m by n                              
+  -b [ --dire ] arg (='../data/')   directory that stores the matrix file and relavant files
+  -k [ --rank ] arg (=5)            rank parameter in the definition of leverage scores
+                                    this value shoud not be greater than m or n
+  -r [ --nrows ] arg (=20)          number of rows to select in CX
+  -q [ -- niters ] arg (=2)         number of iterations to run in approximation of leverage scores 
+  --determined, --randomized        when selecting rows, use determined or randomized scheme
+                                    cannot flag both, default is --determined
+  --no_load_n                       do not reuse the precomputed N files
+  --no_save_n                       do not save the computed N files
+  --npartitions arg (=200)          number of partitions in Spark
+
+Output options:
+  -l [ --leverage ]                 only return the approximate leverage scores and compute the approximation accuracy
+  -i [ --index ]                    only return the selected row indices
+  -f [ --full ]                     comput the full CX decomposition and evaluate its reconstruction accuracy
+                                    if no stage if specified, default is -f 
+                                    note flag for earlier stage will be suppresed by flag for later stage
+                                    for example, -l will be suppressed by -i
+----------------------------------------------------------------------------------
+Example:
+./run_cx.sh -d unif_bad_100000_100 -m 100000 -n 100 
+or
+./run_cx.sh -d unif_bad_100000_100 -m 100000 -n 100 -k 10 -r 15 --deter -l
+
+
+
