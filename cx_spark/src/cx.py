@@ -9,7 +9,6 @@ from rma_utils import *
 from rowmatrix import *
 from comp_sketch import *
 from numpy.linalg import norm
-import time
 
 class CX:
     def __init__(self, matrix_A, sc):
@@ -48,20 +47,6 @@ class CX:
                     B = self.matrix_A.atamat(B,self.sc)
 
             B = self.matrix_A.rtimes(B,self.sc)
-
-
-            #B = matmat(self.matrix_A.rdd,Pi,'r',self.sc)
-       
-            #for i in range(q):
-            #    print "Computing leverage scores, at iteration {0}".format(i)
-            #    if i % reo == reo-1:
-                    #print "reorthogonalzing!"
-            #        Q, R = np.linalg.qr(B)   
-            #        B = Q 
-                #print "in Spe, q=%d, computing product!",i
-            #    B = matmat(self.matrix_A.rdd,B.T,'l',self.sc).T
-                #print "in Spe, computing product again!"
-            #    B = matmat(self.matrix_A.rdd,B,'r',self.sc)
 
             lev, self.p = compLevExact(B, k, 0)
             self.lev = self.p*k

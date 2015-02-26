@@ -261,6 +261,9 @@ def matmat(A,mat,lr,sc,lim='all'):
 def sumIteratorOuter(iterator):
     yield sum(np.outer(x, y) for x, y in iterator)
 
+def atamat_iter(it,mat):
+    yield sum( np.outer(y, np.dot(y, mat.value)) for x, y in it )
+
 def compLevExact(A, k, axis):
     """ This function computes the column or row leverage scores of the input matrix.
          

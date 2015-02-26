@@ -3,6 +3,7 @@ from pyspark import SparkConf
 from cx import *
 from rowmatrix import *
 from utils import *
+import time
 import sys
 import argparse
 import scipy.stats
@@ -87,6 +88,11 @@ def main(argv):
     hdfs_dire = 'data/'
     logs_dire = 'file:///home/jiyan/cx_logs'
 
+    if args.test:  #only need to load these in the test mode
+        A = np.loadtxt(dire+args.dataset+'.txt')
+        D = np.loadtxt(dire+args.dataset+'_D.txt')
+        U = np.loadtxt(dire+args.dataset+'_U.txt')
+
     # instantializing a Spark instance
     if args.save_logs:
         conf = SparkConf().set('spark.eventLog.enabled','true').set('spark.eventLog.dir',logs_dire)
@@ -102,11 +108,6 @@ def main(argv):
         A_rdd = sc.parallelize(A.tolist(),args.npartitions)
         #A_rdd = sc.textFile(A.tolist(),args.npartitions)
 
-    if args.test:  #only need to load these in the test mode
-        A = np.loadtxt(dire+args.dataset+'.txt')
-        D = np.loadtxt(dire+args.dataset+'_D.txt')
-        U = np.loadtxt(dire+args.dataset+'_U.txt')
-    
     t = time.time()
     # creating a rowMatrix instance
     matrix_A = rowMatrix(A_rdd,args.dataset,m,n,args.cache,repnum=args.nrepetitions)

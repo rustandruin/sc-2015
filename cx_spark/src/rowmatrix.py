@@ -43,16 +43,15 @@ class rowMatrix(object):
     def atamat(self,mat,sc):
         # TO-DO: check dimension compatibility
 
-        mat = sc.broadcast(mat)
-        b = self.rdd.mapValues( lambda row: np.dot( np.array(row), mat.value ) )
-        b = self.rdd.zip(b).map(lambda ((k1,r1),(k2,r2)): (r1,r2) ).mapPartitions(sumIteratorOuter).sum()
-    
+        mat = sc.broadcast(mat)        
+        b = self.rdd.map(lambda (key, row): (row, np.dot(row, mat.value)) ).mapPartitions(sumIteratorOuter).sum()
+
         return b
 
     def rtimes(self,mat,sc,return_rdd=False):
         # TO-DO: check dimension compatibility
         mat = sc.broadcast(mat)
-        b = self.rdd.mapValues( lambda row: np.dot( np.array(row), mat.value ) )
+        b = self.rdd.mapValues( lambda row: np.dot( row, mat.value ) )
 
         if not return_rdd:
             b = b.collect()

@@ -6,7 +6,7 @@ __pycache__/
 *.so
 
 # mac
-.DS_Store
+*.DS_Store
 
 # Distribution / packaging
 .Python
@@ -22,7 +22,7 @@ parts/
 sdist/
 var/
 *.egg-info/
-.installed.cfg
+*.installed.cfg
 *.egg
 
 # PyInstaller
