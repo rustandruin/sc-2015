@@ -16,6 +16,8 @@ def print_params(args):
     print 'dataset: {0}'.format( args.dataset )
     print 'size: {0} by {1}'.format( args.dims[0], args.dims[1] )
     print 'loading file from {0}'.format( args.file_source )
+    if args.nrepetitions>1:
+        print 'number of repetitions: {0}'.format( args.nrepetitions )
     print 'number of partitions: {0}'.format( args.npartitions )
     print 'rank: {0}'.format( args.k )
     print 'number of rows to select: {0}'.format( args.r )
@@ -47,11 +49,15 @@ def main(argv):
     parser.add_argument('-r', metavar='numRowsToSelect', default=20, type=int, help='number of rows to select in CX')
     parser.add_argument('-q', '--niters', metavar='numIters', dest='q', default=2, type=int, help='number of iterations to run in approximation of leverage scores')
     parser.add_argument('--deterministic', dest='scheme', default='randomized', action='store_const', const='deterministic', help='use deterministic scheme instead of randomized when selecting rows')
-    parser.add_argument('--stage', default='full', choices=['leverage','indices','full'], help='stage at which the algorithm stops')
+    #parser.add_argument('--stage', default='full', choices=['leverage','indices','full'], help='stage at which the algorithm stops')
     parser.add_argument('-c', '--cache', action='store_true', help='cache the dataset in Spark')
     parser.add_argument('-t', '--test', action='store_true', help='compute accuracies of the returned solutions')
     parser.add_argument('-s', '--save_logs', action='store_true', help='save Spark logs')
+    parser.add_argument('--nrepetitions', metavar='numRepetitions', default=1, type=int, help='number of times to stack matrix vertically in order to generate large matrices')
     parser.add_argument('--npartitions', metavar='numPartitions', default=200, type=int, help='number of partitions in Spark')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--leverage-scores-only', default='full', dest='stage', action='store_const', const='leverage', help='return approximate leverage scores only')
+    group.add_argument('--indices-only', default='full', dest='stage', action='store_const', const='indices', help='return approximate leverage scores and selected row indices only')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--local', dest='file_source', default='local', action='store_const', const='local', help='load dataset from local folder')
     group.add_argument('--hdfs', dest='file_source', action='store_const', const='hdfs', help='load dataset from HDFS')
@@ -69,6 +75,9 @@ def main(argv):
 
     if m < n:
         raise ValueError('Number of rows({0}) should be greater than number of columns({1})').format(m,n)
+
+    if args.test and args.nrepetitions>1:
+        raise OptionError('Do not use the test mode(-t) on replicated data(numRepetitions>1)!')
 
     # print parameters
     print_params(args)
@@ -99,7 +108,8 @@ def main(argv):
         U = np.loadtxt(dire+args.dataset+'_U.txt')
     
     t = time.time()
-    matrix_A = rowMatrix(A_rdd,args.dataset,m,n,args.cache)
+    # creating a rowMatrix instance
+    matrix_A = rowMatrix(A_rdd,args.dataset,m,n,args.cache,repnum=args.nrepetitions)
 
     cx = CX(matrix_A,sc=sc)
 
@@ -113,7 +123,7 @@ def main(argv):
     print 'finished stage 1'
     print '----------------------------------------------'
 
-    if args.stage=='leverage' or args.stage=='full':
+    if args.stage=='indices' or args.stage=='full':
         idx = cx.comp_idx(args.scheme,args.r) # choosing rows based on the leverage scores
         # maybe to store the indices to file
         print 'finished stage 2'
