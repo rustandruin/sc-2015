@@ -28,9 +28,9 @@ indices                return the selected row indices
 full                   perform the full CX decomposition and evaluate the reconstruction error
 ----------------------------------------------------------------------------------
 usage: run_cx.sh [-h] --dims m n [-k targetRank] [-r numRowsToSelect]
-                 [-q numIters] [--deterministic]
-                 [--stage {leverage,indices,full}] [-c] [-t] [-s]
-                 [--npartitions numPartitions] [--local | --hdfs]
+                 [-q numIters] [--deterministic] [-c] [-t] [-s]
+                 [--nrepetitions numRepetitions] [--npartitions numPartitions]
+                 [--leverage-scores-only | --indices-only] [--local | --hdfs]
                  dataset
 
 Getting parameters.
@@ -54,20 +54,25 @@ optional arguments:
                         leverage scores
   --deterministic       use deterministic scheme instead of randomized when
                         selecting rows
-  --stage {leverage,indices,full}
-                        stage at which the algorithm stops
   -c, --cache           cache the dataset in Spark
   -t, --test            compute accuracies of the returned solutions
   -s, --save_logs       save Spark logs
+  --nrepetitions numRepetitions
+                        number of times to stack matrix vertically in order to
+                        generate large matrices
   --npartitions numPartitions
                         number of partitions in Spark
+  --leverage-scores-only
+                        return approximate leverage scores only
+  --indices-only        return approximate leverage scores and selected row
+                        indices only
   --local               load dataset from local folder
   --hdfs                load dataset from HDFS
 ----------------------------------------------------------------------------------
 Example:
 ./run_cx.sh unif_bad_100000_100 --dims 100000 100
 or
-./run_cx.sh unif_bad_100000_100 --dims 100000 100 -k 10 -r 30 -q 10 -c --deter --stage leverage
+./run_cx.sh unif_bad_100000_100 --dims 100000 100 -k 10 -r 30 -q 10 -c --deter --leverage
 or
 ./run_cx.sh unif_bad_100000_100 --dims 100000 100 -k 10 -r 30 -q 10 -c -t --hdfs 
 

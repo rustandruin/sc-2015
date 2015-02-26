@@ -38,7 +38,7 @@ class rowMatrix(object):
 
         if cache:
             self.rdd.cache()
-            self.rdd.count() #materialize the matrix
+            print 'number of rows: {0}'.format( self.rdd.count() ) #materialize the matrix
 
     def atamat(self,mat,sc):
         # TO-DO: check dimension compatibility
