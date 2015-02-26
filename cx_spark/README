@@ -15,50 +15,68 @@ and Y is a matrix with size m by r. It consists of the following two three steps
 About inputs:
 We assume input matrix A is stored in plain text format and A is rectangular.
 The following three files are needed (the latter two are for testing purposes):
-{FILENAME}_A.txt       input matrix A
-{FILENAME}_U.txt       matrix U that contains the left-singluar vectors of A
-{FILENAME}_D.txt       singular values of A
+{dataset}.txt         input matrix A
+{dataset}_U.txt       matrix U that contains the left-singluar vectors of A
+{dataset}_D.txt       singular values of A
 ----------------------------------------------------------------------------------
 About outputs:
 As introduced above, there are three stages in the CX decomposition.
 The algorithm can be terminated at any stages by using flags (see usage).
 We respectively call the three stages as:
 leverage               return the estimated row leverage scores and evaluate its accuracy
-index                  return the selected row indices
+indices                return the selected row indices
 full                   perform the full CX decomposition and evaluate the reconstruction error
 ----------------------------------------------------------------------------------
-Usage:
-./run_cx.sh [option] <argument> ... [option] <argument>
+usage: run_cx.sh [-h] --dims m n [-k targetRank] [-r numRowsToSelect]
+                 [-q numIters] [--deterministic]
+                 [--stage {leverage,indices,full}] [-c] [-t] [-s]
+                 [--npartitions numPartitions] [--local | --hdfs]
+                 dataset
 
-Input options:
-  -h [ --help ]                     check for usage
-  -d [ --data ] arg                 arg_A.txt stores the input matrix to run CX on
-                                    arg_U.txt stores the lef-singular vectors of the input matrix (for test purpose)
-                                    arg_D.txt stores the singular values of the input matrix (for test purpose)
-  -m, -n arg                        the size of the input matrix is m by n                              
-  -b [ --dire ] arg (='../data/')   directory that stores the matrix file and relavant files
-  -k [ --rank ] arg (=5)            rank parameter in the definition of leverage scores
-                                    this value shoud not be greater than m or n
-  -r [ --nrows ] arg (=20)          number of rows to select in CX
-  -q [ -- niters ] arg (=2)         number of iterations to run in approximation of leverage scores 
-  --determined, --randomized        when selecting rows, use determined or randomized scheme
-                                    cannot flag both, default is --determined
-  --no_load_n                       do not reuse the precomputed N files
-  --no_save_n                       do not save the computed N files
-  --npartitions arg (=200)          number of partitions in Spark
+Getting parameters.
 
-Output options:
-  -l [ --leverage ]                 only return the approximate leverage scores and compute the approximation accuracy
-  -i [ --index ]                    only return the selected row indices
-  -f [ --full ]                     comput the full CX decomposition and evaluate its reconstruction accuracy
-                                    if no stage if specified, default is -f 
-                                    note flag for earlier stage will be suppresed by flag for later stage
-                                    for example, -l will be suppressed by -i
+positional arguments:
+  dataset               dataset.txt stores the input matrix to run CX on;
+                        dataset_U.txt stores left-singular vectors of the
+                        input matrix (only needed for -t); dataset_D.txt
+                        stores singular values of the input matrix (only
+                        needed for -t)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --dims m n            size of the input matrix
+  -k targetRank, --rank targetRank
+                        target rank parameter in the definition of leverage
+                        scores, this value shoud not be greater than m or n
+  -r numRowsToSelect    number of rows to select in CX
+  -q numIters, --niters numIters
+                        number of iterations to run in approximation of
+                        leverage scores
+  --deterministic       use deterministic scheme instead of randomized when
+                        selecting rows
+  --stage {leverage,indices,full}
+                        stage at which the algorithm stops
+  -c, --cache           cache the dataset in Spark
+  -t, --test            compute accuracies of the returned solutions
+  -s, --save_logs       save Spark logs
+  --npartitions numPartitions
+                        number of partitions in Spark
+  --local               load dataset from local folder
+  --hdfs                load dataset from HDFS
 ----------------------------------------------------------------------------------
 Example:
-./run_cx.sh -d unif_bad_100000_100 -m 100000 -n 100 
+./run_cx.sh unif_bad_100000_100 --dims 100000 100
 or
-./run_cx.sh -d unif_bad_100000_100 -m 100000 -n 100 -k 10 -r 15 --deter -l
+./run_cx.sh unif_bad_100000_100 --dims 100000 100 -k 10 -r 30 -q 10 -c --deter --stage leverage
+or
+./run_cx.sh unif_bad_100000_100 --dims 100000 100 -k 10 -r 30 -q 10 -c -t --hdfs 
+
+TO-DO list:
+- add various types of loading method
+- store results
+- load dataset directories from configuration file
+
+
 
 
 

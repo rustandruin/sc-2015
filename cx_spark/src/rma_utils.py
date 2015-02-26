@@ -3,6 +3,15 @@ import numpy as np
 
 from utils import *
 
+def convert_rdd(rdd):
+    row = rdd.first()
+    if isinstance(row, unicode):
+        rdd = rdd.map(lambda row: np.array([float(x) for x in row.split(' ')]))
+    else:
+        rdd = rdd.map(lambda row: np.array(row))
+
+    return rdd
+
 def parse(row,lim='all'):
     if isinstance(row, unicode):
         row = [float(x) for x in row.split(' ')]
@@ -17,7 +26,7 @@ def parse(row,lim='all'):
         print "Please enter a correct value!"
 
 def parse_get_key(row,lim='all'):
-    return (row[1], parse(row[0],lim))
+    return (row[0], parse(row[1],lim))
 
 def comp_l2_obj(Ab_rdd, x):
     # x is a np array
@@ -31,7 +40,8 @@ def add_index(rdd):
 
     def func(k, it): 
         for i, v in enumerate(it, starts[k]): 
-            yield v, i
+            #yield v, i
+            yield i, v
 
     return rdd.mapPartitionsWithIndex(func)
 
@@ -196,7 +206,7 @@ def comp_lev(rows,sc,N,alg):
         return rows.map(lambda row:(row[1], xN(parse(row[0],'A'),N.value))).sortByKey().collect()
 
 def xN(x,N):
-    return np.array([npl.norm(np.dot(np.array(x),N1))**2 for N1 in N])
+    return np.array([npl.norm(np.dot(np.array(parse(x)),N1))**2 for N1 in N])
 
 def sample_solve(rows,sc,N,sumLev,s,return_N=False):
     N = sc.broadcast(N)
@@ -230,28 +240,26 @@ def unif_sample(x,k,m,s):
 def matvec(A,vec,lr,sc,lim='all'):
     vec = sc.broadcast(vec)
     if lr=='r':
-        b = A.map(lambda row:(row[1],np.dot(np.array(parse(row[0],lim)),vec.value))).sortByKey().values().collect()
+        b = A.map(lambda row:(row[0],np.dot(np.array(parse(row[1],lim)),vec.value))).sortByKey().values().collect()
         b = np.array(b)
     elif lr=='l':
-        b = A.map(lambda row:np.array(parse(row[0],lim))*vec.value[row[1]]).reduce(add)
+        b = A.map(lambda row:np.array(parse(row[1],lim))*vec.value[row[0]]).reduce(add)
 
     return b
 
 def matmat(A,mat,lr,sc,lim='all'):
+    
     mat = sc.broadcast(mat)
     if lr=='r':
-        b = A.map(lambda row:(row[1],np.dot(np.array(parse(row[0],lim)),mat.value).tolist())).sortByKey().values().collect()
+        b = A.map(lambda row:(row[0],np.dot(np.array(parse(row[1],lim)),mat.value).tolist())).sortByKey().values().collect()
         b = np.array(b)
     elif lr=='l':
-        b = A.map(lambda row: np.outer( mat.value[:,row[1]] , parse(row[0],lim) )).reduce(add)
+        b = A.map(lambda row: np.outer( mat.value[:,row[0]] , parse(row[1],lim) )).reduce(add)
 
     return b
 
-def idx_in(row, idx):
-    if row[1] in idx:
-        return True
-    else:
-        return False
+def sumIteratorOuter(iterator):
+    yield sum(np.outer(x, y) for x, y in iterator)
 
 def compLevExact(A, k, axis):
     """ This function computes the column or row leverage scores of the input matrix.
@@ -281,29 +289,38 @@ def _test_matmat():
 
     sc = SparkContext(appName="test") # initiate an Spark object
     #A_rdd = sc.parallelize(A.tolist(),4) # Create a RDD for the rows of A.
-    A_rdd = sc.textFile('data/nonunif_bad_10000_50_Ab.txt', 100)
-    A = np.loadtxt('../data/nonunif_bad_10000_50_Ab.txt')
-    u = np.random.rand(51,10)
-    v = np.random.rand(20,10000)
+    A_rdd = sc.textFile('data/unif_bad_500000_100_A.txt', 240)
+    A = np.loadtxt('../data/unif_bad_500000_100_A.txt')
+    u = np.random.rand(100,20)
+    #v = np.random.rand(20,500000)
     A_rdd = add_index(A_rdd)
-
-    print np.array(parse(A_rdd.first()[0],'all')).shape
 
     #accum = sc.accumulator(np.zeros(500), VectorAccumulatorParam())
     #A_rdd.foreach(lambda x: accum.add(np.array(x[1])*v_vec.value[x[0]]))
     #c = accum.value
 
-    b = matmat(A_rdd,u,'r',sc)
-    c = matmat(A_rdd,v,'l',sc)
+    t = time.time()
+    b = times(A_rdd,u,'r',sc)
+    print time.time() - t
+    c = times(A_rdd,b,'l',sc)
+    print 'time for fast matmat:', time.time()-t
 
-    print np.linalg.norm(b - np.dot(A,u))
-    print np.linalg.norm(c - np.dot(v,A))
+    AAu = np.dot(A.T,np.dot(A,u))
+    print np.linalg.norm(c - AAu)/np.linalg.norm(AAu)
+
+    #t = time.time()
+    #b = matmat(A_rdd,u,'r',sc)
+    #print time.time() - t
+    #c = matmat(A_rdd,b.T,'l',sc).T
+    #print 'time for slow matmat:', time.time()-t
+    #print np.linalg.norm(c - AAu)/np.linalg.norm(AAu)
 
 
 if __name__ == '__main__':
     from pyspark import SparkContext
     from pyspark.accumulators import AccumulatorParam
     from utils import *
+    import time
 
     _test_matmat()
 
