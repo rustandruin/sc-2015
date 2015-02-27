@@ -181,14 +181,6 @@ class MSIDataset(object):
         # FIXME: compute actual shape
         return MSIDataset(self.axes, self.spectra.filter(f), None)
 
-    # Filter to keep a single (x, y, t) position
-    def select1(self, x0, y0, t0):
-        def f(spectrum):
-            x, y, t, ions = spectrum
-            return x == x0 and y == y0 and t == t0
-        # FIXME: compute actual shape
-        return MSIDataset(self.axes, self.spectra.filter(f), None)
-
     def __getitem__(self, key):
         def mkrange(arg, lo, hi):
             if isinstance(arg, slice):
@@ -214,7 +206,7 @@ class MSIDataset(object):
         filtered = self.spectra.flatMap(f)
         return MSIDataset(self.axes, filtered, self.shape)
 
-    # Returns sum of intensities for each mz bin
+    # Returns sum of intensities for each mz
     def histogram(self):
         def f(spectrum):
             x, y, t, ions = spectrum
