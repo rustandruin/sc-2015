@@ -165,7 +165,8 @@ class MSIDataset(object):
                 t0 = min(at0, bt0)
                 t1 = max(at1, bt1)
                 return (x0, x1, y0, y1, t0, t1)
-            self._shape = self.spectra.map(mapper).reduce(reducer)
+            x0, x1, y0, y1, t0, t1 = self.spectra.map(mapper).reduce(reducer)
+            self._shape = ((x0, x1), (y0, y1), (t0, t1))
         return self._shape
 
     @property
@@ -188,6 +189,22 @@ class MSIDataset(object):
         # FIXME: compute actual shape
         return MSIDataset(self.axes, self.spectra.filter(f), None)
 
+    def __getitem__(self, key):
+        def mkrange(arg, lo, hi):
+            if isinstance(arg, slice):
+                if arg.step is not None and arg.step != 1:
+                    raise NotImplementedError("step != 1")
+                start = arg.start if arg.start is not None else lo
+                stop = arg.stop if arg.stop is not None else hi + 1
+                return xrange(start, stop)
+            else:
+                return xrange(arg, arg + 1)
+        xs, ys, ts = key
+        xs = mkrange(xs, *self.shape[0])
+        ys = mkrange(ys, *self.shape[1])
+        ts = mkrange(ts, *self.shape[2])
+        return self.select(xs, ys, ts)
+
     def select_mz_range(self, lo, hi):
         def f(spectrum):
             x, y, t, ions = spectrum
@@ -206,12 +223,19 @@ class MSIDataset(object):
         results = self.spectra.flatMap(f).reduceByKey(operator.add).sortByKey().collect()
         return zip(*results)
 
+    def intensity_vs_time(self):
+        def f(spectrum):
+            x, y, t, ions = spectrum
+            return (t, sum([intensity for (bucket, mz, intensity) in ions]))
+        results = self.spectra.map(f).reduceByKey(operator.add).sortByKey().collect()
+        return zip(*results)
+
     def image(self):
         def f(spectrum):
             x, y, t, ions = spectrum
             return ((x, y), sum([inten for (bucket, mz, inten) in ions]))
         pixels = self.spectra.map(f).reduceByKey(operator.add).collect()
-        min_x, max_x, min_y, max_y, min_t, max_t = self.shape
+        (min_x, max_x), (min_y, max_y), (min_t, max_t) = self.shape
         result = np.zeros((max_x - min_x + 1, max_y - min_y + 1))
         for (x, y), inten in pixels:
             result[x - min_x, y - min_y] = inten
@@ -223,7 +247,7 @@ class MSIDataset(object):
 
     def save(self, path):
         self.spectra.saveAsPickleFile(path + ".spectra")
-        metadata = { 'axes' : self.axes }
+        metadata = { 'axes' : self.axes, 'shape' : self.shape }
         with file(path + ".meta", 'w') as outf:
             pickle.dump(metadata, outf)
 
@@ -231,7 +255,7 @@ class MSIDataset(object):
     def load(sc, path):
         metadata = pickle.load(file(path + ".meta"))
         spectra = sc.pickleFile(path + ".spectra")
-        return MSIDataset(metadata['axes'], spectra)
+        return MSIDataset(metadata['axes'], spectra, metadata['shape'])
 
     @staticmethod
     def from_imzml(sc, imzMLPath, imzBinPath):
@@ -254,6 +278,9 @@ class MSIDataset(object):
             imzBin = open(imzBinPath, 'rb')
             for spectrum in partition:
                 x, y, t = spectrum['position']
+                # skip t==0 because it's just the sum of t=1 to t=200
+                if t == 0:
+                    continue
                 assert spectrum['mz']['dtype'] == mz_dtype
                 assert spectrum['intensity']['dtype'] == intensity_dtype
                 mz_data, intensity_data = read_raw_data(spectrum, imzBin)
@@ -261,7 +288,7 @@ class MSIDataset(object):
                 mz_bins = [closest_index(mz_axis_b.value, mz) for mz in mz_data]
                 yield (x, y, t, zip(mz_bins, mz_data, intensity_data))
 
-        num_partitions = 16  # FIXME: magic number
+        num_partitions = 32  # FIXME: magic number
         spectra_rdd = sc.parallelize(spectra, num_partitions).mapPartitions(load_spectra)
         return MSIDataset(axes, spectra_rdd)
 
