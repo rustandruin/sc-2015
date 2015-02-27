@@ -29,13 +29,8 @@ def main(kwargs):
     hdfs_dire = 'data/'
     logs_dire = '/global/u2/m/msingh/sc_paper/new_version/sc-2015/logs'
 
-    # instantializing a Spark instance
-    if kwargs['save_logs']:
-        conf = SparkConf().set('spark.eventLog.enabled','true').set('spark.eventLog.dir',logs_dire)
-    else:
-        conf = SparkConf()
-    sc = SparkContext(appName="cx_exp",conf=conf)
-
+    
+    sc = kwargs['sc']
     # loading data
     if kwargs['file_source']=='hdfs':
         A_rdd = sc.textFile(hdfs_dire+kwargs['dataset']+'.txt',kwargs['npartitions']) #loading dataset from HDFS
@@ -75,7 +70,7 @@ def main(kwargs):
     if kwargs['stage']=='full':
         rows = cx.get_rows() # getting back the selected rows based on the idx computed above (this might give you different results if you rerun the above)
 
-        if args.test:
+        if kwargs['test']:
             diff = cx.comp_err() # computing the relative error
             print 'relative error ||A-CX||/||A|| is {0}'.format( diff/np.linalg.norm(A,'fro') )
             print 'raltive error of the best rank-{0} approximation is {1}'.format( kwargs['k'], np.sqrt(np.sum(D[kwargs['k']:]**2))/np.sqrt(np.sum(D**2)) )
@@ -89,11 +84,36 @@ def main(kwargs):
     return results
     
 if __name__ == "__main__":
- 
-    args = {'dims': (100000,100), 'k':5, 'r':20, 'q':2, 'cache':True, 'test':True,'file_source':'local',
-        'dataset':'/global/u2/m/msingh/sc_paper/regression_spark/data/unif_bad_100000_100','save_logs': True, 'scheme':'randomized','stage': 'full','npartitions':200
-    }
-    print main(args)
+    #qs = [1,2,3,4,5]
+    qs = [3]
+    q = qs[0]
+    rs = [10,20,30,50,70,100,200]
+    r = 20
+    res = {}
+    logs_dire = '/global/u2/m/msingh/sc_paper/new_version/sc-2015/logs'
+    conf = SparkConf().set('spark.eventLog.enabled','true').set('spark.eventLog.dir',logs_dire)
+    sc = SparkContext(appName="cx_exp",conf=conf)
+    if True:
+    #for r in rs:
+        errors = []
+        rank_approx_error = []
+        times = []
+        kls = []
+        if True:
+        #for i in range(5):
+            args = {'dims': (100000,100), 'k':5, 'r':r, 'q':q, 'cache':True, 'test':True,'file_source':'local','sc': sc,
+                'dataset':'/global/u2/m/msingh/sc_paper/regression_spark/data/unif_bad_100000_100','save_logs': True, 'scheme':'randomized','stage': 'full','npartitions':200
+            }
+            result =main(args)
+            errors.append(result['relative_error'])
+            rank_approx_error.append(result['rank_approx_error'])
+            times.append(result['time'])
+            kls.append(result['kl_diverge'])
+
+        res[r] = {'relative_error': sum(errors)/len(errors),'rank_approx_error':sum(rank_approx_error)/len(rank_approx_error), 'times':sum(times)/len(times),'kl':sum(kls)/len(kls)}
+        print "result so far ", res
+    print "final result ", res
+
 
 
 
