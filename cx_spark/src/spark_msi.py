@@ -66,32 +66,6 @@ def global_mz_axis(spectrum_list, ppm=5):
     mz_edges = np.logspace(np.log10(min_mz),np.log10(max_mz),f)
     return mz_edges
 
-def global_axes(spectrum_list, ppm=5, continuous_time_axis=True):
-    """
-    Based on the list of dict of all spectra (see read_spectra) compute a global
-    x axis , y axis, time axis, and mz_axis.
-
-    :param sepectrum_list: The output of the read_spectrum function.
-    :param continuous_time_axis=: Boolean indicating whether we need a continuous axis.
-
-    :returns: dict with 4 numpy arrays, one per axis
-    """
-    temp = np.asarray([i['position'] for i in  spectrum_list])
-    min_vals = temp.min(axis=0)
-    max_vals = temp.max(axis=0)
-    x_axis = np.arange(min_vals[0], max_vals[0]+1, 1) - min_vals[0]
-    y_axis = np.arange(min_vals[1], max_vals[1]+1, 1) - min_vals[1]
-    if not continuous_time_axis:
-        time_axis = np.unique(np.asarray([i['position'][2] for i in  spectrum_list]) , False, False)
-    else:
-        time_axis = np.arange(min_vals[2], max_vals[2]+1, 1)
-    mz_axis = global_mz_axis(spectrum_list=spectrum_list,
-                             ppm=ppm)
-    return {'x': x_axis,
-            'y': y_axis,
-            'mz': mz_axis,
-            'time': time_axis}
-
 def read_raw_data(spectrum_dict, data_file):
     """
     Take the output of read_sepctrum and read the raw data for the mz and intensity array.
@@ -143,67 +117,87 @@ def closest_index(data, val):
     return closest(highIndex, lowIndex)
 
 
+class MSIMatrix(object):
+    def __init__(self, dataset):
+        self.dataset = dataset
+        self.shape = dataset.shape
+
+        def to_matrix(spectrum):
+            x, y, t, ions = spectrum
+            r = self.to_row(x, y)
+            for bucket, mz, intensity in ions:
+                c = self.to_col(t, bucket)
+                yield (r, c, intensity)
+
+        self.nonzeros = dataset.spectra.flatMap(to_matrix)
+
+    def __getstate__(self):
+        # don't pickle RDDs
+        result = self.__dict__.copy()
+        result['nonzeros'] = None
+        return result
+
+    def to_row(self, x, y):
+        return self.shape[0]*y + x
+
+    def to_col(self, t, mz_idx):
+        return self.shape[2]*mz_idx + t
+
+    def cache(self):
+        self.nonzeros.cache()
+        return self
+
+
 class MSIDataset(object):
     # each entry of spectra is (x, y, t, mz_values, intensity_values)
-    def __init__(self, axes, spectra, shape=None):
-        self.axes = axes
+    def __init__(self, mz_axis, spectra, shape=None):
+        self.mz_axis = mz_axis
         self.spectra = spectra
         self._shape = shape
+
+    def __getstate__(self):
+        # don't pickle RDDs
+        result = self.__dict__.copy()
+        result['spectra'] = None
+        return result
 
     @property
     def shape(self):
         if self._shape is None:
+            mz_len = len(self.mz_axis)
             def mapper(spectrum):
                 x, y, t, ions = spectrum
-                return (x, x, y, y, t, t)
+                for bucket, mz, inten in ions:
+                    assert 0 <= bucket < mz_len
+                return (x, y, t)
             def reducer(a, b):
-                ax0, ax1, ay0, ay1, at0, at1 = a
-                bx0, bx1, by0, by1, bt0, bt1 = b
-                x0 = min(ax0, bx0)
-                x1 = max(ax1, bx1)
-                y0 = min(ay0, by0)
-                y1 = max(ay1, by1)
-                t0 = min(at0, bt0)
-                t1 = max(at1, bt1)
-                return (x0, x1, y0, y1, t0, t1)
-            x0, x1, y0, y1, t0, t1 = self.spectra.map(mapper).reduce(reducer)
-            self._shape = ((x0, x1), (y0, y1), (t0, t1))
+                return map(max, zip(a, b))
+            extents = self.spectra.map(mapper).reduce(reducer)
+            self._shape = (extents[0] + 1, extents[1] + 1, extents[2] + 1, mz_len)
         return self._shape
-
-    @property
-    def mz_axis(self):
-        return self.axes['mz']
 
     # Filter to only keep a sub-array of the cube
     def select(self, xs, ys, ts):
         def f(spectrum):
             x, y, t, ions = spectrum
             return x in xs and y in ys and t in ts
-        # FIXME: compute actual shape
-        return MSIDataset(self.axes, self.spectra.filter(f), None)
-
-    # Filter to keep a single (x, y, t) position
-    def select1(self, x0, y0, t0):
-        def f(spectrum):
-            x, y, t, ions = spectrum
-            return x == x0 and y == y0 and t == t0
-        # FIXME: compute actual shape
-        return MSIDataset(self.axes, self.spectra.filter(f), None)
+        # TODO: compute actual shape
+        return MSIDataset(self.mz_axis, self.spectra.filter(f), self._shape)
 
     def __getitem__(self, key):
-        def mkrange(arg, lo, hi):
+        def mkrange(arg, hi):
             if isinstance(arg, slice):
                 if arg.step is not None and arg.step != 1:
                     raise NotImplementedError("step != 1")
-                start = arg.start if arg.start is not None else lo
+                start = arg.start if arg.start is not None else 0
                 stop = arg.stop if arg.stop is not None else hi + 1
                 return xrange(start, stop)
             else:
                 return xrange(arg, arg + 1)
         xs, ys, ts = key
-        xs = mkrange(xs, *self.shape[0])
-        ys = mkrange(ys, *self.shape[1])
-        ts = mkrange(ts, *self.shape[2])
+        xs = mkrange(xs, self.shape[0])
+        ys = mkrange(ys, self.shape[1])
+        ts = mkrange(ts, self.shape[2])
         return self.select(xs, ys, ts)
 
     def select_mz_range(self, lo, hi):
@@ -213,9 +207,9 @@ class MSIDataset(object):
             if len(new_ions) > 0:
                 yield (x, y, t, new_ions)
         filtered = self.spectra.flatMap(f)
-        return MSIDataset(self.axes, filtered, self.shape)
+        return MSIDataset(self.mz_axis, filtered, self._shape)
 
-    # Returns sum of intensities for each mz bin
+    # Returns sum of intensities for each mz
     def histogram(self):
         def f(spectrum):
             x, y, t, ions = spectrum
@@ -236,10 +230,9 @@ class MSIDataset(object):
             x, y, t, ions = spectrum
             return ((x, y), sum([inten for (bucket, mz, inten) in ions]))
         pixels = self.spectra.map(f).reduceByKey(operator.add).collect()
-        (min_x, max_x), (min_y, max_y), (min_t, max_t) = self.shape
-        result = np.zeros((max_x - min_x + 1, max_y - min_y + 1))
+        result = np.zeros((self.shape[0], self.shape[1]))
         for (x, y), inten in pixels:
-            result[x - min_x, y - min_y] = inten
+            result[x, y] = inten
         return result
 
     def cache(self):
@@ -248,7 +241,7 @@ class MSIDataset(object):
 
     def save(self, path):
         self.spectra.saveAsPickleFile(path + ".spectra")
-        metadata = { 'axes' : self.axes, 'shape' : self.shape }
+        metadata = { 'mz_axis' : self.mz_axis, 'shape' : self.shape }
         with file(path + ".meta", 'w') as outf:
             pickle.dump(metadata, outf)
 
@@ -256,7 +249,7 @@ class MSIDataset(object):
     def load(sc, path):
         metadata = pickle.load(file(path + ".meta"))
         spectra = sc.pickleFile(path + ".spectra")
-        return MSIDataset(metadata['axes'], spectra, metadata['shape'])
+        return MSIDataset(metadata['mz_axis'], spectra, metadata['shape'])
 
     @staticmethod
     def from_imzml(sc, imzMLPath, imzBinPath):
@@ -269,9 +262,9 @@ class MSIDataset(object):
         num_spectra = len(spectra)
 
         # Compute mz axis
-        axes = global_axes(spectra, 5, False)
+        mz_axis = global_mz_axis(spectra, 5)
+        mz_axis_b = sc.broadcast(mz_axis)
 
-        mz_axis_b = sc.broadcast(axes['mz'])
         mz_dtype = spectra[0]['mz']['dtype']
         intensity_dtype = spectra[0]['intensity']['dtype']
 
@@ -287,12 +280,12 @@ class MSIDataset(object):
                 mz_data, intensity_data = read_raw_data(spectrum, imzBin)
                 assert len(mz_data) == len(intensity_data)  # is this a valid asumption?
                 mz_bins = [closest_index(mz_axis_b.value, mz) for mz in mz_data]
-                yield (x, y, t, zip(mz_bins, mz_data, intensity_data))
+                assert 1 <= x and 1 <= y and 1 <= t <= 200
+                yield (x - 1, y - 1, t - 1, zip(mz_bins, mz_data, intensity_data))
 
         num_partitions = 32  # FIXME: magic number
         spectra_rdd = sc.parallelize(spectra, num_partitions).mapPartitions(load_spectra)
-        return MSIDataset(axes, spectra_rdd)
-
+        return MSIDataset(mz_axis, spectra_rdd).cache()
 
 def converter(sc, imzXMLPath, imzBinPath, outpath):
     #imzXMLPath = 'Lewis_Dalisay_Peltatum_20131115_PDX_Std_1.imzml'
