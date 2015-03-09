@@ -9,13 +9,15 @@ from rma_utils import *
 from rowmatrix import *
 from comp_sketch import *
 from numpy.linalg import norm
+import logging
+logger = logging.getLogger(__name__)
 
 class CX:
     def __init__(self, matrix_A, sc):
         self.matrix_A = matrix_A
         self.sc=sc
 
-    def get_lev(self, k, **kwargs):
+    def get_lev(self, k, axis, **kwargs):
 
         if k == self.matrix_A.m or k == self.matrix_A.n: #k=min(m,n)
             #approximating the leverage scores
@@ -30,23 +32,39 @@ class CX:
             reo = 4
             q = kwargs.get('q')
 
-            Pi = np.random.randn(self.matrix_A.n, 2*k);
+            if axis == 0:
+                Pi = np.random.randn(self.matrix_A.n, 2*k);
 
-            print 'Computing leverage scores, at iteration 1!'
-            B = self.matrix_A.atamat(Pi,self.sc)
+                logger.info('Computing leverage scores, at iteration 1!')
+                B = self.matrix_A.atamat(Pi,self.sc)
 
-            for i in range(1,q):
-                print 'Computing leverage scores, at iteration {0}!'.format(i+1)
-                if i % reo == reo-1:
-                    print "Reorthogonalzing!"
-                    B = self.matrix_A.rtimes(B,self.sc)
-                    Q, R = np.linalg.qr(B)
-                    B = Q
-                    B = self.matrix_A.ltimes(B.T,self.sc).T
-                else:
+                for i in range(1,q):
+                    logger.info('Computing leverage scores, at iteration {0}!'.format(i+1))
+                    if i % reo == reo-1:
+                        logger.info("Reorthogonalzing!")
+                        B = self.matrix_A.rtimes(B,self.sc)
+                        Q, R = np.linalg.qr(B)
+                        B = Q
+                        B = self.matrix_A.ltimes(B.T,self.sc).T
+                    else:
+                        B = self.matrix_A.atamat(B,self.sc)
+
+                B = self.matrix_A.rtimes(B,self.sc)
+
+            elif axis == 1:
+                Pi = np.random.randn(self.matrix_A.m, 2*k);
+
+                B = self.matrix_A.ltimes(Pi.T,self.sc).T
+
+                for i in range(q):
+                    logger.info('Computing leverage scores, at iteration {0}!'.format(i+1))
+                    if i % reo == reo-1:
+                        logger.info("Reorthogonalzing!")
+                        Q, R = np.linalg.qr(B)
+                        B = Q
                     B = self.matrix_A.atamat(B,self.sc)
-
-            B = self.matrix_A.rtimes(B,self.sc)
+            else:
+                raise valueError('Please enter a valid axis: 0 or 1!')
 
             lev, self.p = compLevExact(B, k, 0)
             self.lev = self.p*k

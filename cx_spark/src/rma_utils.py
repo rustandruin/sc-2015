@@ -12,25 +12,15 @@ def convert_rdd(rdd):
 
     return rdd
 
-def parse(row,lim='all'):
-    if isinstance(row, unicode):
-        row = [float(x) for x in row.split(' ')]
-
-    if lim == 'all':
-        return row
-    elif lim == "b":
-        return row[-1]
-    elif lim == "A":
-        return row[:-1]
+def parse_data(data, feats):
+    if feats:
+        return data[:,feats[0]:feats[1]+1]
     else:
-        print "Please enter a correct value!"
-
-def parse_get_key(row,lim='all'):
-    return (row[0], parse(row[1],lim))
+        return data
 
 def comp_l2_obj(Ab_rdd, x):
     # x is a np array
-    return np.sqrt( Ab_rdd.map( lambda row: (np.dot(parse(row,'A'),x) - parse(row,'b'))**2 ).reduce(add) )
+    return np.sqrt( Ab_rdd.map( lambda (key,row): (np.dot(row[:-1],x) - row[-1])**2 ).reduce(add) )
 
 def add_index(rdd): 
     starts = [0] 
@@ -45,186 +35,24 @@ def add_index(rdd):
 
     return rdd.mapPartitionsWithIndex(func)
 
-class SRDHT_Map(Block_Mapper):
-    def __init__(self,c,k,m,seed_s,lim):
-        Block_Mapper.__init__(self)
-        self.m = m
-        self.seed_s = seed_s
-        self.c = c
-        self.k = k
-        self.lim = lim
-        self.PA = [None for i in range(self.k)]
-
-    def process(self):
-        data = np.array(self.data)
-        r = data.shape[0]
-        row_idx = np.array(self.key)
-
-        for i in xrange(self.k):
-            S = np.arange(self.m)
-            np.random.seed(self.seed_s[i])
-            np.random.shuffle(S)
-            S = S[:self.c]
-            np.random.seed()
-            rs = (np.random.rand(r)<0.5)*2-1
-            rand_data = np.dot(np.diag(rs),data)
-            #for j in xrange(self.c):
-            #    yield ((i,j), np.dot( np.sqrt(2)*np.cos(2*np.pi*S[j]*row_idx/self.m-np.pi/4), rand_data)/np.sqrt(self.m))
-
-            if self.PA[i] is None:
-                self.PA[i] = np.dot( np.sqrt(2)*np.cos(2*np.pi*np.outer(S,row_idx)/self.m-np.pi/4), rand_data)/np.sqrt(self.m)
-            else:
-                self.PA[i] += np.dot( np.sqrt(2)*np.cos(2*np.pi*np.outer(S,row_idx)/self.m-np.pi/4), rand_data)/np.sqrt(self.m) 
-
-        return iter([])
-
-    def parse(self,row):
-        return parse_get_key(row,self.lim)
-
-    def close(self):
-        for i in xrange(self.k):
-            for j in xrange(self.c):
-                yield ( (i,j), self.PA[i][j,:] )
-
-class CW_Map(Block_Mapper):
-    def __init__(self,c,k,lim):
-        Block_Mapper.__init__(self,1)
-        self.c = c
-        self.k = k
-        self.lim = lim
-
-    def process(self):
-        row = np.array(self.data[0])
-        np.random.seed()
-        rt = np.random.randint(self.c,size=self.k).tolist()
-        coin = (np.random.rand(self.k)<0.5)*2-1
-        for i in xrange(self.k):
-            yield ((i,rt[i]),coin[i]*row)
-
-    def parse(self,row):
-        return parse(row,self.lim)
-
-class Gaussian_Map(Block_Mapper):
-    def __init__(self,c,k,lim):
-        Block_Mapper.__init__(self)
-        self.c = c  #projection size
-        self.k = k  #number of independent trials
-        self.lim = lim
-        self.PA = [None for i in range(self.k)]
-
-    def process(self):
-        data = np.array(self.data)
-        r = data.shape[0]
-
-        np.random.seed()
-        for i in xrange(self.k):
-            if self.PA[i] is None:
-                self.PA[i] = np.dot(np.random.randn(self.c,r),data)/np.sqrt(self.c)
-            else:
-                self.PA[i] += np.dot(np.random.randn(self.c,r),data)/np.sqrt(self.c)
-
-        return iter([])
-
-    def parse(self,row):
-        return parse(row,self.lim)
-
-    def close(self):
-        print 'a'
-        for i in xrange(self.k):
-        #    yield ( i, self.PA[i] )
-            for j in xrange(self.c):
-                yield ( (i,j), self.PA[i][j,:] )
-
-class Rademacher_Map(Block_Mapper):
-    def __init__(self,c,k,lim):
-        Block_Mapper.__init__(self)
-        self.c = c
-        self.k = k
-        self.lim = lim
-        self.PA = [None for i in range(self.k)]
-
-    def process(self):
-        data = np.array(self.data)
-        r = data.shape[0]
-
-        np.random.seed()
-        for i in xrange(self.k):
-            if self.PA[i] is None:
-                self.PA[i] = np.dot((np.random.rand(self.c,r)<0.5)*2-1,data)/np.sqrt(self.c)
-            else:
-                self.PA[i] += np.dot((np.random.rand(self.c,r)<0.5)*2-1,data)/np.sqrt(self.c)
-   
-        return iter([])
-
-    def parse(self,row):
-        return parse(row,self.lim)
-
-    def close(self):
-        print 'a'
-        for i in xrange(self.k):
-        #    yield ( i, self.PA[i] )
-            for j in xrange(self.c):
-                yield ( (i,j), self.PA[i][j,:] )
-
 def get_x(pa,return_N=False):
-    pa = [row for row in pa]
-    pa = np.array(pa)
-    A = pa[:, :-1]
-    b = pa[:, -1]
+    A = pa[:,:-1]
+    b = pa[:,-1]
     m = A.shape[0]
 
     [U, s, V] = npl.svd(A, 0)
     N = V.transpose()/s
 
     if return_N:
-        return (m, (N, np.dot(N, np.dot(U.T,b))))
+        return (N, np.dot(N, np.dot(U.T,b)))
     else:
-        return (m, np.dot(N, np.dot(U.T,b)))
+        return np.dot(N, np.dot(U.T,b))
 
-def get_N(pa,alg='cx'):
-    pa = [row for row in pa]
-    if alg == 'cx':
-        pa = np.array(pa)
-    elif alg == 'ls':
-        pa = np.array(pa)[:,:-1]
+def get_N(pa,feats=None):
+    pa = parse_data(pa, feats)
     [U, s, V] = npl.svd(pa, 0)
     N = V.transpose()/s
     return N
-
-def comp_lev_sum(rows,sc,N,alg):
-    N = sc.broadcast(N)
-    if alg == 'cx':
-        return rows.map(lambda row:xN(parse(row,'all'),N.value)).reduce(add).tolist()
-    elif alg == 'ls':
-        return rows.map(lambda row:xN(parse(row,'A'),N.value)).reduce(add).tolist()
-
-def comp_lev(rows,sc,N,alg):
-    N = sc.broadcast(N)
-    if alg == 'cx':
-        return rows.map(lambda row:(row[1], xN(parse(row[0],'all'),N.value))).sortByKey().collect()
-    elif alg == 'ls':
-        return rows.map(lambda row:(row[1], xN(parse(row[0],'A'),N.value))).sortByKey().collect()
-
-def xN(x,N):
-    return np.array([npl.norm(np.dot(np.array(parse(x)),N1))**2 for N1 in N])
-
-def sample_solve(rows,sc,N,sumLev,s,return_N=False):
-    N = sc.broadcast(N)
-    return rows.flatMap(lambda row:sample(parse(row),N.value,sumLev,s)).groupByKey().map(lambda sa: get_x(sa[1],return_N)).collect()
-
-def sample_svd(rows,sc,N,sumLev,s,alg):
-    N = sc.broadcast(N)
-    return rows.flatMap(lambda row:sample(parse(row),N.value,sumLev,s)).groupByKey().map(lambda sa: get_N(sa[1],alg)).collect()
-
-def sample(x,N,sumLev,s):
-    x = np.array(x)
-    k = len(N)
-    np.random.seed()
-    for i in range(k):
-        q = npl.norm(np.dot(x[:-1],N[i]))**2
-        p = min(q*s/sumLev[i],1.0)
-        if np.random.rand() < p:
-            yield (i,(x/p).tolist())
 
 def unif_sample_solve(rows,m,k,s):
     return rows.flatMap(lambda row:unif_sample(parse(row),k,m,s)).groupByKey().map(lambda sa: get_x(sa[1])).collect()
@@ -236,27 +64,6 @@ def unif_sample(x,k,m,s):
         p = s/m
         if np.random.rand() < p:
             yield (i,x.tolist())
-
-def matvec(A,vec,lr,sc,lim='all'):
-    vec = sc.broadcast(vec)
-    if lr=='r':
-        b = A.map(lambda row:(row[0],np.dot(np.array(parse(row[1],lim)),vec.value))).sortByKey().values().collect()
-        b = np.array(b)
-    elif lr=='l':
-        b = A.map(lambda row:np.array(parse(row[1],lim))*vec.value[row[0]]).reduce(add)
-
-    return b
-
-def matmat(A,mat,lr,sc,lim='all'):
-    
-    mat = sc.broadcast(mat)
-    if lr=='r':
-        b = A.map(lambda row:(row[0],np.dot(np.array(parse(row[1],lim)),mat.value).tolist())).sortByKey().values().collect()
-        b = np.array(b)
-    elif lr=='l':
-        b = A.map(lambda row: np.outer( mat.value[:,row[0]] , parse(row[1],lim) )).reduce(add)
-
-    return b
 
 def sumIteratorOuter(iterator):
     yield sum(np.outer(x, y) for x, y in iterator)
@@ -284,47 +91,3 @@ def compLevExact(A, k, axis):
     p = lev/k
 
     return lev, p
-
-def _test_matmat():
-    #A = np.random.rand(1000,50)
-    #u = np.random.rand(50,10)
-    #v = np.random.rand(20,1000)
-
-    sc = SparkContext(appName="test") # initiate an Spark object
-    #A_rdd = sc.parallelize(A.tolist(),4) # Create a RDD for the rows of A.
-    A_rdd = sc.textFile('data/unif_bad_500000_100_A.txt', 240)
-    A = np.loadtxt('../data/unif_bad_500000_100_A.txt')
-    u = np.random.rand(100,20)
-    #v = np.random.rand(20,500000)
-    A_rdd = add_index(A_rdd)
-
-    #accum = sc.accumulator(np.zeros(500), VectorAccumulatorParam())
-    #A_rdd.foreach(lambda x: accum.add(np.array(x[1])*v_vec.value[x[0]]))
-    #c = accum.value
-
-    t = time.time()
-    b = times(A_rdd,u,'r',sc)
-    print time.time() - t
-    c = times(A_rdd,b,'l',sc)
-    print 'time for fast matmat:', time.time()-t
-
-    AAu = np.dot(A.T,np.dot(A,u))
-    print np.linalg.norm(c - AAu)/np.linalg.norm(AAu)
-
-    #t = time.time()
-    #b = matmat(A_rdd,u,'r',sc)
-    #print time.time() - t
-    #c = matmat(A_rdd,b.T,'l',sc).T
-    #print 'time for slow matmat:', time.time()-t
-    #print np.linalg.norm(c - AAu)/np.linalg.norm(AAu)
-
-
-if __name__ == '__main__':
-    from pyspark import SparkContext
-    from pyspark.accumulators import AccumulatorParam
-    from utils import *
-    import time
-
-    _test_matmat()
-
-

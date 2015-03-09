@@ -1,36 +1,43 @@
 from pyspark import SparkContext
 from pyspark import SparkConf
-from cx import *
-from rowmatrix import *
-from utils import *
+from cx import CX
+from rowmatrix import RowMatrix
+#from utils import *
 import time
 import sys
 import argparse
 import scipy.stats
 import numpy as np
+import logging.config
 
 def usage():
     print sys.exit(__doc__)
 
-def print_params(args):
-    print 'Start experiment!'
-    print 'dataset: {0}'.format( args.dataset )
-    print 'size: {0} by {1}'.format( args.dims[0], args.dims[1] )
-    print 'loading file from {0}'.format( args.file_source )
+def print_params(args, logger):
+    logger.info('--------------------------------------------------------')
+    logger.info('---------------Computing CX Decomposition---------------')
+    logger.info('--------------------------------------------------------')
+    logger.info('dataset: {0}'.format( args.dataset ) )
+    logger.info('size: {0} by {1}'.format( args.dims[0], args.dims[1] ) )
+    logger.info('loading file from {0}'.format( args.file_source ) )
     if args.nrepetitions>1:
-        print 'number of repetitions: {0}'.format( args.nrepetitions )
-    print 'number of partitions: {0}'.format( args.npartitions )
-    print 'rank: {0}'.format( args.k )
-    print 'number of rows to select: {0}'.format( args.r )
-    print 'number of iterations to run: {0}'.format( args.q )
-    print 'scheme to use: {0}'.format( args.scheme )
-    print 'stages to run: {0}'.format( args.stage )
-    print '----------------------------------------------'
+        logger.info('number of repetitions: {0}'.format( args.nrepetitions ))
+    logger.info('number of partitions: {0}'.format( args.npartitions ))
+    if args.axis == 0:
+        logger.info('compute row leverage scores!')
+    else:
+        logger.info('compute column leverage scores!')
+    logger.info('rank: {0}'.format( args.k ))
+    logger.info('number of rows to select: {0}'.format( args.r ))
+    logger.info('number of iterations to run: {0}'.format( args.q ))
+    logger.info('scheme to use: {0}'.format( args.scheme ))
+    logger.info('stages to run: {0}'.format( args.stage ))
+    logger.info('----------------------------------------------')
     if args.test:
-        print 'Compute accuracies!'
+        logger.info('Compute accuracies!')
     if args.save_logs:
-        print 'Logs will be saved!'
-    print '----------------------------------------------'
+        logger.info('Logs will be saved!')
+    logger.info('----------------------------------------------')
 
 class ArgumentError(Exception):
     pass
@@ -39,6 +46,8 @@ class OptionError(Exception):
     pass
 
 def main(argv):
+    logging.config.fileConfig('logging.conf',disable_existing_loggers=False)
+    logger = logging.getLogger('') #using root
 
     parser = argparse.ArgumentParser(description='Getting parameters.',prog='run_cx.sh')
 
@@ -55,13 +64,16 @@ def main(argv):
     parser.add_argument('-t', '--test', action='store_true', help='compute accuracies of the returned solutions')
     parser.add_argument('-s', '--save_logs', action='store_true', help='save Spark logs')
     parser.add_argument('--nrepetitions', metavar='numRepetitions', default=1, type=int, help='number of times to stack matrix vertically in order to generate large matrices')
-    parser.add_argument('--npartitions', metavar='numPartitions', default=200, type=int, help='number of partitions in Spark')
+    parser.add_argument('--npartitions', metavar='numPartitions', default=280, type=int, help='number of partitions in Spark')
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--leverage-scores-only', default='full', dest='stage', action='store_const', const='leverage', help='return approximate leverage scores only')
-    group.add_argument('--indices-only', default='full', dest='stage', action='store_const', const='indices', help='return approximate leverage scores and selected row indices only')
+    group.add_argument('--row', dest='axis', default=0, action='store_const', const=0, help='compute row leverage scores')
+    group.add_argument('--column', dest='axis', default=0, action='store_const', const=1, help='compute column leverage scores')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--leverage-scores-only', dest='stage', default='full', action='store_const', const='leverage', help='return approximate leverage scores only')
+    group.add_argument('--indices-only', dest='stage', default='full', action='store_const', const='indices', help='return approximate leverage scores and selected row indices only')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--local', dest='file_source', default='local', action='store_const', const='local', help='load dataset from local folder')
-    group.add_argument('--hdfs', dest='file_source', action='store_const', const='hdfs', help='load dataset from HDFS')
+    group.add_argument('--hdfs', dest='file_source', default='local', action='store_const', const='hdfs', help='load dataset from HDFS')
     
     if len(argv)>0 and argv[0]=='print_help':
         parser.print_help()
@@ -74,14 +86,17 @@ def main(argv):
     if args.k > m or args.k > n:
         raise ValueError('Rank parameter({0}) should not be greater than m({1}) or n({2})'.format(args.k,m,n))
 
-    if m < n:
-        raise ValueError('Number of rows({0}) should be greater than number of columns({1})').format(m,n)
+    if args.npartitions > m or args.npartitions > n:
+        args.npartitions = min(m,n)
+
+    #if m < n:
+    #    raise ValueError('Number of rows({0}) should be greater than number of columns({1})').format(m,n)
 
     if args.test and args.nrepetitions>1:
         raise OptionError('Do not use the test mode(-t) on replicated data(numRepetitions>1)!')
 
     # print parameters
-    print_params(args)
+    print_params(args, logger)
 
     # TO-DO: put these to a configuration file
     dire = '../data/'
@@ -92,6 +107,7 @@ def main(argv):
         A = np.loadtxt(dire+args.dataset+'.txt')
         D = np.loadtxt(dire+args.dataset+'_D.txt')
         U = np.loadtxt(dire+args.dataset+'_U.txt')
+        V = np.loadtxt(dire+args.dataset+'_V.txt')
 
     # instantializing a Spark instance
     if args.save_logs:
@@ -106,41 +122,43 @@ def main(argv):
     else:
         A = np.loadtxt(dire+args.dataset+'.txt') #loading dataset from local disc
         A_rdd = sc.parallelize(A.tolist(),args.npartitions)
-        #A_rdd = sc.textFile(A.tolist(),args.npartitions)
 
     t = time.time()
-    # creating a rowMatrix instance
-    matrix_A = rowMatrix(A_rdd,args.dataset,m,n,args.cache,repnum=args.nrepetitions)
+    # creating a RowMatrix instance
+    matrix_A = RowMatrix(A_rdd,args.dataset,m,n,args.cache,repnum=args.nrepetitions)
 
     cx = CX(matrix_A,sc=sc)
 
-    lev, p = cx.get_lev(args.k, q=args.q) # getting the approximate row leverage scores. it has the same size as the number of rows 
+    lev, p = cx.get_lev(args.k, axis=args.axis, q=args.q) # getting the approximate row leverage scores. it has the same size as the number of rows 
     #lev, p = cx.get_lev(n, load_N, save_N, projection_type='gaussian',c=1e3) #target rank is n
 
     if args.test:
-        lev_exact = np.sum(U[:,:args.k]**2,axis=1)
+        if args.axis == 0:
+            lev_exact = np.sum(U[:,:args.k]**2,axis=1)
+        else:
+            lev_exact = np.sum(V.T[:,:args.k]**2,axis=1)
         p_exact = lev_exact/args.k
-        print 'KL divergence between the estimation of leverage scores and the exact one is {0}'.format( scipy.stats.entropy(p_exact,p) )
-    print 'finished stage 1'
-    print '----------------------------------------------'
+        logger.info('KL divergence between the estimation of leverage scores and the exact one is {0}'.format( scipy.stats.entropy(p_exact,p) ))
+    logger.info('finished stage 1')
+    logger.info('----------------------------------------------')
 
     if args.stage=='indices' or args.stage=='full':
         idx = cx.comp_idx(args.scheme,args.r) # choosing rows based on the leverage scores
         # maybe to store the indices to file
-        print 'finished stage 2'
-        print '----------------------------------------------'
+        logger.info('finished stage 2')
+        logger.info('----------------------------------------------')
 
     if args.stage=='full':
         rows = cx.get_rows() # getting back the selected rows based on the idx computed above (this might give you different results if you rerun the above)
 
         if args.test:
             diff = cx.comp_err() # computing the relative error
-            print 'relative error ||A-CX||/||A|| is {0}'.format( diff/np.linalg.norm(A,'fro') )
-            print 'raltive error of the best rank-{0} approximation is {1}'.format( args.k, np.sqrt(np.sum(D[args.k:]**2))/np.sqrt(np.sum(D**2)) )
-        print 'finished stage 3'
+            logger.info('relative error ||A-CX||/||A|| is {0}'.format( diff/np.linalg.norm(A,'fro') ))
+            logger.info('raltive error of the best rank-{0} approximation is {1}'.format( args.k, np.sqrt(np.sum(D[args.k:]**2))/np.sqrt(np.sum(D**2)) ))
+        logger.info('finished stage 3')
 
     rtime = time.time() - t
-    print 'time elapsed: {0} second'.format( rtime )
+    logger.info('time elapsed: {0} second'.format( rtime ))
     
 if __name__ == "__main__":
     main(sys.argv[1:])
