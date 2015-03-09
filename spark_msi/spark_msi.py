@@ -255,7 +255,7 @@ class MSIDataset(object):
         return MSIDataset(metadata['mz_range'], spectra, metadata['shape'])
 
     @staticmethod
-    def dump_imzml(imzMLPath, outpath, chunksz=10**4):
+    def dump_imzml(imzMLPath, outpath, chunksz=10**5):
         def genrow():
             # yields rows of form [x, y, t, num_values, mz_offset, intensity_offset]
             imzXML = etree.iterparse(imzMLPath, tag='{http://psi.hupo.org/ms/mzml}spectrum')
@@ -268,11 +268,13 @@ class MSIDataset(object):
                     assert mz['length'] == 4 * mz['num_values']
                     assert intensity['length'] == 4 * intensity['num_values']
                     yield list(spectrum['position']) + [mz['num_values'], mz['offset'], intensity['offset']]
+                element.clear()
 
         def genfilename():
             i = 0
             while True:
                 i += 1
+                print >> sys.stderr, i
                 yield os.path.join(outpath, "%05d" % i)
 
         os.mkdir(outpath)
@@ -318,6 +320,7 @@ class MSIDataset(object):
                         continue
                     mz_data, intensity_data = load_spectrum(imz_data, mz_offset, intensity_offset, num_values)
                     yield (x - 1, y - 1, t - 1, zip(mz_data, intensity_data))
+                imz_data.close()
 
         # load the spectra (unbinned)
         raw_spectra_rdd = sc.textFile(path).mapPartitions(load_part).cache()
