@@ -2,8 +2,20 @@ from lxml import etree
 import numpy as np
 import scipy as sp
 from scipy import sparse
-import sys, time, os, operator
+import sys, time, os, operator, csv, mmap
 import cPickle as pickle
+
+def memoize(f):
+    """ Memoization decorator for functions taking one or more arguments. """
+    class memodict(dict):
+        def __init__(self, f):
+            self.f = f
+        def __call__(self, *args):
+            return self[args]
+        def __missing__(self, key):
+            ret = self[key] = self.f(*key)
+            return ret
+    return memodict(f)
 
 def get_all_items(element, itemlist=None):
     """
@@ -46,21 +58,9 @@ def read_spectrum(xml_element):
 def read_spectra(xml_file):
     return [element for event, element in xml_file]
 
-def global_mz_axis(spectrum_list, ppm=5):
-    """
-    Based on the list of dict of all spectra (see read_spectra) compute a global
-    mz axis.
-
-    :param sepectrum_list: The output of the read_spectrum function.
-    :param ppm: Parts per million
-    """
-    num_spectra = len(spectrum_list)
-    mz_mins = np.zeros(num_spectra)
-    mz_maxs = np.zeros(num_spectra)
-    for i in range(num_spectra):
-        mz_mins[i], mz_maxs[i] = spectrum_list[i]['mz']['range']
-    min_mz = mz_mins.min()
-    max_mz = mz_maxs.max()
+@memoize
+def get_mz_axis(mz_range, ppm=5):
+    min_mz, max_mz = mz_range
     f = np.ceil(1e6*np.log(max_mz/min_mz)/ppm)
     mz_edges = np.logspace(np.log10(min_mz),np.log10(max_mz),f)
     return mz_edges
@@ -149,9 +149,9 @@ class MSIMatrix(object):
 
 class MSIDataset(object):
     # each entry of spectra is (x, y, t, mz_values, intensity_values)
-    def __init__(self, mz_axis, spectra, shape=None):
-        self.mz_axis = mz_axis
+    def __init__(self, mz_range, spectra, shape=None):
         self.spectra = spectra
+        self.mz_range = mz_range
         self._shape = shape
 
     def __getstate__(self):
@@ -159,6 +159,10 @@ class MSIDataset(object):
         result = self.__dict__.copy()
         result['spectra'] = None
         return result
+
+    @property
+    def mz_axis(self):
+        return get_mz_axis(self.mz_range)
 
     @property
     def shape(self):
@@ -181,7 +185,7 @@ class MSIDataset(object):
             x, y, t, ions = spectrum
             return x in xs and y in ys and t in ts
         # TODO: compute actual shape
-        return MSIDataset(self.mz_axis, self.spectra.filter(f), self._shape)
+        return MSIDataset(self.mz_range, self.spectra.filter(f), self._shape)
 
     def __getitem__(self, key):
         def mkrange(arg, hi):
@@ -206,7 +210,7 @@ class MSIDataset(object):
             if len(new_ions) > 0:
                 yield (x, y, t, new_ions)
         filtered = self.spectra.flatMap(f)
-        return MSIDataset(self.mz_axis, filtered, self._shape)
+        return MSIDataset(self.mz_range, filtered, self._shape)
 
     # Returns sum of intensities for each mz
     def histogram(self):
@@ -240,7 +244,7 @@ class MSIDataset(object):
 
     def save(self, path):
         self.spectra.saveAsPickleFile(path + ".spectra")
-        metadata = { 'mz_axis' : self.mz_axis, 'shape' : self.shape }
+        metadata = { 'mz_range' : self.mz_range, 'shape' : self.shape }
         with file(path + ".meta", 'w') as outf:
             pickle.dump(metadata, outf)
 
@@ -248,52 +252,111 @@ class MSIDataset(object):
     def load(sc, path):
         metadata = pickle.load(file(path + ".meta"))
         spectra = sc.pickleFile(path + ".spectra")
-        return MSIDataset(metadata['mz_axis'], spectra, metadata['shape'])
+        return MSIDataset(metadata['mz_range'], spectra, metadata['shape'])
 
     @staticmethod
-    def from_imzml(sc, imzMLPath, imzBinPath):
-        # Read all spectra from the XML file
-        imzXML = etree.iterparse(imzMLPath, tag='{http://psi.hupo.org/ms/mzml}spectrum')
-        spectra_xml = read_spectra(imzXML)
+    def dump_imzml(imzMLPath, outpath, chunksz=10**4):
+        def genrow():
+            # yields rows of form [x, y, t, num_values, mz_offset, intensity_offset]
+            imzXML = etree.iterparse(imzMLPath, tag='{http://psi.hupo.org/ms/mzml}spectrum')
+            for event, element in imzXML:
+                if event == 'end':
+                    spectrum = read_spectrum(element)
+                    mz = spectrum['mz']
+                    intensity = spectrum['intensity']
+                    assert mz['num_values'] == intensity['num_values']
+                    assert mz['length'] == 4 * mz['num_values']
+                    assert intensity['length'] == 4 * intensity['num_values']
+                    yield list(spectrum['position']) + [mz['num_values'], mz['offset'], intensity['offset']]
 
-        # Convert the XML data to python dicts with info about the mz and intensity arrays
-        spectra = [read_spectrum(i) for i in spectra_xml]
-        num_spectra = len(spectra)
+        def genfilename():
+            i = 0
+            while True:
+                i += 1
+                yield os.path.join(outpath, "%05d" % i)
 
-        # Compute mz axis
-        mz_axis = global_mz_axis(spectra, 5)
-        mz_axis_b = sc.broadcast(mz_axis)
+        os.mkdir(outpath)
+        rows = genrow()
+        filenames = genfilename()
+        row = None
+        done = False
+        while not done:
+            with open(next(filenames), 'w') as outf:
+                out = csv.writer(outf)
+                for line_num in xrange(chunksz):
+                    try:
+                        row = next(rows)
+                    except StopIteration:
+                        done = True
+                        break
+                    out.writerow(row)
 
-        mz_dtype = spectra[0]['mz']['dtype']
-        intensity_dtype = spectra[0]['intensity']['dtype']
+    @staticmethod
+    def from_dump(sc, path, imz_path):
+        def load_spectrum(imz_data, mz_offset, intensity_offset, num_values):
+            length = 4 * num_values
+            mz_data = np.frombuffer(
+                            imz_data[mz_offset : mz_offset + length],
+                            dtype='float32',
+                            count=num_values)
+            intensity_data = np.frombuffer(
+                                    imz_data[intensity_offset : intensity_offset + length],
+                                    dtype='float32',
+                                    count=num_values)
+            return mz_data, intensity_data
 
-        def load_spectra(partition):
-            imzBin = open(imzBinPath, 'rb')
+
+        def load_part(partition):
+            with open(imz_path, 'rb') as imz_file:
+                imz_data = mmap.mmap(imz_file.fileno(), 0, access=mmap.ACCESS_READ)
+                for row in partition:
+                    row = [int(v) for v in row.split(',')]
+                    x, y, t, num_values, mz_offset, intensity_offset = row
+                    assert 1 <= x and 1 <= y and 0 <= t <= 200
+                    # skip t==0 because it's just the sum of t=1 to t=200
+                    if t == 0:
+                        continue
+                    mz_data, intensity_data = load_spectrum(imz_data, mz_offset, intensity_offset, num_values)
+                    yield (x - 1, y - 1, t - 1, zip(mz_data, intensity_data))
+
+        # load the spectra (unbinned)
+        raw_spectra_rdd = sc.textFile(path).mapPartitions(load_part).cache()
+
+        # compute min and max mz
+        def minmax_mapper(spectrum):
+            x, y, t, ions = spectrum
+            mz_data, intensity_data = zip(*ions)
+            return (min(mz_data), max(mz_data))
+        def minmax_reducer(a, b):
+            lo = min(a[0], b[0])
+            hi = max(a[1], b[1])
+            return (lo, hi)
+        mz_range = raw_spectra_rdd.map(minmax_mapper).reduce(minmax_reducer)
+
+        # compute mz buckets
+        def apply_buckets(partition):
+            mz_axis = get_mz_axis(mz_range)
             for spectrum in partition:
-                x, y, t = spectrum['position']
-                # skip t==0 because it's just the sum of t=1 to t=200
-                if t == 0:
-                    continue
-                assert spectrum['mz']['dtype'] == mz_dtype
-                assert spectrum['intensity']['dtype'] == intensity_dtype
-                mz_data, intensity_data = read_raw_data(spectrum, imzBin)
-                assert len(mz_data) == len(intensity_data)  # is this a valid asumption?
-                mz_bins = [closest_index(mz_axis_b.value, mz) for mz in mz_data]
-                assert 1 <= x and 1 <= y and 1 <= t <= 200
-                yield (x - 1, y - 1, t - 1, zip(mz_bins, mz_data, intensity_data))
-
-        num_partitions = 32  # FIXME: magic number
-        spectra_rdd = sc.parallelize(spectra, num_partitions).mapPartitions(load_spectra)
-        return MSIDataset(mz_axis, spectra_rdd).cache()
+                x, y, t, ions = spectrum
+                mz_data, intensity_data = zip(*ions)
+                mz_buckets = [closest_index(mz_axis, mz) for mz in mz_data]
+                new_ions = zip(mz_buckets, mz_data, intensity_data)
+                yield x, y, t, new_ions
+        spectra_rdd = raw_spectra_rdd.mapPartitions(apply_buckets)
+        raw_spectra_rdd.unpersist()
+        return MSIDataset(mz_range, spectra_rdd).cache()
 
 
-def converter(sc):
+def converter():
     imzXMLPath = 'Lewis_Dalisay_Peltatum_20131115_PDX_Std_1.imzml'
     imzBinPath = "Lewis_Dalisay_Peltatum_20131115_PDX_Std_1.ibd"
+    csvpath = "Lewis_Dalisay_Peltatum_20131115_PDX_Std_1.csv"
     outpath = "Lewis_Dalisay_Peltatum_20131115_PDX_Std_1.rdd"
-    MSIDataset.from_imzml(sc, imzXMLPath, imzBinPath).save(outpath)
+    MSIDataset.dump_imzml(imzXMLPath, csvpath)
+    from pyspark import SparkContext
+    sc = SparkContext()
+    MSIDataset.from_dump(sc, csvpath, imzBinPath).save(outpath)
 
 
 if __name__ == '__main__':
-    from pyspark import SparkContext
-    converter(SparkContext("local[8]"))
+    converter()
