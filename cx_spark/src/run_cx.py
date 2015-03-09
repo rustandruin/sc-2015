@@ -32,12 +32,12 @@ def print_params(args, logger):
     logger.info('number of iterations to run: {0}'.format( args.q ))
     logger.info('scheme to use: {0}'.format( args.scheme ))
     logger.info('stages to run: {0}'.format( args.stage ))
-    logger.info('----------------------------------------------')
+    logger.info('--------------------------------------------------------')
     if args.test:
         logger.info('Compute accuracies!')
     if args.save_logs:
         logger.info('Logs will be saved!')
-    logger.info('----------------------------------------------')
+    logger.info('--------------------------------------------------------')
 
 class ArgumentError(Exception):
     pass

@@ -4,10 +4,11 @@ CX decomposition with approximate leverage scores
 Author: Jiyan Yang(jiyan@stanford.edu)
 '''
 
-from projections import *
-from rma_utils import *
-from rowmatrix import *
-from comp_sketch import *
+#from projections import *
+#from rma_utils import *
+#from rowmatrix import *
+from rma_utils import compLevExact
+import numpy as np
 from numpy.linalg import norm
 import logging
 logger = logging.getLogger(__name__)
@@ -19,16 +20,16 @@ class CX:
 
     def get_lev(self, k, axis, **kwargs):
 
-        if k == self.matrix_A.m or k == self.matrix_A.n: #k=min(m,n)
+        #if k == self.matrix_A.m or k == self.matrix_A.n: #k=min(m,n)
             #approximating the leverage scores
-            load_N = kwargs.get('load_N', True)
-            save_N = kwargs.get('save_N', True)
-            N, time = comp_sketch(self.matrix_A, 'N', load_N, save_N, 'cx', sketch_type='projection', k=1, **kwargs)
+            #load_N = kwargs.get('load_N', True)
+            #save_N = kwargs.get('save_N', True)
+            #N, time = comp_sketch(self.matrix_A, 'N', load_N, save_N, 'cx', sketch_type='projection', k=1, **kwargs)
 
-            self.lev = [ l[1][0] for l in comp_lev(self.matrix_A.matrix_with_index, self.sc, N, 'cx') ]
-            sumlev = sum(self.lev)
-            self.p = [l/sumlev for l in self.lev]
-        else:
+            #self.lev = [ l[1][0] for l in comp_lev(self.matrix_A.matrix_with_index, self.sc, N, 'cx') ]
+            #sumlev = sum(self.lev)
+            #self.p = [l/sumlev for l in self.lev]
+        #else:
             reo = 4
             q = kwargs.get('q')
 
@@ -69,7 +70,7 @@ class CX:
             lev, self.p = compLevExact(B, k, 0)
             self.lev = self.p*k
 
-        return self.lev, self.p
+            return self.lev, self.p
 
     def comp_idx(self, scheme='deterministic', r=10):
         #seleting rows based on self.lev

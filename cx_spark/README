@@ -30,7 +30,8 @@ full                   perform the full CX decomposition and evaluate the recons
 usage: run_cx.sh [-h] --dims m n [-k targetRank] [-r numRowsToSelect]
                  [-q numIters] [--deterministic] [-c] [-t] [-s]
                  [--nrepetitions numRepetitions] [--npartitions numPartitions]
-                 [--leverage-scores-only | --indices-only] [--local | --hdfs]
+                 [--row | --column] [--leverage-scores-only | --indices-only]
+                 [--local | --hdfs]
                  dataset
 
 Getting parameters.
@@ -62,6 +63,8 @@ optional arguments:
                         generate large matrices
   --npartitions numPartitions
                         number of partitions in Spark
+  --row                 compute row leverage scores
+  --column              compute column leverage scores
   --leverage-scores-only
                         return approximate leverage scores only
   --indices-only        return approximate leverage scores and selected row
@@ -74,7 +77,7 @@ Example:
 or
 ./run_cx.sh unif_bad_100000_100 --dims 100000 100 -k 10 -r 30 -q 10 -c --deter --leverage
 or
-./run_cx.sh unif_bad_100000_100 --dims 100000 100 -k 10 -r 30 -q 10 -c -t --hdfs 
+./run_cx.sh unif_bad_100000_100 --dims 100000 100 -k 10 -r 30 -q 10 -c -t --hdfs --col
 
 TO-DO list:
 - add various types of loading method

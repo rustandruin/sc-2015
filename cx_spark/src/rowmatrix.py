@@ -1,4 +1,4 @@
-from utils import BlockMapper
+from utils import BlockMapper, add
 from rma_utils import convert_rdd, add_index, parse_data
 import numpy as np
 import logging
@@ -57,9 +57,15 @@ class RowMatrix(object):
         mat = sc.broadcast(mat)
 
         atamat_mapper = MatrixAtABMapper()
-        b = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,feats=feats) ).sum()
+        #b = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,feats=feats) ).sum()
+        b_dict = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,feats=feats) ).reduceByKey(add).collectAsMap()
 
-        #b = self.rdd.map(lambda (key, row): (row, np.dot(row, mat.value)) ).mapPartitions(sumIteratorOuter).sum()
+        order = sorted(b_dict.keys())
+        b = []
+        for i in order:
+            b.append( b_dict[i] )
+
+        b = np.vstack(b)
 
         return b
 
@@ -94,7 +100,15 @@ class RowMatrix(object):
         mat = sc.broadcast(mat)
 
         matrix_ltimes_mapper = MatrixLtimesMapper()
-        b = self.rdd.mapPartitions(lambda records: matrix_ltimes_mapper(records,mat=mat.value,feats=feats)).sum()
+        #b = self.rdd.mapPartitions(lambda records: matrix_ltimes_mapper(records,mat=mat.value,feats=feats)).sum()
+        b_dict = self.rdd.mapPartitions(lambda records: matrix_ltimes_mapper(records,mat=mat.value,feats=feats) ).reduceByKey(add).collectAsMap()
+
+        order = sorted(b_dict.keys())
+        b = []
+        for i in order:
+            b.append( b_dict[i] )
+
+        b = np.hstack(b)
 
         return b
 
@@ -138,7 +152,15 @@ class MatrixLtimesMapper(BlockMapper):
     #    yield np.dot( mat[:,self.keys[0]:(self.keys[-1]+1)], parse_data( np.vstack(self.data), feats ) )
 
     def close(self):
-        yield self.ba
+        #yield self.atamat
+
+        block_sz = 50
+        n = self.ba.shape[1]
+        start_idx = np.arange(0, n, block_sz)
+        end_idx = np.append(np.arange(block_sz, n, block_sz), n)
+
+        for j in range(len(start_idx)):
+            yield j, self.ba[:,start_idx[j]:end_idx[j]]
 
 class MatrixAtABMapper(BlockMapper):
 
@@ -158,5 +180,12 @@ class MatrixAtABMapper(BlockMapper):
         #yield np.dot( data.T, np.dot( data, mat ) )
 
     def close(self):
-        yield self.atamat
+        #yield self.atamat
 
+        block_sz = 50
+        m = self.atamat.shape[0]
+        start_idx = np.arange(0, m, block_sz)
+        end_idx = np.append(np.arange(block_sz, m, block_sz), m)
+
+        for j in range(len(start_idx)):
+            yield j, self.atamat[start_idx[j]:end_idx[j],:]

@@ -36,6 +36,7 @@ if __name__ == "__main__":
         U, D, V = np.linalg.svd(A,0)
         np.savetxt(filename+'_U.txt',U,fmt='%.12e')
         np.savetxt(filename+'_D.txt',D,fmt='%.12e')
+        np.savetxt(filename+'_V.txt',V,fmt='%.12e')
 
     #x_opt = np.linalg.lstsq(A,b)[0]
     #f_opt = norm(np.dot(A,x_opt)-b)
