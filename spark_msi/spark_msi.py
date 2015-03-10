@@ -369,6 +369,7 @@ if __name__ == '__main__':
         # big
         name = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1'
         inpath = '/project/projectdirs/openmsi/projects/mantissa/ddalisay/OpenMSI_Lewis_Dalisay_Peltatum_20131115_hexandrum/' + name
+        csvpath = '/project/projectdirs/m1541/sc-2015/' + name
     else:
         # small
         name = 'Lewis_Dalisay_Peltatum_20131115_PDX_Std_1'
@@ -377,4 +378,4 @@ if __name__ == '__main__':
     #MSIDataset.dump_imzml(inpath + ".imzml", outpath + ".csv")
     from pyspark import SparkContext
     sc = SparkContext()
-    MSIDataset.from_dump(sc, outpath + ".csv", inpath + ".ibd").save(outpath + ".rdd")
+    MSIDataset.from_dump(sc, csvpath + ".csv", inpath + ".ibd").save(outpath + ".rdd")
