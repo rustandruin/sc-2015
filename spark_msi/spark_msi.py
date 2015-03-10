@@ -2,7 +2,7 @@ from lxml import etree
 import numpy as np
 import scipy as sp
 from scipy import sparse
-import sys, time, os, operator, csv, mmap
+import sys, time, os, operator, csv
 import cPickle as pickle
 
 def memoize(f):
@@ -295,31 +295,32 @@ class MSIDataset(object):
 
     @staticmethod
     def from_dump(sc, path, imz_path):
-        def load_spectrum(imz_data, mz_offset, intensity_offset, num_values):
-            length = 4 * num_values
-            mz_data = np.frombuffer(
-                            imz_data[mz_offset : mz_offset + length],
+        def load_spectrum(imz_file, mz_offset, intensity_offset, num_values):
+            imz_file.seek(mz_offset)
+            mz_data = np.fromfile(
+                            imz_file,
                             dtype='float32',
-                            count=num_values)
-            intensity_data = np.frombuffer(
-                                    imz_data[intensity_offset : intensity_offset + length],
+                            count=num_values,
+                            sep="")
+            imz_file.seek(intensity_offset)
+            intensity_data = np.fromfile(
+                                    imz_file,
                                     dtype='float32',
-                                    count=num_values)
+                                    count=num_values,
+                                    sep="")
             return mz_data, intensity_data
 
 
         def load_part(partition):
             with open(imz_path, 'rb') as imz_file:
-                imz_data = mmap.mmap(imz_file.fileno(), 0, access=mmap.ACCESS_READ)
                 for row in partition:
                     x, y, t, num_values, mz_offset, intensity_offset = row
                     assert 1 <= x and 1 <= y and 0 <= t <= 200
                     # skip t==0 because it's just the sum of t=1 to t=200
                     if t == 0:
                         continue
-                    mz_data, intensity_data = load_spectrum(imz_data, mz_offset, intensity_offset, num_values)
+                    mz_data, intensity_data = load_spectrum(imz_file, mz_offset, intensity_offset, num_values)
                     yield (x - 1, y - 1, t - 1, zip(mz_data, intensity_data))
-                imz_data.close()
 
         # load the spectra (unbinned)
         num_partitions = 1024 # minimum parallelism
