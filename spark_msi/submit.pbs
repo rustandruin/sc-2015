@@ -1,0 +1,18 @@
+#!/bin/bash -l
+#this file is run.pbs
+#PBS -q ccm_int
+#PBS -l mppwidth=96
+#PBS -l walltime=00:15:00
+#PBS -e mysparkjob_$PBS_JOBID.err
+#PBS -o mysparkjob_$PBS_JOBID.out
+cd $PBS_O_WORKDIR
+module unload altd
+module load ccm
+module load numpy/1.9.1_mkl
+module load scipy/0.14.1_mkl
+module load python
+module load lxml
+module load spark
+export SPARK_LOCAL_DIRS=/dev/shm
+env > ~/.ssh/environment
+ccmrun bash $PWD/runspark.sh

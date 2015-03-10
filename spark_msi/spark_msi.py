@@ -312,7 +312,6 @@ class MSIDataset(object):
             with open(imz_path, 'rb') as imz_file:
                 imz_data = mmap.mmap(imz_file.fileno(), 0, access=mmap.ACCESS_READ)
                 for row in partition:
-                    row = [int(v) for v in row.split(',')]
                     x, y, t, num_values, mz_offset, intensity_offset = row
                     assert 1 <= x and 1 <= y and 0 <= t <= 200
                     # skip t==0 because it's just the sum of t=1 to t=200
@@ -323,18 +322,22 @@ class MSIDataset(object):
                 imz_data.close()
 
         # load the spectra (unbinned)
-        raw_spectra_rdd = sc.textFile(path).mapPartitions(load_part).cache()
+        num_partitions = 1024 # minimum parallelism
+        spectra_rdd = sc.textFile(path, num_partitions).map(lambda row: [int(v) for v in row.split(',')])
+        #spectra_rdd = spectra_rdd.sortBy(lambda row: row[4])
+        spectra_rdd = spectra_rdd.mapPartitions(load_part)
+        spectra_rdd.cache()
 
         # compute min and max mz
-        def minmax_mapper(spectrum):
+        def minmax_map(spectrum):
             x, y, t, ions = spectrum
             mz_data, intensity_data = zip(*ions)
             return (min(mz_data), max(mz_data))
-        def minmax_reducer(a, b):
+        def minmax_reduce(a, b):
             lo = min(a[0], b[0])
             hi = max(a[1], b[1])
             return (lo, hi)
-        mz_range = raw_spectra_rdd.map(minmax_mapper).reduce(minmax_reducer)
+        mz_range = spectra_rdd.map(minmax_map).reduce(minmax_reduce)
 
         # compute mz buckets
         def apply_buckets(partition):
@@ -345,8 +348,8 @@ class MSIDataset(object):
                 mz_buckets = [closest_index(mz_axis, mz) for mz in mz_data]
                 new_ions = zip(mz_buckets, mz_data, intensity_data)
                 yield x, y, t, new_ions
-        spectra_rdd = raw_spectra_rdd.mapPartitions(apply_buckets)
-        raw_spectra_rdd.unpersist()
+        spectra_rdd = spectra_rdd.mapPartitions(apply_buckets)
+        spectra_rdd.unpersist()
         return MSIDataset(mz_range, spectra_rdd).cache()
 
 
@@ -362,4 +365,16 @@ def converter():
 
 
 if __name__ == '__main__':
-    converter()
+    if True:
+        # big
+        name = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1'
+        inpath = '/project/projectdirs/openmsi/projects/mantissa/ddalisay/OpenMSI_Lewis_Dalisay_Peltatum_20131115_hexandrum/' + name
+    else:
+        # small
+        name = 'Lewis_Dalisay_Peltatum_20131115_PDX_Std_1'
+        inpath = '/project/projectdirs/openmsi/projects/mantissa/ddalisay/2014Nov15_PDX_IMS_imzML/' + name
+    outpath = os.path.join(os.getenv('SCRATCH'), name)
+    #MSIDataset.dump_imzml(inpath + ".imzml", outpath + ".csv")
+    from pyspark import SparkContext
+    sc = SparkContext()
+    MSIDataset.from_dump(sc, outpath + ".csv", inpath + ".ibd").save(outpath + ".rdd")
