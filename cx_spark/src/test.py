@@ -19,17 +19,17 @@ column_shape = rdd.map(lambda x:x[1][0]).max() +1
 #[(256, [(7247424, 4.0)....(index, value)]
 
 def indexed(l):
-	indexed, values = [],[]
-	for tup in l:
-		indexed.append(tup[0])
-		values.append(tup[1])
-	return indexed, np.array(values)
+    indexed, values = [],[]
+    for tup in l:
+        indexed.append(tup[0])
+        values.append(tup[1])
+    return indexed, np.array(values)
 
 flattening = gprdd.map(lambda x: (x[0],indexed(x[1])))
 def densify(indices, values):
-	vector = np.zeros(column_shape)
-	vector[indices] = values
-	return vector
+    vector = np.zeros(column_shape)
+    vector[indices] = values
+    return vector
 
 densed_rdd = flattening.map(lambda x:(x[0],densify(x[1][0],x[1][1]))).map(lambda x:x[1])
 print densed_rdd.take(1)
