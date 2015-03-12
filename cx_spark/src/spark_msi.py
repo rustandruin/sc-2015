@@ -288,13 +288,4 @@ class MSIDataset(object):
         return MSIDataset(mz_axis, spectra_rdd).cache()
 
 def converter(sc, imzXMLPath, imzBinPath, outpath):
-    #imzXMLPath = 'Lewis_Dalisay_Peltatum_20131115_PDX_Std_1.imzml'
-    #imzBinPath = "Lewis_Dalisay_Peltatum_20131115_PDX_Std_1.ibd"
-    #outpath = "Lewis_Dalisay_Peltatum_20131115_PDX_Std_1.rdd"
     return MSIDataset.from_imzml(sc, imzXMLPath, imzBinPath).cache()
-"""
-
-if __name__ == '__main__':
-    from pyspark import SparkContext
-    converter(SparkContext("local[4]"))
-"""

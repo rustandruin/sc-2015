@@ -8,7 +8,7 @@ import argparse
 import scipy.stats
 import numpy as np
 
-
+import time
 def main(kwargs):
  
     (m,n) = kwargs['dims']
@@ -17,8 +17,8 @@ def main(kwargs):
     if kwargs['k'] > m or kwargs['k'] > n:
         raise ValueError('Rank parameter({0}) should not be greater than m({1}) or n({2})'.format(args.k,m,n))
 
-    if m < n:
-        raise ValueError('Number of rows({0}) should be greater than number of columns({1})').format(m,n)
+    #if m < n:
+    #    raise ValueError('Number of rows({0}) should be greater than number of columns({1})').format(m,n)
 
     # print parameters
     #print_params(args)
@@ -35,22 +35,22 @@ def main(kwargs):
     if kwargs['file_source']=='hdfs':
         A_rdd = sc.textFile(hdfs_dire+kwargs['dataset']+'.txt',kwargs['npartitions']) #loading dataset from HDFS
     else:
-        A = np.loadtxt(kwargs['dataset']+'_A.txt') #loading dataset from local disc
+        A = np.loadtxt(kwargs['dataset']+'.txt') #loading dataset from local disc
         A_rdd = sc.parallelize(A.tolist(),kwargs['npartitions'])
         #A_rdd = sc.textFile(A.tolist(),args.npartitions)
 
     if kwargs['test']:  #only need to load these in the test mode
-        A = np.loadtxt(kwargs['dataset']+'_A.txt')
+        A = np.loadtxt(kwargs['dataset']+'.txt')
         D = np.loadtxt(kwargs['dataset']+'_D.txt')
         U = np.loadtxt(kwargs['dataset']+'_U.txt')
     
     t = time.time()
-    matrix_A = rowMatrix(A_rdd,kwargs['dataset'],m,n,kwargs['cache'])
+    matrix_A = RowMatrix(A_rdd,kwargs['dataset'],m,n,kwargs['cache'])
 
-    cx = CX(matrix_A,sc=sc)
+    cx = CX(matrix_A, sc=sc)
     k = kwargs['k']
     q = kwargs['q']
-    lev, p = cx.get_lev(k, q=q) # getting the approximate row leverage scores. it has the same size as the number of rows 
+    lev, p = cx.get_lev(k,axis=0, q=q) # getting the approximate row leverage scores. it has the same size as the number of rows 
     #lev, p = cx.get_lev(n, load_N, save_N, projection_type='gaussian',c=1e3) #target rank is n
 
     if kwargs['test']:
@@ -101,8 +101,8 @@ if __name__ == "__main__":
         kls = []
         if True:
         #for i in range(5):
-            args = {'dims': (100000,100), 'k':5, 'r':r, 'q':q, 'cache':True, 'test':True,'file_source':'local','sc': sc,
-                'dataset':'/global/u2/m/msingh/sc_paper/regression_spark/data/unif_bad_100000_100','save_logs': True, 'scheme':'randomized','stage': 'full','npartitions':200
+            args = {'dims': (10000,100), 'k':5, 'r':r, 'q':q, 'cache':True, 'test':True,'file_source':'local','sc': sc,
+                'dataset':'/global/u2/m/msingh/sc_paper/new_version/sc-2015/cx_spark/data/unif_bad_10000_100','save_logs': True, 'scheme':'randomized','stage': 'full','npartitions':200
             }
             result =main(args)
             errors.append(result['relative_error'])
