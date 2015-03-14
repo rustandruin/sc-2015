@@ -27,11 +27,11 @@ leverage               return the estimated row leverage scores and evaluate its
 indices                return the selected row indices
 full                   perform the full CX decomposition and evaluate the reconstruction error
 ----------------------------------------------------------------------------------
-usage: run_cx.sh [-h] --dims m n [-k targetRank] [-r numRowsToSelect]
-                 [-q numIters] [--deterministic] [-c] [-t] [-s]
-                 [--nrepetitions numRepetitions] [--npartitions numPartitions]
-                 [--row | --column] [--leverage-scores-only | --indices-only]
-                 [--local | --hdfs]
+usage: run_cx.sh [-h] --dims m n [--sparse] [--hdfs] [-k targetRank]
+                 [-r numRowsToSelect] [-q numIters] [--deterministic] [-c]
+                 [-t] [-s] [--nrepetitions numRepetitions]
+                 [--npartitions numPartitions] [--row | --column]
+                 [--leverage-scores-only | --indices-only]
                  dataset
 
 Getting parameters.
@@ -46,6 +46,8 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --dims m n            size of the input matrix
+  --sparse              whether the data is sparse
+  --hdfs                load dataset from HDFS
   -k targetRank, --rank targetRank
                         target rank parameter in the definition of leverage
                         scores, this value shoud not be greater than m or n
@@ -69,8 +71,6 @@ optional arguments:
                         return approximate leverage scores only
   --indices-only        return approximate leverage scores and selected row
                         indices only
-  --local               load dataset from local folder
-  --hdfs                load dataset from HDFS
 ----------------------------------------------------------------------------------
 Example:
 ./run_cx.sh unif_bad_100000_100 --dims 100000 100
