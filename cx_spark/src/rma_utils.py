@@ -1,7 +1,12 @@
 import numpy.linalg as npl
 import numpy as np
+from scipy.sparse import csr_matrix
 
 from utils import *
+
+def to_sparse(A):
+    sA = csr_matrix(A)
+    return [(i, ( sA.indices[range(sA.indptr[i],sA.indptr[i+1])], sA.data[range(sA.indptr[i],sA.indptr[i+1])])) for i in range(A.shape[0])]
 
 def convert_rdd(rdd):
     row = rdd.first()
@@ -17,6 +22,9 @@ def parse_data(data, feats):
         return data[:,feats[0]:feats[1]+1]
     else:
         return data
+
+def form_csr_matrix(data,m,n):
+    return coo_matrix((data['val'], (data['row'], data['col'])), shape=(m, n)).tocsr()
 
 def comp_l2_obj(Ab_rdd, x):
     # x is a np array

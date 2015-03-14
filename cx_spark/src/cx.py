@@ -1,12 +1,7 @@
 '''
 CX decomposition with approximate leverage scores
-
-Author: Jiyan Yang(jiyan@stanford.edu)
 '''
 
-#from projections import *
-#from rma_utils import *
-#from rowmatrix import *
 from rma_utils import compLevExact
 import numpy as np
 from numpy.linalg import norm
@@ -14,63 +9,33 @@ import logging
 logger = logging.getLogger(__name__)
 
 class CX:
-    def __init__(self, matrix_A, sc):
+    def __init__(self, matrix_A):
         self.matrix_A = matrix_A
-        self.sc=sc
 
-    def get_lev(self, k, axis, **kwargs):
+    def get_lev(self, k, **kwargs):
+        """
+        compute column leverage scores
+        """
 
-        #if k == self.matrix_A.m or k == self.matrix_A.n: #k=min(m,n)
-            #approximating the leverage scores
-            #load_N = kwargs.get('load_N', True)
-            #save_N = kwargs.get('save_N', True)
-            #N, time = comp_sketch(self.matrix_A, 'N', load_N, save_N, 'cx', sketch_type='projection', k=1, **kwargs)
+        reo = 4
+        q = kwargs.get('q')
 
-            #self.lev = [ l[1][0] for l in comp_lev(self.matrix_A.matrix_with_index, self.sc, N, 'cx') ]
-            #sumlev = sum(self.lev)
-            #self.p = [l/sumlev for l in self.lev]
-        #else:
-            reo = 4
-            q = kwargs.get('q')
+        Pi = np.random.randn(self.matrix_A.m, 2*k);
 
-            if axis == 0:
-                Pi = np.random.randn(self.matrix_A.n, 2*k);
+        B = self.matrix_A.ltimes(Pi.T).T
 
-                logger.info('Computing leverage scores, at iteration 1!')
-                B = self.matrix_A.atamat(Pi,self.sc)
+        for i in range(q):
+            logger.info('Computing leverage scores, at iteration {0}!'.format(i+1))
+            if i % reo == reo-1:
+                logger.info("Reorthogonalzing!")
+                Q, R = np.linalg.qr(B)
+                B = Q
+            B = self.matrix_A.atamat(B)
 
-                for i in range(1,q):
-                    logger.info('Computing leverage scores, at iteration {0}!'.format(i+1))
-                    if i % reo == reo-1:
-                        logger.info("Reorthogonalzing!")
-                        B = self.matrix_A.rtimes(B,self.sc)
-                        Q, R = np.linalg.qr(B)
-                        B = Q
-                        B = self.matrix_A.ltimes(B.T,self.sc).T
-                    else:
-                        B = self.matrix_A.atamat(B,self.sc)
+        lev, self.p = compLevExact(B, k, 0)
+        self.lev = self.p*k
 
-                B = self.matrix_A.rtimes(B,self.sc)
-
-            elif axis == 1:
-                Pi = np.random.randn(self.matrix_A.m, 2*k);
-
-                B = self.matrix_A.ltimes(Pi.T,self.sc).T
-
-                for i in range(q):
-                    logger.info('Computing leverage scores, at iteration {0}!'.format(i+1))
-                    if i % reo == reo-1:
-                        logger.info("Reorthogonalzing!")
-                        Q, R = np.linalg.qr(B)
-                        B = Q
-                    B = self.matrix_A.atamat(B,self.sc)
-            else:
-                raise valueError('Please enter a valid axis: 0 or 1!')
-
-            lev, self.p = compLevExact(B, k, 0)
-            self.lev = self.p*k
-
-            return self.lev, self.p
+        return self.lev, self.p
 
     def comp_idx(self, scheme='deterministic', r=10):
         #seleting rows based on self.lev

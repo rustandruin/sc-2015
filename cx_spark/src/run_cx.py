@@ -2,7 +2,8 @@ from pyspark import SparkContext
 from pyspark import SparkConf
 from cx import CX
 from rowmatrix import RowMatrix
-#from utils import *
+from sparse_row_matrix import SparseRowMatrix
+from rma_utils import to_sparse
 import time
 import sys
 import argparse
@@ -20,6 +21,8 @@ def print_params(args, logger):
     logger.info('dataset: {0}'.format( args.dataset ) )
     logger.info('size: {0} by {1}'.format( args.dims[0], args.dims[1] ) )
     logger.info('loading file from {0}'.format( args.file_source ) )
+    if args.sparse:
+        logger.info('sparse format!')
     if args.nrepetitions>1:
         logger.info('number of repetitions: {0}'.format( args.nrepetitions ))
     logger.info('number of partitions: {0}'.format( args.npartitions ))
@@ -54,12 +57,13 @@ def main(argv):
     parser.add_argument('dataset', type=str, help='dataset.txt stores the input matrix to run CX on; \
            dataset_U.txt stores left-singular vectors of the input matrix (only needed for -t); \
            dataset_D.txt stores singular values of the input matrix (only needed for -t)')
-    parser.add_argument('--dims', metavar=('m','n'), type=int, nargs=2, required=True, help='size of the input matrix')    
+    parser.add_argument('--dims', metavar=('m','n'), type=int, nargs=2, required=True, help='size of the input matrix')
+    parser.add_argument('--sparse', dest='sparse', action='store_true', help='whether the data is sparse')
+    parser.add_argument('--hdfs', dest='file_source', default='local', action='store_const', const='hdfs', help='load dataset from HDFS')
     parser.add_argument('-k', '--rank', metavar='targetRank', dest='k', default=5, type=int, help='target rank parameter in the definition of leverage scores, this value shoud not be greater than m or n')
     parser.add_argument('-r', metavar='numRowsToSelect', default=20, type=int, help='number of rows to select in CX')
     parser.add_argument('-q', '--niters', metavar='numIters', dest='q', default=2, type=int, help='number of iterations to run in approximation of leverage scores')
     parser.add_argument('--deterministic', dest='scheme', default='randomized', action='store_const', const='deterministic', help='use deterministic scheme instead of randomized when selecting rows')
-    #parser.add_argument('--stage', default='full', choices=['leverage','indices','full'], help='stage at which the algorithm stops')
     parser.add_argument('-c', '--cache', action='store_true', help='cache the dataset in Spark')
     parser.add_argument('-t', '--test', action='store_true', help='compute accuracies of the returned solutions')
     parser.add_argument('-s', '--save_logs', action='store_true', help='save Spark logs')
@@ -71,9 +75,6 @@ def main(argv):
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--leverage-scores-only', dest='stage', default='full', action='store_const', const='leverage', help='return approximate leverage scores only')
     group.add_argument('--indices-only', dest='stage', default='full', action='store_const', const='indices', help='return approximate leverage scores and selected row indices only')
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument('--local', dest='file_source', default='local', action='store_const', const='local', help='load dataset from local folder')
-    group.add_argument('--hdfs', dest='file_source', default='local', action='store_const', const='hdfs', help='load dataset from HDFS')
     
     if len(argv)>0 and argv[0]=='print_help':
         parser.print_help()
@@ -89,11 +90,14 @@ def main(argv):
     if args.npartitions > m or args.npartitions > n:
         args.npartitions = min(m,n)
 
-    #if m < n:
-    #    raise ValueError('Number of rows({0}) should be greater than number of columns({1})').format(m,n)
-
     if args.test and args.nrepetitions>1:
         raise OptionError('Do not use the test mode(-t) on replicated data(numRepetitions>1)!')
+
+    if args.axis == 0:
+        raise OptionError('Need to implement transpose first!')
+
+    if args.sparse and args.file_source=='hdfs':
+        raise OptionError('Not yet!')
 
     # print parameters
     print_params(args, logger)
@@ -102,12 +106,6 @@ def main(argv):
     dire = '../data/'
     hdfs_dire = 'data/'
     logs_dire = 'file:///home/jiyan/cx_logs'
-
-    if args.test:  #only need to load these in the test mode
-        A = np.loadtxt(dire+args.dataset+'.txt')
-        D = np.loadtxt(dire+args.dataset+'_D.txt')
-        U = np.loadtxt(dire+args.dataset+'_U.txt')
-        V = np.loadtxt(dire+args.dataset+'_V.txt')
 
     # instantializing a Spark instance
     if args.save_logs:
@@ -121,18 +119,30 @@ def main(argv):
         A_rdd = sc.textFile(hdfs_dire+args.dataset+'.txt',args.npartitions) #loading dataset from HDFS
     else:
         A = np.loadtxt(dire+args.dataset+'.txt') #loading dataset from local disc
-        A_rdd = sc.parallelize(A.tolist(),args.npartitions)
+        if args.sparse:
+            sA = to_sparse(A)
+            A_rdd = sc.parallelize(sA,args.npartitions)
+        else:
+            A_rdd = sc.parallelize(A.tolist(),args.npartitions)
+
+    if args.axis == 0:
+        pass # get rdd from the transpose of A
 
     t = time.time()
-    # creating a RowMatrix instance
-    matrix_A = RowMatrix(A_rdd,args.dataset,m,n,args.cache,repnum=args.nrepetitions)
+    if args.sparse:
+        matrix_A = SparseRowMatrix(A_rdd,args.dataset,m,n,args.cache) # creating a SparseRowMatrix instance
+    else:
+        matrix_A = RowMatrix(A_rdd,args.dataset,m,n,args.cache,repnum=args.nrepetitions) # creating a RowMatrix instance
+        
+    cx = CX(matrix_A)
 
-    cx = CX(matrix_A,sc=sc)
-
-    lev, p = cx.get_lev(args.k, axis=args.axis, q=args.q) # getting the approximate row leverage scores. it has the same size as the number of rows 
-    #lev, p = cx.get_lev(n, load_N, save_N, projection_type='gaussian',c=1e3) #target rank is n
+    lev, p = cx.get_lev(args.k, q=args.q) # getting the approximate row leverage scores. it has the same size as the number of rows 
 
     if args.test:
+        if args.file_source != 'local':
+            A = np.loadtxt(dire+args.dataset+'.txt')
+        U, D, V = np.linalg.svd(A,0)
+
         if args.axis == 0:
             lev_exact = np.sum(U[:,:args.k]**2,axis=1)
         else:

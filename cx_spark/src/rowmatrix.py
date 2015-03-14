@@ -49,12 +49,12 @@ class RowMatrix(object):
             self.rdd.cache()
             logger.info('number of rows: {0}'.format( self.rdd.count() )) # materialize the matrix
 
-    def atamat(self,mat,sc,feats=None):
+    def atamat(self,mat,feats=None):
         # TO-DO: check dimension compatibility
         if mat.ndim == 1:
             mat = mat.reshape((len(mat),1))
 
-        mat = sc.broadcast(mat)
+        mat = self.rdd.context.broadcast(mat)
 
         atamat_mapper = MatrixAtABMapper()
         #b = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,feats=feats) ).sum()
@@ -69,12 +69,12 @@ class RowMatrix(object):
 
         return b
 
-    def rtimes(self,mat,sc,feats=None,return_rdd=False):
+    def rtimes(self,mat,feats=None,return_rdd=False):
         # TO-DO: check dimension compatibility
         if mat.ndim == 1:
             mat = mat.reshape((len(mat),1))
 
-        mat = sc.broadcast(mat)
+        mat = self.rdd.context.broadcast(mat)
 
         matrix_rtimes_mapper = MatrixRtimesMapper()
         a = self.rdd.mapPartitions(lambda records: matrix_rtimes_mapper(records,mat=mat.value,feats=feats) )
@@ -91,13 +91,13 @@ class RowMatrix(object):
 
         return b
 
-    def ltimes(self,mat,sc,feats=None):
+    def ltimes(self,mat,feats=None):
         # TO-DO: check dimension compatibility
 
         if mat.ndim == 1:
             mat = mat.reshape((1,len(mat)))
 
-        mat = sc.broadcast(mat)
+        mat = self.rdd.context.broadcast(mat)
 
         matrix_ltimes_mapper = MatrixLtimesMapper()
         #b = self.rdd.mapPartitions(lambda records: matrix_ltimes_mapper(records,mat=mat.value,feats=feats)).sum()

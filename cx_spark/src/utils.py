@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse import coo_matrix
 import cPickle as pickle
 import json
 
@@ -38,8 +39,9 @@ class BlockMapper:
 
     def __call__(self, records, **kwargs):
         for r in records:
-            self.keys.append(r[0])
-            self.data.append(r[1])
+            self.parse(r)
+            #self.keys.append(r[0])
+            #self.data.append(r[1])
             self.sz += 1
                 
             if self.sz >= self.blk_sz:
@@ -61,6 +63,10 @@ class BlockMapper:
         #    yield key, value
         for result in self.close():
             yield result
+
+    def parse(self,r):
+        self.keys.append(r[0])
+        self.data.append(r[1])
 
     def process(self,**kwargs):
         return iter([])
