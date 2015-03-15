@@ -81,12 +81,7 @@ class MatrixLtimesMapper(BlockMapper):
         self.data['val'] += r[1][1].tolist()
 
     def process(self, mat, n):
-        f = open("/global/u2/m/msingh/sc_paper/new_version/sc-2015/cx_spark/length.txt","w")
-        f.write(str(len(self.keys))+'\n')
-        f.write(str(n))
         if self.ba:
-            #f = open("/global/u2/m/msingh/sc_paper/new_version/sc-2015/cx_spark/length.txt","w")
-            #f.write(str(len(self.keys)))
             self.ba += ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys[0]:(self.keys[-1]+1)].T ) ).T
         else:
             self.ba = ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys[0]:(self.keys[-1]+1)].T ) ).T
