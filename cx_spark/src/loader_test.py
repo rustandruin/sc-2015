@@ -1,14 +1,16 @@
 import numpy as np
-from spark_msi import MSIDataset, MSIMatrix
 from pyspark import SparkContext
 from pyspark import SparkConf
+
+
+from spark_msi import MSIDataset
+from spark_msi import MSIMatrix
 from spark_msi import converter
 from scipy.sparse import csr_matrix,lil_matrix
 
-from cx import *
+
 from rowmatrix import *
 from utils import *
-import sys
 ROOT="/project/projectdirs/openmsi/projects/mantissa/ddalisay/2014Nov15_PDX_IMS_imzML/"
 imzXMLPath = ROOT+'Lewis_Dalisay_Peltatum_20131115_PDX_Std_1.imzml'                                                       
 imzBinPath = ROOT+"Lewis_Dalisay_Peltatum_20131115_PDX_Std_1.ibd" 
@@ -37,7 +39,7 @@ entries = non_zer.count()
 
 
 rdd = non_zer.map(lambda x:  str(x[0]) +','+str(x[1])+','+str(x[2]) )
-rdd.saveAsTextFile("/global/u2/m/msingh/sc_paper/new_version/sc-2015/output/column_out")
+rdd.saveAsTextFile("/global/u2/m/msingh/sc_paper/new_version/sc-2015/output/out")
 
 
 

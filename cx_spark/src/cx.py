@@ -1,11 +1,14 @@
 '''
 CX decomposition with approximate leverage scores
 '''
+import logging
 
-from rma_utils import compLevExact
 import numpy as np
 from numpy.linalg import norm
-import logging
+
+from rma_utils import compLevExact
+
+
 logger = logging.getLogger(__name__)
 
 class CX:
@@ -64,6 +67,5 @@ class CX:
         temp = np.eye(self.matrix_A.n) - RRinv
 
         diff = np.sqrt( self.matrix_A.rtimes(temp,self.sc,True).map(lambda (key,row): norm(row)**2 ).sum() )
-        #diff = np.sqrt( self.matrix_A.rdd.map(lambda row: xN(row, [temp.value])).reduce(add) )
 
         return diff

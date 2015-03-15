@@ -1,18 +1,24 @@
-from utils import BlockMapper, add
-from rma_utils import convert_rdd, add_index, form_csr_matrix
-import numpy as np
 import logging
+
+import numpy as np
+
+from rma_utils import add_index
+from rma_utils import convert_rdd 
+from rma_utils import form_csr_matrix
+from utils import BlockMapper, add
+from utils import prepare_matrix
+
+
 logger = logging.getLogger(__name__)
 
 class SparseRowMatrix(object):
     """
     A sparse row matrix class
-    Each record is of the format: (row_idx, ( non_zero_col_idx, non_zero_col_elem ) )
-    where non_zero_col_idx and non_zero_col_elem are lists with the same length
+    Each record is of the format: (row_idx, column_id, val)
     """
 
-    def __init__(self, rdd, name, m, n, cache=False):
-        self.rdd = rdd
+    def __init__(self, raw_rdd, name, m, n, cache=False):
+        self.rdd = prepare_matrix(raw_rdd)
         self.name = name
         self.m = m
         self.n = n
@@ -75,7 +81,12 @@ class MatrixLtimesMapper(BlockMapper):
         self.data['val'] += r[1][1].tolist()
 
     def process(self, mat, n):
+        f = open("/global/u2/m/msingh/sc_paper/new_version/sc-2015/cx_spark/length.txt","w")
+        f.write(str(len(self.keys))+'\n')
+        f.write(str(n))
         if self.ba:
+            #f = open("/global/u2/m/msingh/sc_paper/new_version/sc-2015/cx_spark/length.txt","w")
+            #f.write(str(len(self.keys)))
             self.ba += ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys[0]:(self.keys[-1]+1)].T ) ).T
         else:
             self.ba = ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys[0]:(self.keys[-1]+1)].T ) ).T

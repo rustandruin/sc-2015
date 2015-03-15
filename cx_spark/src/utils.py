@@ -1,7 +1,10 @@
+import json
+
+import cPickle as pickle
 import numpy as np
 from scipy.sparse import coo_matrix
-import cPickle as pickle
-import json
+
+
 
 def add(x, y):
     x += y
@@ -40,13 +43,9 @@ class BlockMapper:
     def __call__(self, records, **kwargs):
         for r in records:
             self.parse(r)
-            #self.keys.append(r[0])
-            #self.data.append(r[1])
             self.sz += 1
                 
             if self.sz >= self.blk_sz:
-                #for key, value in self.process(**kwargs):
-                #    yield key, value
                 for result in self.process(**kwargs):
                     yield result
                 self.keys = []
@@ -54,13 +53,9 @@ class BlockMapper:
                 self.sz = 0
 
         if self.sz > 0:
-            #for key, value in self.process(**kwargs):
-                #yield key, value
             for result in self.process(**kwargs):
                 yield result
 
-        #for key, value in self.close():
-        #    yield key, value
         for result in self.close():
             yield result
 
@@ -73,4 +68,16 @@ class BlockMapper:
     
     def close(self):
         return iter([])
+
+def _indexed(grouped_list):
+    indexed, values = [],[]
+    for tup in grouped_list:
+        indexed.append(tup[0])
+        values.append(tup[1])
+    return np.array(indexed), np.array(values)
+def prepare_matrix(rdd):
+    gprdd = rdd.map(lambda x:(x[0],(x[1],x[2]))).groupByKey().map(lambda x :(x[0],list(x[1])))
+    flattened_rdd = gprdd.map(lambda x: (x[0],_indexed(x[1])))
+    sorted_rdd = flattened_rdd.sortByKey()
+    return sorted_rdd
 
