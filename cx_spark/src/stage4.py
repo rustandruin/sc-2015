@@ -18,16 +18,25 @@ def replace(values):
         for val in values:
             if len(val) == 2:
                 return (new_id, val[1])
-def transform_tomz(x):
+def transform_tomz(x, mz_broadcast, tlen):
     mz_index = x/tlen
     mz_val = mz_broadcast.value[mz_index]
-    return mz_val           
-def stage4(params_dict):
+    return mz_val    
+
+def get_t(x, tlen): 
+    return x%tlen
+
+def get_mz(x, tlen):
+    return x/tlen     
+def run_stage4(params_dict):
+    logs_dir = params_dict.get('logsdir')
     column_leverage_score = params_dict.get('leveragescores')
     column_mappings = params_dict.get('columnmappingsfile')
     raw_rdd = params_dict.get('raw_rdd')
     mz_output = params_dict.get('mzvals')
-    #local_column_leverage_scores_file ='/Users/msingh/Desktop/research/column_leverage_scores'
+    conf = SparkConf().set('spark.eventLog.enabled', 'true').set('spark.eventLog.dir', logs_dir).set("spark.driver.maxResultSize", "2g") 
+    sc = SparkContext(appName="post process", conf=conf)
+    #local_column_leverage_scores_file ='/Use rs/msingh/Desktop/research/column_leverage_scores'
     #edison_column_leverage_scores_file = "/global/u2/m/msingh/sc_paper/new_version/sc-2015/output/column_leverage_scores"
     column_leverage_scores = sc.textFile(column_leverage_score).map(lambda x: float(str(x)))
     zipped = column_leverage_scores.zipWithIndex().map(lambda x:(x[1],x[0]))
@@ -35,7 +44,7 @@ def stage4(params_dict):
     #sorted = zipped.sortBy(lambda x:x[0], ascending=False)
     #local_column_mappings = '/Users/msingh/Desktop/research/column_mappings'
     #edison_column_mappings = '/global/u2/m/msingh/sc_paper/new_version/sc-2015/output/column_mappings'
-    mappings = sc.textFile(edison_column_mappings).map(lambda x: map(int ,x.split(','))).map(lambda x:(x[1],x[0],'zip'))
+    mappings = sc.textFile(column_mappings).map(lambda x: map(int ,x.split(','))).map(lambda x:(x[1],x[0],'zip'))
     unioned = zipped.union(mappings)
 
 
@@ -56,11 +65,8 @@ def stage4(params_dict):
 
     xlen,ylen,tlen,mzlen = data.shape
   
-
-    get_t = lambda x:x%tlen
-    get_mz = lambda x:x/tlen
-    get_t_mz = new_ids.map(lambda x: (get_t(x[0]),get_mz(x[0]),transform_tomz(x[0]),  x[0],x[1]))
-    sorted_val = get_t_mz.sortBy(lambda x:x[4], ascending=False)
+    get_t_mz = new_ids.map(lambda x: (get_t(x[0], tlen),get_mz(x[0],tlen),transform_tomz(x[0],mz_broadcast, tlen),  x[0],x[1]))
+    sorted_vals = get_t_mz.sortBy(lambda x:x[4], ascending=False)
     formatted_vals = sorted_vals.map(lambda x: ", ".join(str(i) for i in x))
     formatted_vals.saveAsTextFile(mz_output)
 
@@ -72,9 +78,9 @@ if __name__ == '__main__':
     stage4_params['leveragescores'] = config_params['STAGE3']['leveragescores']
     stage4_params['columnmappingsfile'] = config_params['STAGE2']['columnmappingsfile']
     stage4_params['raw_rdd'] = config_params['STAGE1']['outpathrdd']
-    print "run stage 4 with params ", stage_4_params
+    print "run stage 4 with params ", stage4_params
    
-    run_stage4(stage_4_params)
+    run_stage4(stage4_params)
     print " run finished"
 
 
