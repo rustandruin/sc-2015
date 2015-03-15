@@ -1,10 +1,16 @@
 #https://github.com/jey/sc-2015/blob/master/spark_msi/spark_msi.py
+import operator
+import os
+import sys
+import time
+import cPickle as pickle
+
 from lxml import etree
 import numpy as np
 import scipy as sp
 from scipy import sparse
-import sys, time, os, operator
-import cPickle as pickle
+
+
 
 def get_all_items(element, itemlist=None):
     """
