@@ -1,4 +1,15 @@
+import time
 
+import numpy as np
+from pyspark import SparkContext
+from pyspark import SparkConf
+from spark_msi import MSIDataset
+from spark_msi import MSIMatrix
+from spark_msi import converter
+from cx import *
+from rowmatrix import *
+from sparse_row_matrix import SparseRowMatrix
+from utils import *
 
 
 local_column_leverage_scores_file ='/Users/msingh/Desktop/research/column_leverage_scores'
@@ -26,9 +37,9 @@ rows_grouped = unioned.map(lambda x:(x[0],(x))).groupByKey().map(lambda x:(x[0],
 new_ids = rows_grouped.map(lambda x: replace(x[1]))
 
 
-import sys
-sys.path.append("/global/u2/m/msingh/sc_paper/new_version/sc-2015/cx_spark/src")
-from spark_msi import *
+#import sys
+#sys.path.append("/global/u2/m/msingh/sc_paper/new_version/sc-2015/cx_spark/src")
+#from spark_msi import *
 outpath='/global/u2/m/msingh/sc_paper/new_version/sc-2015/output/data.rdd'
 data = MSIDataset.load(sc, outpath)
 mz_axis = data.mz_axis
@@ -46,9 +57,3 @@ get_t_mz = new_ids.map(lambda x: (get_t(x[0]),get_mz(x[0]),transform_tomz(x[0]),
 sorted_val = get_t_mz.sortBy(lambda x:x[4], ascending=False)
 formatted_vals = sorted_vals.map(lambda x: ", ".join(str(i) for i in x))
 formatted_vals.saveAsTextFile("/global/u2/m/msingh/sc_paper/new_version/sc-2015/output/mz_tau_lev")
-
-[(0, (array([  79,   82,  284,  626,  800,  812,  569,  571,  731,   84,   87,
-        113, 1093, 1136,  547,  433,  435,  429,  430,  643,  669,  186,
-        991,  578,  606, 1060,  890,  904,  918,  938,  956]), array([  7.,   4.,   4.,  27.,  10.,  15.,   6.,  14.,  13.,  14.,   7.,
-        23.,   2.,   5.,   2.,   5.,   6.,  10.,   7.,   8.,   6.,   3.,
-         3.,   7.,   3.,  22.,  25.,   5.,  13.,   5.,   5.])))]
