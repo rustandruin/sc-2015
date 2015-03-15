@@ -1,7 +1,15 @@
-from utils import BlockMapper, add
-from rma_utils import convert_rdd, add_index, parse_data
-import numpy as np
 import logging
+
+import numpy as np
+
+
+from rma_utils import add_index
+from rma_utils import convert_rdd
+from rma_utils import parse_data
+from utils import add
+from utils import BlockMapper
+
+
 logger = logging.getLogger(__name__)
 
 class RowMatrix(object):
