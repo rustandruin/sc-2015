@@ -14,9 +14,9 @@ def load_configuration():
 	for section in sections:
 		options = config.options(section)
 		for option in options:
-				val = config.get(section, option)
-				if not val:
-					print 'missing param %s %s '%(section, option)
-					sys.exit('exitting now!')
-				config_params[section][option] = config.get(section, option)
+			val = config.get(section, option)
+			if not val:
+				print 'missing param %s %s '%(section, option)
+				sys.exit('exitting now!')
+			config_params[section][option] = config.get(section, option)
 	return config_params
