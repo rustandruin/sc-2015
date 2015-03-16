@@ -36,7 +36,7 @@ def run_stage4(params_dict):
     column_mappings = params_dict.get('columnmappingsfile')
     raw_rdd = params_dict.get('raw_rdd')
     mz_output = params_dict.get('mzvals')
-    conf = SparkConf().set('spark.eventLog.enabled', 'true').set('spark.eventLog.dir', logs_dir).set('spark.driver.maxResultSize', '8g') 
+    conf = SparkConf().set('spark.eventLog.enabled', 'true').set('spark.eventLog.dir', logs_dir).set('spark.driver.maxResultSize', '2g') 
     sc = SparkContext(appName='post process', conf=conf)
     column_leverage_scores = sc.textFile(column_leverage_score).map(lambda x: float(str(x)))
     zipped = column_leverage_scores.zipWithIndex().map(lambda x:(x[1],x[0]))
