@@ -15,6 +15,7 @@ def run_stage1(params_dict):
 	output_rdd = params_dict.get('outpathrdd')
 	output_matrix = params_dict.get('outputmatrix')
 	conf = SparkConf().set('spark.eventLog.enabled', 'true').set('spark.eventLog.dir', logs_dir).set('spark.driver.maxResultSize', '2g') 
+
 	sc = SparkContext(appName='Loader', conf=conf)
 	dataset = converter(sc, imzXMLPath, imzBinPath, output_rdd)
 
