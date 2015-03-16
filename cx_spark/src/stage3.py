@@ -40,7 +40,7 @@ if __name__ == '__main__':
     global_param = config_params['GLOBAL']
     stage_3_params.update(global_param)
     stage_3_params['inputmatrix'] = config_params['STAGE2']['mappedmatrix']
-    print 'run stage 2 with params ', stage_3_params
+    print 'run stage 3 with params ', stage_3_params
    
     run_stage3(stage_3_params)
     print 'run finished'
