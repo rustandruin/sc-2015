@@ -8,6 +8,7 @@ from parse_config import load_configuration
 from spark_msi import MSIDataset
 from spark_msi import MSIMatrix
 from spark_msi import converter
+from spark_msi import get_mz_axis
 
 
 def replace(values):
@@ -19,9 +20,9 @@ def replace(values):
         if len(val) == 2:
             return (new_id, val[1])
 
-def transform_tomz(x, mz_broadcast, tlen):
+def transform_tomz(x, mz_axis, tlen):
     mz_index = x/tlen
-    mz_val = mz_broadcast.value[mz_index]
+    mz_val = mz_axis[mz_index]
     return mz_val    
 
 def get_t(x, tlen): 
@@ -57,15 +58,18 @@ def run_stage4(params_dict):
 
 
     data = MSIDataset.load(sc, raw_rdd)
-    mz_axis = data.mz_axis
-    mz_broadcast = sc.broadcast(mz_axis)
+    mz_range = data.mz_range
 
     xlen,ylen,tlen,mzlen = data.shape
     if on_rows:
         save_rdd = new_ids.map(lambda x: (get_x(x[0], xlen), get_y(x[0], xlen), x[0], x[1]))
         sorted_rdd = save_rdd.sortBy(lambda x:x[3], ascending=False)
     else:
-        get_t_mz = new_ids.map(lambda x: (get_t(x[0], tlen),get_mz(x[0], tlen), transform_tomz(x[0],mz_broadcast, tlen),  x[0],x[1]))
+        def f(xs):
+          mz_axis = get_mz_axis(mz_range)
+          for x in xs:
+            yield (get_t(x[0], tlen),get_mz(x[0], tlen), transform_tomz(x[0], mz_axis, tlen),  x[0],x[1])
+        get_t_mz = new_ids.mapPartitions(f)
         sorted_rdd = get_t_mz.sortBy(lambda x:x[4], ascending=False)
     formatted_vals = sorted_rdd.map(lambda x: ', '.join(str(i) for i in x))
     formatted_vals.saveAsTextFile(output)
