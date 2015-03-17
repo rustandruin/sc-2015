@@ -1,7 +1,4 @@
-from lxml import etree
 import numpy as np
-import scipy as sp
-from scipy import sparse
 import sys, time, os, operator, csv
 import cPickle as pickle
 
@@ -258,6 +255,7 @@ class MSIDataset(object):
     def dump_imzml(imzMLPath, outpath, chunksz=10**5):
         def genrow():
             # yields rows of form [x, y, t, num_values, mz_offset, intensity_offset]
+            from lxml import etree
             imzXML = etree.iterparse(imzMLPath, tag='{http://psi.hupo.org/ms/mzml}spectrum')
             for event, element in imzXML:
                 if event == 'end':
@@ -366,17 +364,21 @@ def converter():
 
 
 if __name__ == '__main__':
-    if True:
-        # big
-        name = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1'
-        inpath = '/project/projectdirs/openmsi/projects/mantissa/ddalisay/OpenMSI_Lewis_Dalisay_Peltatum_20131115_hexandrum/' + name
-        csvpath = '/project/projectdirs/m1541/sc-2015/' + name
-    else:
-        # small
-        name = 'Lewis_Dalisay_Peltatum_20131115_PDX_Std_1'
-        inpath = '/project/projectdirs/openmsi/projects/mantissa/ddalisay/2014Nov15_PDX_IMS_imzML/' + name
+    # big
+    name = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1'
+    datapath = '/scratch1/scratchdirs/jeyk/data/'
+    inpath = os.path.join(datapath, name)
     outpath = os.path.join(os.getenv('SCRATCH'), name)
     #MSIDataset.dump_imzml(inpath + ".imzml", outpath + ".csv")
     from pyspark import SparkContext
     sc = SparkContext()
-    MSIDataset.from_dump(sc, csvpath + ".csv", inpath + ".ibd").save(outpath + ".rdd")
+    dataset = MSIDataset.load(sc, inpath + ".rdd")
+    #dataset = dataset.select_mz_range(414.1314 + 22.99 - 0.05, 414.1314 + 22.99 + 0.05)
+    #dataset.spectra = dataset.spectra.coalesce(512)
+    dataset.cache()
+    output = {
+        'image' : dataset.image(),
+        'histogram' : dataset.histogram()
+    }
+    with open("output-%s.pickle" % os.getpid(), 'w') as outf:
+        pickle.dump(output, outf)
