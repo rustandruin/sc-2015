@@ -1,4 +1,7 @@
 #!/bin/bash
 
-#export SPARK_JAVA_OPTS=-Dlog4j.configuration=log4j.properties
-spark-submit --driver-java-options '-Dlog4j.configuration=log4j.properties' --executor-memory 7G --driver-memory 8G --py-files comp_sketch.py,cx.py,rma_utils.py,utils.py,matrix.py,projections.py run_cx.py $@ 2>&1 | tee test.log 
+case "$1" in
+    --help|-h) spark-submit --driver-java-options '-Dlog4j.configuration=log4j.properties' run_cx.py print_help
+        ;;
+    *) spark-submit --driver-java-options '-Dlog4j.configuration=log4j.properties' --executor-memory 7G --driver-memory 8G --py-files cx.py,rma_utils.py,utils.py,rowmatrix.py,sparse_row_matrix.py run_cx.py $@
+esac

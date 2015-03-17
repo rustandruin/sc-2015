@@ -24,7 +24,7 @@ if __name__ == "__main__":
     #Ab = np.hstack((A,b.reshape((m,1))))
 
     #np.savetxt(filename+'_Ab.txt',Ab,fmt='%.12e')
-    np.savetxt(filename+'_A.txt',A,fmt='%.12e')
+    np.savetxt(filename+'.txt',A,fmt='%.12e')
     #np.savetxt(filename+'_b.txt',b)
     #np.savetxt(filename+'_x_opt.txt',x_opt)
     #np.savetxt(filename+'_f_opt.txt',np.array([f_opt]))

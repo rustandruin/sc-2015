@@ -1,21 +1,14 @@
-import numpy as np
-import cPickle as pickle
 import json
 
-def parseVector(line):
-    return np.array([float(x) for x in line.strip('\n').split(' ')])
+import cPickle as pickle
+import numpy as np
+from scipy.sparse import coo_matrix
+
+
 
 def add(x, y):
     x += y
     return x
-
-def sampling(row, R, sumLev, s):
-    #row = row.getA1()
-    lev = np.linalg.norm(np.dot(row[:-1], R))**2
-    p = s*lev/sumLev
-    coin = np.random.rand()
-    if coin < p:
-        return row/p
 
 def unifSampling(row, n, s):
     #row = row.getA1()
@@ -37,45 +30,54 @@ def json_write(filename,*args):
             json.dump(data, outfile)
             outfile.write('\n')
 
-class Block_Mapper:
+class BlockMapper:
     """
     process data after receiving a block of records
     """
-    def __init__(self, blk_sz=50):
+    def __init__(self, blk_sz=5e4):
         self.blk_sz = blk_sz
+        self.keys = []
         self.data = []
         self.sz = 0
-        self.key = []
-    
-    def __call__(self, records):
-        for row in records:
-            a = self.parse(row)
-            if len(a) == 2:
-                self.key.append(a[0])
-                self.data.append(a[1])
-            else:
-                self.data.append(a)
+
+    def __call__(self, records, **kwargs):
+        for r in records:
+            self.parse(r)
             self.sz += 1
                 
             if self.sz >= self.blk_sz:
-                for key, value in self.process():
-                    yield key, value
+                for result in self.process(**kwargs):
+                    yield result
+                self.keys = []
                 self.data = []
-                self.key = []
                 self.sz = 0
+
         if self.sz > 0:
-            for key, value in self.process():
-                yield key, value
-        for key, value in self.close():
-            yield key, value
+            for result in self.process(**kwargs):
+                yield result
 
-    def parse(self, row):
-        return row
+        for result in self.close():
+            yield result
 
-    def process(self):
+    def parse(self,r):
+        self.keys.append(r[0])
+        self.data.append(r[1])
+
+    def process(self,**kwargs):
         return iter([])
     
     def close(self):
         return iter([])
 
-  
+def _indexed(grouped_list):
+    indexed, values = [],[]
+    for tup in grouped_list:
+        indexed.append(tup[0])
+        values.append(tup[1])
+    return np.array(indexed), np.array(values)
+def prepare_matrix(rdd):
+    gprdd = rdd.map(lambda x:(x[0],(x[1],x[2]))).groupByKey().map(lambda x :(x[0],list(x[1])))
+    flattened_rdd = gprdd.map(lambda x: (x[0],_indexed(x[1])))
+    sorted_rdd = flattened_rdd.sortByKey()
+    return sorted_rdd
+
