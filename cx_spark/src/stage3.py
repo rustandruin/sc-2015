@@ -10,14 +10,21 @@ from sparse_row_matrix import SparseRowMatrix
 
 
 def run_stage3(params_dict):
-    logs_dir = params_dict.get('logsdir')
+    
     input_matrix = params_dict.get('inputmatrix')
-    leverage_scores_file = params_dict.get('leveragescores')
-    p_score_file = params_dict.get('pscores')
- 
-    conf = SparkConf().set('spark.eventLog.enabled','true').set('spark.eventLog.dir',logs_dir).set('spark.driver.maxResultSize', '8g') 
-    sc = SparkContext(appName='cx_exp',conf=conf)
-    rows_assigned = sc.textFile(input_matrix).map(lambda x:x.split(',')).map(lambda x:(int(x[0]), int(x[1]), float(x[2])))
+    #leverage_scores_file = params_dict.get('leveragescores')
+    #p_score_file = params_dict.get('pscores')
+    on_rows = stage_3_params.get('on_rows', False)
+    sc = params_dict.get('sc')
+    if on_rows: # we do the flip
+        rows_assigned = sc.textFile(input_matrix).map(lambda x:x.split(',')).map(lambda x:(int(x[1]), int(x[0]), float(x[2])))
+        leverage_scores_file = params_dict.get('rowleveragescores')
+        p_score_file = params_dict.get('rowpscores')
+    else:
+        rows_assigned = sc.textFile(input_matrix).map(lambda x:x.split(',')).map(lambda x:(int(x[0]), int(x[1]), float(x[2])))
+        leverage_scores_file = params_dict.get('columnleveragescores')
+        p_score_file = params_dict.get('columnpscores')
+
     row_shape = rows_assigned.map(lambda x:x[0]).max() + 1 
     column_shape = rows_assigned.map(lambda x:x[1]).max() + 1
 
@@ -39,8 +46,18 @@ if __name__ == '__main__':
     stage_3_params = config_params['STAGE3']
     global_param = config_params['GLOBAL']
     stage_3_params.update(global_param)
+    logs_dir = stage_3_params.get('logsdir')
+    conf = SparkConf().set('spark.eventLog.enabled','true').set('spark.eventLog.dir',logs_dir).set('spark.driver.maxResultSize', '8g') 
+    sc = SparkContext(appName='cx_exp',conf=conf)
+    stage_3_params['sc']  = sc
     stage_3_params['inputmatrix'] = config_params['STAGE2']['mappedmatrix']
-    print 'run stage 3 with params ', stage_3_params
+    print 'run stage 3 CX on columns', stage_3_params
    
     run_stage3(stage_3_params)
     print 'run finished'
+    stage_3_params['on_rows'] = True
+    print 'run stage 3 CX on rows', stage_3_params
+   
+    run_stage3(stage_3_params)
+    print 'run finished'
+

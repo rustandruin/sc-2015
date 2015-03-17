@@ -25,7 +25,7 @@ def run_stage1(params_dict):
 	mat = MSIMatrix(data)
 	non_zer = mat.nonzeros
 
-	rdd = non_zer.map(lambda x:  str(x[0]) +',' + str(x[1]) + ',' + str(x[2]) )
+	rdd = non_zer.map(lambda x: ' ,'.join(str(ele) for ele in x))  #  str(x[0]) +',' + str(x[1]) + ',' + str(x[2]) )
 	rdd.saveAsTextFile(output_matrix)
 
 if __name__ == '__main__':
