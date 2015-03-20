@@ -1,6 +1,7 @@
 import numpy as np
 import sys, time, os, operator, csv
 import cPickle as pickle
+from bisect import bisect_left
 
 def memoize(f):
     """ Memoization decorator for functions taking one or more arguments. """
@@ -113,19 +114,38 @@ def closest_index(data, val):
     return closest(highIndex, lowIndex)
 
 
+# Note: "raw" means with empty rows/cols
 class MSIMatrix(object):
     def __init__(self, dataset):
-        self.dataset = dataset
-        self.shape = dataset.shape
+        xlen, ylen, tlen, mzlen = self.dataset_shape = dataset.shape
+        self.raw_shape = (xlen * ylen, tlen * mzlen)
 
-        def to_matrix(spectrum):
+        def to_raw_matrix(spectrum):
             x, y, t, ions = spectrum
-            r = self.to_row(x, y)
+            r = self.raw_row(x, y)
             for bucket, mz, intensity in ions:
-                c = self.to_col(t, bucket)
+                c = self.raw_col(t, bucket)
                 yield (r, c, intensity)
 
-        self.nonzeros = dataset.spectra.flatMap(to_matrix)
+        context = dataset.spectra.context
+        raw_nonzeros = dataset.spectra.flatMap(to_raw_matrix)
+        #raw_nonzeros = raw_nonzeros.repartition(8192)
+        raw_nonzeros.cache()
+        seen_rows = sorted(raw_nonzeros.map(lambda (r, c, v): r).distinct(1024).collect())
+        seen_cols = sorted(raw_nonzeros.map(lambda (r, c, v): c).distinct(1024).collect())
+        self.seen_bcast = context.broadcast((seen_rows, seen_cols))
+        self.shape = (len(seen_rows), len(seen_cols))
+
+        def to_matrix(entry):
+            rowids, colids = self.seen_bcast.value
+            row, col, value = entry
+            newrow = bisect_left(rowids, row)
+            assert newrow != len(rowids)
+            newcol = bisect_left(colids, col)
+            assert newcol != len(colids)
+            return (newrow, newcol, value)
+
+        self.nonzeros = raw_nonzeros.map(to_matrix)
 
     def __getstate__(self):
         # don't pickle RDDs
@@ -133,15 +153,35 @@ class MSIMatrix(object):
         result['nonzeros'] = None
         return result
 
-    def to_row(self, x, y):
-        return self.shape[0]*y + x
+    def index(x, y, t, mz_idx):
+        return (self.row(x, y), self.col(t, mz_idx))
 
-    def to_col(self, t, mz_idx):
-        return self.shape[2]*mz_idx + t
+    def row(self, x, y):
+        rowids, colids = self.seen_bcast.value
+        row = bisect_left(rowids, self.raw_row(x, y))
+        assert row != len(rowids)
+        return row
+
+    def col(self, t, mz_idx):
+        rowids, colids = self.seen_bcast.value
+        col = bisect_left(colids, self.raw_col(t, mz_idx))
+        assert col != len(colids)
+        return col
+
+    def raw_row(self, x, y):
+        return self.dataset_shape[0]*y + x
+
+    def raw_col(self, t, mz_idx):
+        return self.dataset_shape[2]*mz_idx + t
 
     def cache(self):
         self.nonzeros.cache()
         return self
+
+    def save(self, path):
+        self.nonzeros.map(lambda row: ",".join(map(str, row))).saveAsTextFile(path + ".csv")
+        with file(path + ".meta", 'w') as outf:
+            pickle.dump(self, outf)
 
 
 class MSIDataset(object):
@@ -373,12 +413,7 @@ if __name__ == '__main__':
     from pyspark import SparkContext
     sc = SparkContext()
     dataset = MSIDataset.load(sc, inpath + ".rdd")
-    #dataset = dataset.select_mz_range(414.1314 + 22.99 - 0.05, 414.1314 + 22.99 + 0.05)
-    #dataset.spectra = dataset.spectra.coalesce(512)
     dataset.cache()
-    output = {
-        'image' : dataset.image(),
-        'histogram' : dataset.histogram()
-    }
-    with open("output-%s.pickle" % os.getpid(), 'w') as outf:
-        pickle.dump(output, outf)
+    mat = MSIMatrix(dataset)
+    print "shape: ", mat.raw_shape, " -> ", mat.shape
+    mat.save("/scratch1/scratchdirs/jeyk/data/large-test.mat")
