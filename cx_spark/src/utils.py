@@ -78,6 +78,7 @@ def _indexed(grouped_list):
 def prepare_matrix(rdd):
     gprdd = rdd.map(lambda x:(x[0],(x[1],x[2]))).groupByKey().map(lambda x :(x[0],list(x[1])))
     flattened_rdd = gprdd.map(lambda x: (x[0],_indexed(x[1])))
-    sorted_rdd = flattened_rdd.sortByKey()
-    return sorted_rdd
+    return flattened_rdd
+    #sorted_rdd = flattened_rdd.sortByKey()
+    #return sorted_rdd
 
