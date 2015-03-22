@@ -184,10 +184,25 @@ class MSIMatrix(object):
 
 class MSIDataset(object):
     # each entry of spectra is (x, y, t, mz_values, intensity_values)
-    def __init__(self, mz_range, spectra, shape=None):
+    def __init__(self, mz_range, spectra, shape=None, mask=None):
         self.spectra = spectra
         self.mz_range = mz_range
         self._shape = shape
+        self.mask = mask
+
+    def apply_mask(self, mask):
+        print self.shape, mask.shape
+        assert mask.dtype == np.bool_
+        assert mask.shape == (self.shape[1] + 1, self.shape[0] + 1)
+        assert not mask[:, -1].any()
+        assert not mask[-1, :].any()
+        def is_not_masked(spectrum):
+            x, y, t, ions = spectrum
+            return mask[y, x]
+        spectra = self.spectra.filter(is_not_masked)
+        if self.mask is not None:
+            mask = np.logical_and(self.mask, mask)
+        return MSIDataset(self.mz_range, self.spectra, self._shape, mask)
 
     def __getstate__(self):
         # don't pickle RDDs
@@ -220,7 +235,7 @@ class MSIDataset(object):
             x, y, t, ions = spectrum
             return x in xs and y in ys and t in ts
         # TODO: compute actual shape
-        return MSIDataset(self.mz_range, self.spectra.filter(f), self._shape)
+        return MSIDataset(self.mz_range, self.spectra.filter(f), self._shape, self.mask)
 
     def __getitem__(self, key):
         def mkrange(arg, hi):
@@ -245,7 +260,7 @@ class MSIDataset(object):
             if len(new_ions) > 0:
                 yield (x, y, t, new_ions)
         filtered = self.spectra.flatMap(f)
-        return MSIDataset(self.mz_range, filtered, self._shape)
+        return MSIDataset(self.mz_range, filtered, self._shape, self.mask)
 
     # Returns sum of intensities for each mz
     def histogram(self):
@@ -287,7 +302,7 @@ class MSIDataset(object):
     def load(sc, path):
         metadata = pickle.load(file(path + ".meta"))
         spectra = sc.pickleFile(path + ".spectra")
-        return MSIDataset(metadata['mz_range'], spectra, metadata['shape'])
+        return MSIDataset(metadata['mz_range'], spectra, metadata['shape'], metadata.get('mask', None))
 
     @staticmethod
     def dump_imzml(imzMLPath, outpath, chunksz=10**5):
@@ -404,14 +419,19 @@ def converter():
 if __name__ == '__main__':
     # big
     name = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1'
+    # small
+    #name = '2014Nov15_PDX_IMS_imzML'
     datapath = '/scratch1/scratchdirs/jeyk/data/'
     inpath = os.path.join(datapath, name)
-    outpath = os.path.join(os.getenv('SCRATCH'), name)
+    outpath = os.path.join(os.getenv('SCRATCH'), 'dev-data', name)
     #MSIDataset.dump_imzml(inpath + ".imzml", outpath + ".csv")
     from pyspark import SparkContext
     sc = SparkContext()
     dataset = MSIDataset.load(sc, inpath + ".rdd")
+    dataset = dataset.apply_mask(pickle.load(file('podophyllum-mask.pkl')))
     dataset.cache()
+    dataset.save(os.path.join(outpath, name + "-masked.rdd"))
     mat = MSIMatrix(dataset)
     print "shape: ", mat.raw_shape, " -> ", mat.shape
-    mat.save("/scratch1/scratchdirs/jeyk/data/large-test.mat")
+    mat.save(os.path.join(outpath, name + "-masked.mat"))
+    sc.stop()
