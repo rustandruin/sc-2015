@@ -18,7 +18,7 @@ class SparseRowMatrix(object):
     """
 
     def __init__(self, raw_rdd, name, m, n, cache=False):
-        self.rdd = prepare_matrix(raw_rdd)
+        self.rdd = raw_rdd#prepare_matrix(raw_rdd)
         self.name = name
         self.m = m
         self.n = n
@@ -70,7 +70,7 @@ class SparseRowMatrix(object):
 class MatrixLtimesMapper(BlockMapper):
 
     def __init__(self):
-        BlockMapper.__init__(self)
+        BlockMapper.__init__(self, 5)
         self.ba = None
         self.data = {'row':[],'col':[],'val':[]}
 
@@ -81,7 +81,7 @@ class MatrixLtimesMapper(BlockMapper):
         self.data['val'] += r[1][1].tolist()
 
     def process(self, mat, n):
-        if self.ba:
+        if self.ba is not None:
             #self.ba += ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys[0]:(self.keys[-1]+1)].T ) ).T
             self.ba += ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys].T ) ).T
         else:
@@ -95,7 +95,7 @@ class MatrixLtimesMapper(BlockMapper):
 class MatrixAtABMapper(BlockMapper):
 
     def __init__(self):
-        BlockMapper.__init__(self)
+        BlockMapper.__init__(self, 5)
         self.atamat = None
         self.data = {'row':[],'col':[],'val':[]}
 
@@ -107,7 +107,7 @@ class MatrixAtABMapper(BlockMapper):
 
     def process(self, mat, n):
         data = form_csr_matrix(self.data,len(self.keys),n)
-        if self.atamat:
+        if self.atamat is not None:
             self.atamat += data.T.dot( data.dot(mat) )
         else:
             self.atamat = data.T.dot( data.dot(mat) )

@@ -37,7 +37,7 @@ class BlockMapper:
     def __init__(self, blk_sz=5e4):
         self.blk_sz = blk_sz
         self.keys = []
-        self.data = []
+        self.data = {'row':[],'col':[],'val':[]}
         self.sz = 0
 
     def __call__(self, records, **kwargs):
@@ -49,7 +49,7 @@ class BlockMapper:
                 for result in self.process(**kwargs):
                     yield result
                 self.keys = []
-                self.data = []
+                self.data = {'row':[],'col':[],'val':[]}
                 self.sz = 0
 
         if self.sz > 0:
