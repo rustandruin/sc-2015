@@ -24,7 +24,13 @@ def parse_data(data, feats):
         return data
 
 def form_csr_matrix(data,m,n):
+    f = open('/global/u2/m/msingh/sc_paper/new_version/newest_version/sc-2015/cx_spark/dims.txt','w')
+    nr = len(data['row'])
+    nc = len(data['col'])
+    count = len(data['val'])
+    f.write(str(nr) +','+str(nc)+','+str(count)+ '\n')
     return coo_matrix((data['val'], (data['row'], data['col'])), shape=(m, n)).tocsr()
+    #return coo_matrix((data['val'], (data['row'], data['col'])), shape=(nr, nc)).tocsr()
 
 def comp_l2_obj(Ab_rdd, x):
     # x is a np array
