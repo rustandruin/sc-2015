@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #this file is run.pbs
 #PBS -q ccm_int
-#PBS -l mppwidth=408
+#PBS -l mppwidth=1560
 #PBS -l walltime=00:30:00
 #PBS -e mysparkjob_$PBS_JOBID.err
 #PBS -o mysparkjob_$PBS_JOBID.out
@@ -15,5 +15,6 @@ module load lxml
 module load spark
 mkdir -p $SCRATCH/spark/local
 export SPARK_LOCAL_DIRS=/dev/shm,$SCRATCH/spark/local
+export SPARK_EVENTLOG_DIR=file:///$SCRATCH/spark/events
 env > ~/.ssh/environment
 ccmrun bash $PWD/runspark.sh
