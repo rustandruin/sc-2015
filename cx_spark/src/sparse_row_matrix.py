@@ -47,7 +47,7 @@ class SparseRowMatrix(object):
             for i in order:
                 gp.append( gp_dict[i] )
 
-            gp = np.vstack(gp)
+            gp = np.hstack(gp)
 
         return gp
 
@@ -130,7 +130,7 @@ class GaussianProjectionMapper(BlockMapper):
         return iter([])
 
     def close(self):
-        for r in emit_results(self.gp, self.direct_sum):
+        for r in emit_results(self.gp, self.direct_sum, axis=1):
             yield r
 
 class MatrixAtABMapper(BlockMapper):
@@ -156,34 +156,23 @@ class MatrixAtABMapper(BlockMapper):
         return iter([])
 
     def close(self):
-
-        for r in emit_results(self.atamat, self.direct_sum):
+        for r in emit_results(self.atamat, self.direct_sum, axis=0):
             yield r
 
-        #if self.atamat is None:
-        #    yield None
-        #else:
-        #    if self.direct_sum:
-        #        yield self.atamat
-        #    else:
-        #        block_sz = 50
-        #        m = self.atamat.shape[0]
-        #        start_idx = np.arange(0, m, block_sz)
-        #        end_idx = np.append(np.arange(block_sz, m, block_sz), m)
-#
-        #        for j in range(len(start_idx)):
-        #           yield j, self.atamat[start_idx[j]:end_idx[j],:]
-
-def emit_results(b,direct_sum,block_sz=50):
+def emit_results(b,direct_sum,axis,block_sz=50):
+    # axis (=0 or 1) determines which dimension to partition along
     if b is None:
         yield None
     else:
         if direct_sum:
             yield b
         else:
-            m = b.shape[0]
+            m = b.shape[axis]
             start_idx = np.arange(0, m, block_sz)
             end_idx = np.append(np.arange(block_sz, m, block_sz), m)
-
-            for j in range(len(start_idx)):
-                yield j, b[start_idx[j]:end_idx[j],:]  
+            if axis == 0:
+                for j in range(len(start_idx)):
+                    yield j, b[start_idx[j]:end_idx[j],:]
+            else:
+                for j in range(len(start_idx)):
+                    yield j, b[:,start_idx[j]:end_idx[j]]
