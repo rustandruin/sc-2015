@@ -26,6 +26,16 @@ class SparseRowMatrix(object):
         if cache:
             self.rdd.cache()
 
+    def gaussian_projection(self, c):
+        """
+        compute G*A with G is Gaussian matrix with size r by m
+        """
+        gaussian_projection_mapper = GaussianProjectionMapper()
+        n = self.n
+        gp = self.rdd.mapPartitions(lambda records: gaussian_projection_mapper(records,n=n,c=c)).filter(lambda x: x is not None).sum()
+
+        return gp
+
     def ltimes(self, mat):
         """
         compute B*A
@@ -48,8 +58,27 @@ class SparseRowMatrix(object):
         if mat.ndim == 1:
             mat = mat.reshape((len(mat),1))
 
-        n = self.n
+        [n,c] = mat.shape
+
+        if n*c > 5e3: # the size of mat is too large to broadcast
+            b = []
+            mini_batch_sz = 5e3/n # make sure that each mini batch has less than 1e8 elements
+            start_idx = np.arange(0, c, mini_batch_sz)
+            end_idx = np.append(np.arange(mini_batch_sz, c, mini_batch_sz), c)
+
+            for j in range(len(start_idx)):
+                print "processing mini batch {0}".format(j)
+                b.append(self.__atamat_sub(mat[:,start_idx[j]:end_idx[j]]))
+            
+            return np.hstack(b)
+
+        else:
+            return self.__atamat_sub(mat)
+
+    def __atamat_sub(self,mat):
         mat = self.rdd.context.broadcast(mat)
+
+        n = self.n
 
         atamat_mapper = MatrixAtABMapper()
         #b = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,feats=feats) ).sum()
@@ -66,6 +95,32 @@ class SparseRowMatrix(object):
 
     def transpose(self):
         pass
+
+class GaussianProjectionMapper(BlockMapper):
+
+    def __init__(self):
+        BlockMapper.__init__(self, 5)
+        self.gp = None
+        self.data = {'row':[],'col':[],'val':[]}
+
+    def parse(self, r):
+        self.keys.append(r[0])
+        self.data['row'] += [self.sz]*len(r[1][0])
+        self.data['col'] += r[1][0].tolist()
+        self.data['val'] += r[1][1].tolist()
+
+    def process(self, n, c):
+        sz = len(self.keys)
+
+        if self.gp is not None:
+            self.gp += (form_csr_matrix(self.data,sz,n).T.dot(np.random.randn(sz,c))).T
+        else:
+            self.gp = (form_csr_matrix(self.data,sz,n).T.dot(np.random.randn(sz,c))).T
+
+        return iter([])
+
+    def close(self):
+        yield self.gp
 
 class MatrixLtimesMapper(BlockMapper):
 
