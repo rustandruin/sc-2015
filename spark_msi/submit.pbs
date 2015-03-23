@@ -3,9 +3,10 @@
 #PBS -q ccm_int
 #PBS -l mppwidth=1560
 #PBS -l walltime=00:30:00
-#PBS -e mysparkjob_$PBS_JOBID.err
-#PBS -o mysparkjob_$PBS_JOBID.out
+#PBS -e logs/mysparkjob_$PBS_JOBID.err
+#PBS -o logs/mysparkjob_$PBS_JOBID.out
 cd $PBS_O_WORKDIR
+echo "apply mask and generate Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.{rdd,mat}"
 module unload altd
 module load ccm
 #module load numpy/1.9.1_mkl
@@ -16,5 +17,7 @@ module load spark
 mkdir -p $SCRATCH/spark/local
 export SPARK_LOCAL_DIRS=/dev/shm,$SCRATCH/spark/local
 export SPARK_EVENTLOG_DIR=file:///$SCRATCH/spark/$PBS_JOBID
+export PERFLOG_DIR=$SCRATCH/spark/$PBS_JOBID/perflogs
+mkdir -p $PERFLOG_DIR
 env > ~/.ssh/environment
 ccmrun bash $PWD/runspark.sh
