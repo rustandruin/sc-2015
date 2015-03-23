@@ -5,7 +5,7 @@ from utils import prepare_matrix
 from cx import CX
 from sparse_row_matrix import SparseRowMatrix
 
-conf = SparkConf().set('spark.eventLog.enabled','true').set('spark.driver.maxResultSize', '15g') 
+conf = SparkConf().set('spark.eventLog.enabled','true').set('spark.driver.maxResultSize', '15g').set("spark.executor.memory", "28g")
 sc = SparkContext(appName='cx_exp',conf=conf)
 import ast
 import numpy as np
@@ -32,8 +32,8 @@ k = 2
 q = 2
 lev, p = cx.get_lev(k,axis=0, q=q) 
 #end = time.time()
-leverage_scores_file='/scratch1/scratchdirs/msingh/sc_paper/experiments/striped_data/columns_row_leverage_scores'
-p_score_file='/scratch1/scratchdirs/msingh/sc_paper/experiments/striped_data/columns_p_scores'
+leverage_scores_file='/scratch1/scratchdirs/msingh/sc_paper/experiments/striped_data/columns_row_leverage_scores1'
+p_score_file='/scratch1/scratchdirs/msingh/sc_paper/experiments/striped_data/columns_p_scores1'
 np.savetxt(leverage_scores_file, np.array(lev))
 np.savetxt(p_score_file, np.array(p))
 
