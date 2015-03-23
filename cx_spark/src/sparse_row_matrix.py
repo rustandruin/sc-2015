@@ -36,7 +36,7 @@ class SparseRowMatrix(object):
         matrix_ltimes_mapper = MatrixLtimesMapper()
         n = self.n
         mat = self.rdd.context.broadcast(mat)
-        pd = self.rdd.mapPartitions(lambda records: matrix_ltimes_mapper(records,mat=mat.value,n=n)).sum()
+        pd = self.rdd.mapPartitions(lambda records: matrix_ltimes_mapper(records,mat=mat.value,n=n)).filter(lambda x: x is not None).sum()
 
         return pd
 
@@ -53,7 +53,7 @@ class SparseRowMatrix(object):
 
         atamat_mapper = MatrixAtABMapper()
         #b = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,feats=feats) ).sum()
-        b_dict = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,n=n) ).reduceByKey(add).collectAsMap()
+        b_dict = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,n=n) ).filter(lambda x: x is not None).reduceByKey(add).collectAsMap()
 
         order = sorted(b_dict.keys())
         b = []
@@ -82,9 +82,10 @@ class MatrixLtimesMapper(BlockMapper):
 
     def process(self, mat, n):
         if self.ba:
-            self.ba += ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys[0]:(self.keys[-1]+1)].T ) ).T
+            #self.ba += ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys[0]:(self.keys[-1]+1)].T ) ).T
+            self.ba += ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys].T ) ).T
         else:
-            self.ba = ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys[0]:(self.keys[-1]+1)].T ) ).T
+            self.ba = ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys].T ) ).T
 
         return iter([])
 
@@ -117,10 +118,13 @@ class MatrixAtABMapper(BlockMapper):
     def close(self):
         #yield self.atamat
 
-        block_sz = 50
-        m = self.atamat.shape[0]
-        start_idx = np.arange(0, m, block_sz)
-        end_idx = np.append(np.arange(block_sz, m, block_sz), m)
+        if self.atamat is None:
+            yield None
+        else:
+            block_sz = 50
+            m = self.atamat.shape[0]
+            start_idx = np.arange(0, m, block_sz)
+            end_idx = np.append(np.arange(block_sz, m, block_sz), m)
 
-        for j in range(len(start_idx)):
-            yield j, self.atamat[start_idx[j]:end_idx[j],:]
+            for j in range(len(start_idx)):
+                yield j, self.atamat[start_idx[j]:end_idx[j],:]
