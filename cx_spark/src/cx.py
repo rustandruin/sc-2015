@@ -24,8 +24,8 @@ class CX:
         q = kwargs.get('q')
 
         Pi = np.random.randn(self.matrix_A.m, 2*k);
-
-        B = self.matrix_A.ltimes(Pi.T).T
+        #B = self.matrix_A.ltimes(Pi.T).T
+        B = self.matrix_A.gaussian_projection(2*k).T
 
         for i in range(q):
             logger.info('Computing leverage scores, at iteration {0}!'.format(i+1))

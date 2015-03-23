@@ -18,7 +18,7 @@ class SparseRowMatrix(object):
     """
 
     def __init__(self, raw_rdd, name, m, n, cache=False):
-        self.rdd = prepare_matrix(raw_rdd)
+        self.rdd = raw_rdd#prepare_matrix(raw_rdd)
         self.name = name
         self.m = m
         self.n = n
@@ -26,19 +26,30 @@ class SparseRowMatrix(object):
         if cache:
             self.rdd.cache()
 
-    def ltimes(self, mat):
+    def gaussian_projection(self, c):
         """
-        compute B*A
+        compute G*A with G is Gaussian matrix with size r by m
         """
-        if mat.ndim == 1:
-            mat = mat.reshape((1,len(mat)))
+        direct_sum = False # option to use a direct sum() function or not
 
-        matrix_ltimes_mapper = MatrixLtimesMapper()
+        gaussian_projection_mapper = GaussianProjectionMapper(direct_sum)
         n = self.n
-        mat = self.rdd.context.broadcast(mat)
-        pd = self.rdd.mapPartitions(lambda records: matrix_ltimes_mapper(records,mat=mat.value,n=n)).filter(lambda x: x is not None).sum()
 
-        return pd
+        if direct_sum:
+            print "using direct sum"
+            gp = self.rdd.mapPartitions(lambda records: gaussian_projection_mapper(records,n=n,c=c)).filter(lambda x: x is not None).sum()
+        else:
+            print "not using direct sum"
+            gp_dict = self.rdd.mapPartitions(lambda records: gaussian_projection_mapper(records,n=n,c=c)).filter(lambda x: x is not None).reduceByKey(add).collectAsMap()
+
+            order = sorted(gp_dict.keys())
+            gp = []
+            for i in order:
+                gp.append( gp_dict[i] )
+
+            gp = np.hstack(gp)
+
+        return gp
 
     def atamat(self,mat):
         """
@@ -48,31 +59,59 @@ class SparseRowMatrix(object):
         if mat.ndim == 1:
             mat = mat.reshape((len(mat),1))
 
-        n = self.n
+        direct_sum = False # option to use a direct sum() function or not
+
+        [n,c] = mat.shape
+
+        if n*c > 1e8: # the size of mat is too large to broadcast
+            b = []
+            mini_batch_sz = 1e8/n # make sure that each mini batch has less than 1e8 elements
+            start_idx = np.arange(0, c, mini_batch_sz)
+            end_idx = np.append(np.arange(mini_batch_sz, c, mini_batch_sz), c)
+
+            for j in range(len(start_idx)):
+                print "processing mini batch {0}".format(j)
+                b.append(self.__atamat_sub(mat[:,start_idx[j]:end_idx[j]],direct_sum))
+            
+            return np.hstack(b)
+
+        else:
+            return self.__atamat_sub(mat,direct_sum)
+
+    def __atamat_sub(self,mat,direct_sum):
         mat = self.rdd.context.broadcast(mat)
 
-        atamat_mapper = MatrixAtABMapper()
-        #b = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,feats=feats) ).sum()
-        b_dict = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,n=n) ).filter(lambda x: x is not None).reduceByKey(add).collectAsMap()
+        n = self.n
 
-        order = sorted(b_dict.keys())
-        b = []
-        for i in order:
-            b.append( b_dict[i] )
+        atamat_mapper = MatrixAtABMapper(direct_sum)
+        if direct_sum:
+            print "using direct sum"
+            b = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,n=n) ).filter(lambda x: x is not None).sum()
+        else:
+            print "not using direct sum"
+            b_dict = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,n=n) ).filter(lambda x: x is not None).reduceByKey(add).collectAsMap()
 
-        b = np.vstack(b)
+            order = sorted(b_dict.keys())
+            b = []
+            for i in order:
+                b.append( b_dict[i] )
+
+            b = np.vstack(b)
+
+        #mat.unpersist()
 
         return b
 
     def transpose(self):
         pass
 
-class MatrixLtimesMapper(BlockMapper):
+class GaussianProjectionMapper(BlockMapper):
 
-    def __init__(self):
-        BlockMapper.__init__(self)
-        self.ba = None
+    def __init__(self,direct_sum=False):
+        BlockMapper.__init__(self, 5)
+        self.gp = None
         self.data = {'row':[],'col':[],'val':[]}
+        self.direct_sum = direct_sum
 
     def parse(self, r):
         self.keys.append(r[0])
@@ -80,24 +119,27 @@ class MatrixLtimesMapper(BlockMapper):
         self.data['col'] += r[1][0].tolist()
         self.data['val'] += r[1][1].tolist()
 
-    def process(self, mat, n):
-        if self.ba:
-            #self.ba += ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys[0]:(self.keys[-1]+1)].T ) ).T
-            self.ba += ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys].T ) ).T
+    def process(self, n, c):
+        sz = len(self.keys)
+
+        if self.gp is not None:
+            self.gp += (form_csr_matrix(self.data,sz,n).T.dot(np.random.randn(sz,c))).T
         else:
-            self.ba = ( form_csr_matrix(self.data,len(self.keys),n).T.dot( mat[:,self.keys].T ) ).T
+            self.gp = (form_csr_matrix(self.data,sz,n).T.dot(np.random.randn(sz,c))).T
 
         return iter([])
 
     def close(self):
-        yield self.ba
+        for r in emit_results(self.gp, self.direct_sum, axis=1):
+            yield r
 
 class MatrixAtABMapper(BlockMapper):
 
-    def __init__(self):
-        BlockMapper.__init__(self)
+    def __init__(self,direct_sum=False):
+        BlockMapper.__init__(self, 5)
         self.atamat = None
         self.data = {'row':[],'col':[],'val':[]}
+        self.direct_sum = direct_sum
 
     def parse(self, r):
         self.keys.append(r[0])
@@ -107,24 +149,30 @@ class MatrixAtABMapper(BlockMapper):
 
     def process(self, mat, n):
         data = form_csr_matrix(self.data,len(self.keys),n)
-        if self.atamat:
+        if self.atamat is not None:
             self.atamat += data.T.dot( data.dot(mat) )
         else:
             self.atamat = data.T.dot( data.dot(mat) )
         return iter([])
 
-        #yield np.dot( data.T, np.dot( data, mat ) )
-
     def close(self):
-        #yield self.atamat
+        for r in emit_results(self.atamat, self.direct_sum, axis=0):
+            yield r
 
-        if self.atamat is None:
-            yield None
+def emit_results(b,direct_sum,axis,block_sz=50):
+    # axis (=0 or 1) determines which dimension to partition along
+    if b is None:
+        yield None
+    else:
+        if direct_sum:
+            yield b
         else:
-            block_sz = 50
-            m = self.atamat.shape[0]
+            m = b.shape[axis]
             start_idx = np.arange(0, m, block_sz)
             end_idx = np.append(np.arange(block_sz, m, block_sz), m)
-
-            for j in range(len(start_idx)):
-                yield j, self.atamat[start_idx[j]:end_idx[j],:]
+            if axis == 0:
+                for j in range(len(start_idx)):
+                    yield j, b[start_idx[j]:end_idx[j],:]
+            else:
+                for j in range(len(start_idx)):
+                    yield j, b[:,start_idx[j]:end_idx[j]]

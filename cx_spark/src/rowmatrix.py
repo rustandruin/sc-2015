@@ -75,6 +75,8 @@ class RowMatrix(object):
 
         b = np.vstack(b)
 
+        mat.unpersist()
+
         return b
 
     def rtimes(self,mat,feats=None,return_rdd=False):
@@ -97,6 +99,8 @@ class RowMatrix(object):
 
             b = np.vstack(b)
 
+        mat.unpersist()
+
         return b
 
     def ltimes(self,mat,feats=None):
@@ -117,6 +121,8 @@ class RowMatrix(object):
             b.append( b_dict[i] )
 
         b = np.hstack(b)
+
+        mat.unpersist()
 
         return b
 
