@@ -47,6 +47,7 @@ class SparseRowMatrix(object):
         n = self.n
         mat = self.rdd.context.broadcast(mat)
         pd = self.rdd.mapPartitions(lambda records: matrix_ltimes_mapper(records,mat=mat.value,n=n)).filter(lambda x: x is not None).sum()
+        mat.unpersist()
 
         return pd
 
@@ -90,6 +91,8 @@ class SparseRowMatrix(object):
             b.append( b_dict[i] )
 
         b = np.vstack(b)
+
+        mat.unpersist()
 
         return b
 
