@@ -29,6 +29,7 @@ class CX:
 
         for i in range(q):
             logger.info('Computing leverage scores, at iteration {0}!'.format(i+1))
+            print 'Computing leverage scores, at iteration {0}!'.format(i+1)
             if i % reo == reo-1:
                 logger.info("Reorthogonalzing!")
                 Q, R = np.linalg.qr(B)

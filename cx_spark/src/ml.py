@@ -12,7 +12,7 @@ import numpy as np
 
 def parse(string):
     s = str(string)
-    data = s.split()
+    data = s.split("::")
     return int(data[0]), int(data[1]), float(data[2])
 def _indexed(grouped_list):
     indexed, values = [],[]
@@ -31,8 +31,9 @@ def _indexed(grouped_list):
         indexed.append(tup[0])
         values.append(tup[1])
     return np.array(indexed), np.array(values)
-
-data = sc.textFile('/global/u2/m/msingh/sc_paper/new_version/sc-2015/cx_spark/data/ml-100k/u.data').map(lambda x:parse(x))
+filename = "/global/u2/m/msingh/sc_paper/new_version/sc-2015/cx_spark/data/movielens/ml-10M100K/ratings.dat"
+#filename = '/global/u2/m/msingh/sc_paper/new_version/sc-2015/cx_spark/data/ml-100k/u.data'
+data = sc.textFile(filename).map(lambda x:parse(x))
 row_shape = data.map(lambda x:x[0]).max() +1
 column_shape = data.map(lambda x:x[1]).max()+1
 drdd = data.map(lambda x:(x[0],(x[1],x[2]))).groupByKey().map(lambda x :(x[0],list(x[1]))).map(lambda x: (x[0],_indexed(x[1])))
@@ -40,7 +41,7 @@ print drdd.take(1)
 #prep_rdd = prepare_matrix(data)
 matrix_A = SparseRowMatrix(drdd,'output', row_shape,column_shape, True)
 cx = CX(matrix_A)
-k = 20
+k = 2
 q = 2
 lev, p = cx.get_lev(k,axis=0, q=q) 
 #end = time.time()

@@ -1,6 +1,6 @@
 from pyspark import SparkContext
 from pyspark import SparkConf
-
+from pyspark.storagelevel import StorageLevel 
 from utils import prepare_matrix
 from cx import CX
 from sparse_row_matrix import SparseRowMatrix
@@ -26,14 +26,14 @@ column_shape =131048
 
 print data.take(1)
 
-matrix_A = SparseRowMatrix(data,'output', row_shape,column_shape, True)
+matrix_A = SparseRowMatrix(data,'output', row_shape,column_shape, False)
 cx = CX(matrix_A)
 k = 2
 q = 2
 lev, p = cx.get_lev(k,axis=0, q=q) 
 #end = time.time()
-leverage_scores_file='/scratch1/scratchdirs/msingh/sc_paper/experiments/striped_data/columns_row_leverage_scores1'
-p_score_file='/scratch1/scratchdirs/msingh/sc_paper/experiments/striped_data/columns_p_scores1'
+leverage_scores_file='/scratch1/scratchdirs/msingh/sc_paper/experiments/striped_data/columns_row_leverage_scores600'
+p_score_file='/scratch1/scratchdirs/msingh/sc_paper/experiments/striped_data/columns_p_scores600'
 np.savetxt(leverage_scores_file, np.array(lev))
 np.savetxt(p_score_file, np.array(p))
 
