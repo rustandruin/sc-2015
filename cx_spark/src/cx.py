@@ -23,9 +23,11 @@ class CX:
         reo = 4
         q = kwargs.get('q')
 
-        Pi = np.random.randn(self.matrix_A.m, 2*k);
+        #Pi = np.random.randn(self.matrix_A.m, 2*k);
         #B = self.matrix_A.ltimes(Pi.T).T
+        logger.info('Ready to do gaussian_projection!')
         B = self.matrix_A.gaussian_projection(2*k).T
+        logger.info('Finish doing gaussian_projection!')
 
         for i in range(q):
             logger.info('Computing leverage scores, at iteration {0}!'.format(i+1))
@@ -34,10 +36,14 @@ class CX:
                 logger.info("Reorthogonalzing!")
                 Q, R = np.linalg.qr(B)
                 B = Q
+                logger.info("Done reorthogonalzing!")
             B = self.matrix_A.atamat(B)
+            print 'Finish iteration {0}!'.format(i+1)
 
+        logger.info('Ready to compute the leverage scores locally!')
         lev, self.p = compLevExact(B, k, 0)
         self.lev = self.p*k
+        logger.info('Done!')
 
         return self.lev, self.p
 
