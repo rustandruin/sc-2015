@@ -30,7 +30,7 @@ class SparseRowMatrix(object):
         """
         compute G*A with G is Gaussian matrix with size r by m
         """
-        direct_sum = False # option to use a direct sum() function or not
+        direct_sum = True # option to use a direct sum() function or not
 
         gaussian_projection_mapper = GaussianProjectionMapper(direct_sum)
         n = self.n
@@ -61,7 +61,7 @@ class SparseRowMatrix(object):
         if mat.ndim == 1:
             mat = mat.reshape((len(mat),1))
 
-        direct_sum = False # option to use a direct sum() function or not
+        direct_sum = True # option to use a direct sum() function or not
 
         [n,c] = mat.shape
 
