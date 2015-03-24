@@ -129,8 +129,8 @@ class MSIMatrix(object):
 
         context = dataset.spectra.context
         raw_nonzeros = dataset.spectra.flatMap(to_raw_matrix).cache()
-        seen_rows = sorted(raw_nonzeros.map(lambda (r, c, v): r).mapPartitions(set).distinct(1024).collect())
-        seen_cols = sorted(raw_nonzeros.map(lambda (r, c, v): c).mapPartitions(set).distinct(1024).collect())
+        seen_rows = sorted(raw_nonzeros.map(lambda (r, c, v): r).mapPartitions(set).distinct().collect())
+        seen_cols = sorted(raw_nonzeros.map(lambda (r, c, v): c).mapPartitions(set).distinct().collect())
         self.seen_bcast = context.broadcast((seen_rows, seen_cols))
         self.shape = (len(seen_rows), len(seen_cols))
 
@@ -299,9 +299,9 @@ class MSIDataset(object):
             pickle.dump(metadata, outf)
 
     @staticmethod
-    def load(sc, path):
+    def load(sc, path, minPartitions=None):
         metadata = pickle.load(file(path + ".meta"))
-        spectra = sc.pickleFile(path + ".spectra")
+        spectra = sc.pickleFile(path + ".spectra", minPartitions=minPartitions)
         return MSIDataset(metadata['mz_range'], spectra, metadata['shape'], metadata.get('mask', None))
 
     @staticmethod
@@ -418,20 +418,17 @@ def converter():
 
 if __name__ == '__main__':
     # big
-    name = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1'
+    name = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked'
     # small
     #name = '2014Nov15_PDX_IMS_imzML'
     datapath = '/scratch1/scratchdirs/jeyk/data/'
-    inpath = os.path.join(datapath, name)
-    outpath = os.path.join(os.getenv('SCRATCH'), 'dev-data', name)
-    #MSIDataset.dump_imzml(inpath + ".imzml", outpath + ".csv")
+    inpath = os.path.join(datapath, name, name)
+    outpath = os.path.join(os.getenv('SCRATCH'), 'dev-data', name, name)
     from pyspark import SparkContext
     sc = SparkContext()
     dataset = MSIDataset.load(sc, inpath + ".rdd")
-    dataset = dataset.apply_mask(pickle.load(file('podophyllum-mask.pkl')))
-    dataset.cache()
-    dataset.save(os.path.join(outpath, name + "-masked.rdd"))
+    dataset = dataset[100:200, 100:200, :]
     mat = MSIMatrix(dataset)
     print "shape: ", mat.raw_shape, " -> ", mat.shape
-    mat.save(os.path.join(outpath, name + "-masked.mat"))
+    mat.save(outpath + "-test.mat")
     sc.stop()

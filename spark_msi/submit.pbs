@@ -1,23 +1,23 @@
 #!/bin/bash -l
-#this file is run.pbs
 #PBS -q ccm_int
-#PBS -l mppwidth=1560
+#PBS -l mppwidth=1536
 #PBS -l walltime=00:30:00
 #PBS -e logs/mysparkjob_$PBS_JOBID.err
 #PBS -o logs/mysparkjob_$PBS_JOBID.out
-cd $PBS_O_WORKDIR
-echo "apply mask and generate Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.{rdd,mat}"
+#source /etc/profile.d/modules.sh
+if [ ! -z "$PBS_O_WORKDIR" ]; then
+    cd "$PBS_O_WORKDIR"
+fi
 module unload altd
 module load ccm
-#module load numpy/1.9.1_mkl
-#module load scipy/0.14.1_mkl
+module load java
 module load python
 module load lxml
-module load spark
-mkdir -p $SCRATCH/spark/local
+module load spark/1.2.1
+mkdir -p "$SCRATCH/spark/local"
 export SPARK_LOCAL_DIRS=/dev/shm,$SCRATCH/spark/local
-export SPARK_EVENTLOG_DIR=file:///$SCRATCH/spark/$PBS_JOBID
+export SPARK_EVENTLOG_DIR=file:///$SCRATCH/spark/$PBS_JOBID/eventlogs
 export PERFLOG_DIR=$SCRATCH/spark/$PBS_JOBID/perflogs
-mkdir -p $PERFLOG_DIR
+mkdir -p "$PERFLOG_DIR"
 env > ~/.ssh/environment
-ccmrun bash $PWD/runspark.sh
+ccmrun bash $PWD/runspark.sh spark_msi.py
