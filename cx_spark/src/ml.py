@@ -9,7 +9,11 @@ conf = SparkConf().set('spark.eventLog.enabled','true').set('spark.driver.maxRes
 sc = SparkContext(appName='cx_exp',conf=conf)
 import ast
 import numpy as np
-
+import logging.config
+import logging
+#logging.config.fileConfig('logging.conf',disable_existing_loggers=False)
+logging.config.fileConfig('/global/u2/m/msingh/sc_paper/new_version/newest_version/sc-2015/cx_spark/src/logging.conf', disable_existing_loggers=False) 
+logger = logging.getLogger(__name__)
 def parse(string):
     s = str(string)
     data = s.split("::")
