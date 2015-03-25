@@ -30,7 +30,7 @@ start_collectl() {
         --align \
         --filename "$outpath" \
         --flush 0 \
-        --interval 1:4 \
+        --interval 2:4 \
         --subsys sbcdfijmnstZ \
         --procopts ctw \
         ;

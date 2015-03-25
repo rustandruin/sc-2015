@@ -16,10 +16,8 @@ inpath = '/scratch1/scratchdirs/jeyk/data/'
 name='Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked'
 rddpath = os.path.join(inpath, name, name + ".rdd")
 print "job_cx loading RDD from %s" % rddpath
-dataset = MSIDataset.load(sc, rddpath, minPartitions=32768)
-#dataset = dataset[100:200, 100:200, :].cache()
+dataset = MSIDataset.load(sc, rddpath, minPartitions=32768).cache()
 msimat = MSIMatrix(dataset)
-#msimat.save(os.path.join(outpath, name, name + ".mat"))
 mat = prepare_matrix(msimat.nonzeros).cache()
 mat = SparseRowMatrix(mat, "msimat", msimat.shape[0], msimat.shape[1])
 print "job_cx entering cx"
