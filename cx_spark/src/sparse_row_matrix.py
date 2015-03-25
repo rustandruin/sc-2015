@@ -1,7 +1,7 @@
 import logging
 
 import numpy as np
-
+from pyspark.storagelevel import StorageLevel 
 from rma_utils import add_index
 from rma_utils import convert_rdd 
 from rma_utils import form_csr_matrix
@@ -30,7 +30,7 @@ class SparseRowMatrix(object):
         """
         compute G*A with G is Gaussian matrix with size r by m
         """
-        direct_sum = False # option to use a direct sum() function or not
+        direct_sum = True # option to use a direct sum() function or not
 
         gaussian_projection_mapper = GaussianProjectionMapper(direct_sum)
         n = self.n
@@ -41,6 +41,7 @@ class SparseRowMatrix(object):
         else:
             print "not using direct sum"
             gp_dict = self.rdd.mapPartitions(lambda records: gaussian_projection_mapper(records,n=n,c=c)).filter(lambda x: x is not None).reduceByKey(add).collectAsMap()
+            logger.info('In gaussian_projection, finish collecting results!')
 
             order = sorted(gp_dict.keys())
             gp = []
@@ -48,6 +49,7 @@ class SparseRowMatrix(object):
                 gp.append( gp_dict[i] )
 
             gp = np.hstack(gp)
+            logger.info('In gaussian_projection, finish sorting and forming the prodcut!')
 
         return gp
 
@@ -59,7 +61,7 @@ class SparseRowMatrix(object):
         if mat.ndim == 1:
             mat = mat.reshape((len(mat),1))
 
-        direct_sum = False # option to use a direct sum() function or not
+        direct_sum = True # option to use a direct sum() function or not
 
         [n,c] = mat.shape
 
@@ -90,6 +92,7 @@ class SparseRowMatrix(object):
         else:
             print "not using direct sum"
             b_dict = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,n=n) ).filter(lambda x: x is not None).reduceByKey(add).collectAsMap()
+            logger.info('In atamat, finish collecting results!')
 
             order = sorted(b_dict.keys())
             b = []
@@ -97,6 +100,7 @@ class SparseRowMatrix(object):
                 b.append( b_dict[i] )
 
             b = np.vstack(b)
+            logger.info('In atamat, finish sorting and forming the prodcut!')
 
         #mat.unpersist()
 
@@ -108,7 +112,7 @@ class SparseRowMatrix(object):
 class GaussianProjectionMapper(BlockMapper):
 
     def __init__(self,direct_sum=False):
-        BlockMapper.__init__(self, 5)
+        BlockMapper.__init__(self, 100)
         self.gp = None
         self.data = {'row':[],'col':[],'val':[]}
         self.direct_sum = direct_sum
@@ -136,7 +140,7 @@ class GaussianProjectionMapper(BlockMapper):
 class MatrixAtABMapper(BlockMapper):
 
     def __init__(self,direct_sum=False):
-        BlockMapper.__init__(self, 5)
+        BlockMapper.__init__(self, 100)
         self.atamat = None
         self.data = {'row':[],'col':[],'val':[]}
         self.direct_sum = direct_sum
@@ -159,7 +163,7 @@ class MatrixAtABMapper(BlockMapper):
         for r in emit_results(self.atamat, self.direct_sum, axis=0):
             yield r
 
-def emit_results(b,direct_sum,axis,block_sz=50):
+def emit_results(b,direct_sum,axis,block_sz=1e4):
     # axis (=0 or 1) determines which dimension to partition along
     if b is None:
         yield None
