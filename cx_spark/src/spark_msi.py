@@ -116,26 +116,33 @@ def closest_index(data, val):
 
 # Note: "raw" means with empty rows/cols
 class MSIMatrix(object):
-    def __init__(self, dataset):
-        xlen, ylen, tlen, mzlen = self.dataset_shape = dataset.shape
-        self.raw_shape = (xlen * ylen, tlen * mzlen)
+    def __init__(self, dataset_shape, raw_shape, shape, seen_bcast, nonzeros):
+        self.dataset_shape = dataset_shape
+        self.raw_shape = raw_shape
+        self.shape = shape
+        self.seen_bcast = seen_bcast
+        self.nonzeros = nonzeros
+
+    @staticmethod
+    def from_dataset(sc, dataset):
+        xlen, ylen, tlen, mzlen = dataset.shape
+        raw_shape = (xlen * ylen, tlen * mzlen)
 
         def to_raw_matrix(spectrum):
             x, y, t, ions = spectrum
-            r = self.raw_row(x, y)
+            r = y * xlen + x
             for bucket, mz, intensity in ions:
-                c = self.raw_col(t, bucket)
+                c = bucket * tlen + t
                 yield (r, c, intensity)
 
-        context = dataset.spectra.context
         raw_nonzeros = dataset.spectra.flatMap(to_raw_matrix).cache()
-        seen_rows = sorted(raw_nonzeros.map(lambda (r, c, v): r).mapPartitions(set).distinct(1024).collect())
-        seen_cols = sorted(raw_nonzeros.map(lambda (r, c, v): c).mapPartitions(set).distinct(1024).collect())
-        self.seen_bcast = context.broadcast((seen_rows, seen_cols))
-        self.shape = (len(seen_rows), len(seen_cols))
+        seen_rows = sorted(raw_nonzeros.map(lambda (r, c, v): r).mapPartitions(set).distinct().collect())
+        seen_cols = sorted(raw_nonzeros.map(lambda (r, c, v): c).mapPartitions(set).distinct().collect())
+        seen_bcast = sc.broadcast((seen_rows, seen_cols))
+        shape = (len(seen_rows), len(seen_cols))
 
         def to_matrix(entry):
-            rowids, colids = self.seen_bcast.value
+            rowids, colids = seen_bcast.value
             row, col, value = entry
             newrow = bisect_left(rowids, row)
             assert newrow != len(rowids)
@@ -143,7 +150,8 @@ class MSIMatrix(object):
             assert newcol != len(colids)
             return (newrow, newcol, value)
 
-        self.nonzeros = raw_nonzeros.map(to_matrix)
+        nonzeros = raw_nonzeros.map(to_matrix)
+        return MSIMatrix(dataset.shape, raw_shape, shape, seen_bcast, nonzeros)
 
     def __getstate__(self):
         # don't pickle RDDs
@@ -177,9 +185,26 @@ class MSIMatrix(object):
         return self
 
     def save(self, path):
-        self.nonzeros.map(lambda row: ",".join(map(str, row))).saveAsTextFile(path + ".csv")
+        self.nonzeros.map(lambda entry: ",".join(map(str, entry))).saveAsTextFile(path + ".csv")
+        metadata = {
+            'dataset_shape' : self.dataset_shape,
+            'raw_shape' : self.raw_shape,
+            'shape' : self.shape,
+            'seen' : self.seen_bcast.value
+        }
         with file(path + ".meta", 'w') as outf:
-            pickle.dump(self, outf)
+            pickle.dump(metadata, outf)
+
+    @staticmethod
+    def load(sc, path):
+        result = None
+        with file(path + ".meta") as inf:
+            result = pickle.load(inf)
+        def parse_nonzero(line):
+            row, col, value = line.split(',')
+            return (int(row), int(col), float(value))
+        result.nonzeros = sc.textFile(path + ".csv").map(parse_nonzero)
+        return result
 
 
 class MSIDataset(object):
