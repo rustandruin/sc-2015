@@ -163,7 +163,7 @@ class MatrixAtABMapper(BlockMapper):
         for r in emit_results(self.atamat, self.direct_sum, axis=0):
             yield r
 
-def emit_results(b,direct_sum,axis,block_sz=1e4):
+def emit_results(b,direct_sum,axis,block_sz=1e3):
     # axis (=0 or 1) determines which dimension to partition along
     if b is None:
         yield None

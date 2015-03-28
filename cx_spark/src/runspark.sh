@@ -60,8 +60,10 @@ echo "`date`: submitting job" >&2
 #    --conf spark.task.maxFailures=1 \
 spark-submit \
     --verbose \
-    --conf spark.driver.maxResultSize=32G \
+    --conf spark.task.cpus=4 \
     --conf spark.ui.showConsoleProgress=false \
+    --conf spark.driver.maxResultSize=2G \
+    --conf spark.akka.frameSize=256 \
     --conf pbs.jobId=$PBS_JOBID \
     --conf spark.eventLog.enabled=true  \
     --conf spark.eventLog.dir=$SPARK_EVENTLOG_DIR  \
