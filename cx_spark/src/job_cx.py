@@ -11,17 +11,16 @@ logging.config.fileConfig('logging.conf',disable_existing_loggers=False)
 
 print "job_cx making sc"
 sc = SparkContext()
-#inpath = os.path.join(os.getenv('SCRATCH'), 'data')
-inpath = os.path.join(os.getenv('SCRATCH'), 'dev-data', 'out')
-name='Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked'
-#rddpath = os.path.join(inpath, name, name + ".rdd")
-matpath = os.path.join(inpath, name + ".mat")
-#print "job_cx loading RDD from %s" % rddpath
-#dataset = MSIDataset.load(sc, rddpath).cache()
-#msimat = MSIMatrix.from_dataset(sc, dataset)
+prefix = 'hdfs:///sc-2015/sc-2015/'
+metapath = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1.rdd'
+rddpath = prefix + 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.rdd'
+#matpath = prefix + 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat'
+print "job_cx loading RDD from %s" % rddpath
+dataset = MSIDataset.load(sc, metapath, rddpath).cache()
+msimat = MSIMatrix.from_dataset(sc, dataset)
 #msimat.save(matpath)
-print "job_cx loading MSIMatrix"
-msimat = MSIMatrix.load(sc, matpath + ".meta", matpath + ".csv")
+#print "job_cx loading MSIMatrix"
+#msimat = MSIMatrix.load(sc, matpath + ".meta", matpath + ".csv")
 print "done loading"
 mat = prepare_matrix(msimat.nonzeros).cache()
 mat = SparseRowMatrix(mat, "msimat", msimat.shape[0], msimat.shape[1])

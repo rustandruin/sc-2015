@@ -332,9 +332,9 @@ class MSIDataset(object):
             pickle.dump(metadata, outf)
 
     @staticmethod
-    def load(sc, path, minPartitions=None):
-        metadata = pickle.load(file(path + ".meta"))
-        spectra = sc.pickleFile(path + ".spectra", minPartitions=minPartitions)
+    def load(sc, metapath, rddpath, minPartitions=None):
+        metadata = pickle.load(file(metapath + ".meta"))
+        spectra = sc.pickleFile(rddpath + ".spectra", minPartitions=minPartitions)
         return MSIDataset(metadata['mz_range'], spectra, metadata['shape'], metadata.get('mask', None))
 
     @staticmethod
@@ -450,6 +450,20 @@ def converter():
 
 
 if __name__ == '__main__':
+    #prefix = 's3n://AKIAIKCSJKIZFWQBNTCQ:Is0OfXC8%2FF33sJRMF7axXXtjeKwXoyn65aL01OGt@amp-jey/'
+    #prefix = 's3n://amp-jey-west/'
+    prefix = 'hdfs:///sc-2015/'
+    metapath = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1.rdd'
+    rddpath = prefix + 'sc-2015/Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.rdd'
+    matpath = prefix + 'sc-2015/Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat'
+    from pyspark import SparkContext
+    sc = SparkContext()
+    dataset = MSIDataset.load(sc, metapath, rddpath)
+    with open('output.pkl', 'w') as outf:
+        pickle.dump(dataset.image(), outf)
+
+
+if __name__ == '__main2__':
     # big
     name = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked'
     # small
