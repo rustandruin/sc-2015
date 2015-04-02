@@ -64,8 +64,7 @@ class CX:
         idx = self.idx
         rows = self.matrix_A.rdd.filter(lambda (key, row): key in idx).collect()
         self.R = np.array([row[1] for row in rows])
-
-        return self.R.shape #shape of R is r by d
+        return self.R
 
     def comp_err(self):
         #computing the reconstruction error

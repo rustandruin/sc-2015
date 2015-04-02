@@ -11,26 +11,33 @@ logging.config.fileConfig('logging.conf',disable_existing_loggers=False)
 
 print "job_cx making sc"
 sc = SparkContext()
-prefix = 'hdfs:///sc-2015/sc-2015/'
-metapath = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1.rdd'
-rddpath = prefix + 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.rdd'
+prefix = 'hdfs:///'
+metapath = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.rdd'
+rddpath = prefix + 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked-100x100.rdd'
 #matpath = prefix + 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat'
 print "job_cx loading RDD from %s" % rddpath
 dataset = MSIDataset.load(sc, metapath, rddpath).cache()
+dataset.spectra = dataset.spectra.coalesce(256)
 msimat = MSIMatrix.from_dataset(sc, dataset)
-#msimat.save(matpath)
-#print "job_cx loading MSIMatrix"
-#msimat = MSIMatrix.load(sc, matpath + ".meta", matpath + ".csv")
 print "done loading"
+print "shape:", msimat.shape
 mat = prepare_matrix(msimat.nonzeros).cache()
+#mat = prepare_matrix(msimat.nonzeros.map(lambda (i,j,v): (j,i,v))).cache()
 mat = SparseRowMatrix(mat, "msimat", msimat.shape[0], msimat.shape[1])
 print "job_cx entering cx"
 cx = CX(mat)
 print "job_cx done cx"
 k = 2
 q = 2
+r = 20
 lev, p = cx.get_lev(k,axis=0, q=q)
-print "lev:"
-print lev
-print "p:"
-print p
+idx = cx.comp_idx('randomized', r)
+rows = cx.get_rows()
+with open('dump.pkl', 'w') as outf:
+  import cPickle as pickle
+  data = {
+      'lev': lev,
+      'idx': idx,
+      'rows': rows
+  }
+  pickle.dump(data, outf)
