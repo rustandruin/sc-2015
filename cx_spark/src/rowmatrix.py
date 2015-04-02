@@ -62,11 +62,8 @@ class RowMatrix(object):
         if mat.ndim == 1:
             mat = mat.reshape((len(mat),1))
 
-        mat = self.rdd.context.broadcast(mat)
-
         atamat_mapper = MatrixAtABMapper()
-        #b = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,feats=feats) ).sum()
-        b_dict = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,feats=feats) ).reduceByKey(add).collectAsMap()
+        b_dict = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat,feats=feats) ).reduceByKey(add).collectAsMap()
 
         order = sorted(b_dict.keys())
         b = []
@@ -84,10 +81,8 @@ class RowMatrix(object):
         if mat.ndim == 1:
             mat = mat.reshape((len(mat),1))
 
-        mat = self.rdd.context.broadcast(mat)
-
         matrix_rtimes_mapper = MatrixRtimesMapper()
-        a = self.rdd.mapPartitions(lambda records: matrix_rtimes_mapper(records,mat=mat.value,feats=feats) )
+        a = self.rdd.mapPartitions(lambda records: matrix_rtimes_mapper(records,mat=mat,feats=feats) )
 
         if not return_rdd:
             a_dict = a.collectAsMap()
@@ -109,11 +104,8 @@ class RowMatrix(object):
         if mat.ndim == 1:
             mat = mat.reshape((1,len(mat)))
 
-        mat = self.rdd.context.broadcast(mat)
-
         matrix_ltimes_mapper = MatrixLtimesMapper()
-        #b = self.rdd.mapPartitions(lambda records: matrix_ltimes_mapper(records,mat=mat.value,feats=feats)).sum()
-        b_dict = self.rdd.mapPartitions(lambda records: matrix_ltimes_mapper(records,mat=mat.value,feats=feats) ).reduceByKey(add).collectAsMap()
+        b_dict = self.rdd.mapPartitions(lambda records: matrix_ltimes_mapper(records,mat=mat,feats=feats) ).reduceByKey(add).collectAsMap()
 
         order = sorted(b_dict.keys())
         b = []
