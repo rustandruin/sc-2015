@@ -1,4 +1,5 @@
 pyfiles=`find $PWD -name \*.py | paste -sd , -`
+export PYSPARK_PYTHON=python27
 #    --conf spark.shuffle.blockTransferService=nio \
 spark-submit \
     --verbose \

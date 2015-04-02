@@ -184,25 +184,27 @@ class MSIMatrix(object):
         self.nonzeros.cache()
         return self
 
-    def save(self, csvpath, metapath):
-        self.nonzeros.map(lambda entry: ",".join(map(str, entry))).saveAsTextFile(csvpath + ".csv")
+    def save(self, csvpath, metapath, name):
+        self.nonzeros. \
+            map(lambda entry: ",".join(map(str, entry))). \
+            saveAsTextFile(os.path.join(csvpath, name + ".csv"))
         metadata = {
             'dataset_shape' : self.dataset_shape,
             'raw_shape' : self.raw_shape,
             'shape' : self.shape,
             'seen' : self.seen_bcast.value
         }
-        with file(metapath + ".meta", 'w') as outf:
+        with file(os.path.join(metapath, name + ".meta"), 'w') as outf:
             pickle.dump(metadata, outf)
 
     @staticmethod
-    def load(sc, csvpath, metapath):
-        with file(metapath + ".meta") as inf:
+    def load(sc, csvpath, metapath, name):
+        with file(os.path.join(metapath, name + ".mat.meta")) as inf:
             meta = pickle.load(inf)
         def parse_nonzero(line):
             row, col, value = line.split(',')
             return (int(row), int(col), float(value))
-        nonzeros = sc.textFile(csvpath + ".csv").map(parse_nonzero)
+        nonzeros = sc.textFile(os.path.join(csvpath, name + ".mat.csv")).map(parse_nonzero)
         seen_bcast = sc.broadcast(meta['seen'])
         result = MSIMatrix(
                 meta['dataset_shape'],
@@ -331,8 +333,8 @@ class MSIDataset(object):
 
     @staticmethod
     def load(sc, metapath, rddpath, minPartitions=None):
-        metadata = pickle.load(file(metapath + ".meta"))
-        spectra = sc.pickleFile(rddpath + ".spectra", minPartitions=minPartitions)
+        metadata = pickle.load(file(metapath + ".rdd.meta"))
+        spectra = sc.pickleFile(rddpath + ".rdd.spectra", minPartitions=minPartitions)
         return MSIDataset(metadata['mz_range'], spectra, metadata['shape'], metadata.get('mask', None))
 
     @staticmethod

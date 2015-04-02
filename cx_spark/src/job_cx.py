@@ -13,10 +13,12 @@ logger = logging.getLogger(__name__)
 sc = SparkContext()
 logger.info("job_cx starting with appId=" + sc._jsc.sc().applicationId())
 prefix = 'hdfs:///sc-2015/'
-inpath = prefix + 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.rdd'
-logger.info("job_cx loading RDD from %s" % inpath)
-dataset = MSIDataset.load(sc, inpath, inpath).cache()
-msimat = MSIMatrix.from_dataset(sc, dataset)
+name = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked'
+logger.info("job_cx loading RDD from %s" % name)
+#dataset = MSIDataset.load(sc, 'meta/' + name, prefix + name).cache()
+#msimat = MSIMatrix.from_dataset(sc, dataset)
+#msimat.save(prefix, 'meta', name)
+msimat = MSIMatrix.load(sc, prefix, 'meta', name)
 logger.info("shape: %s" % (msimat.shape,))
 mat = prepare_matrix(msimat.nonzeros).cache()
 mat = SparseRowMatrix(mat, "msimat", msimat.shape[0], msimat.shape[1], cache=False)
