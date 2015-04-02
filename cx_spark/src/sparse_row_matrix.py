@@ -111,7 +111,7 @@ class SparseRowMatrix(object):
 class GaussianProjectionMapper(BlockMapper):
 
     def __init__(self,direct_sum=False):
-        BlockMapper.__init__(self, 2)
+        BlockMapper.__init__(self, 128)
         self.gp = None
         self.data = {'row':[],'col':[],'val':[]}
         self.direct_sum = direct_sum
@@ -139,7 +139,7 @@ class GaussianProjectionMapper(BlockMapper):
 class MatrixAtABMapper(BlockMapper):
 
     def __init__(self,direct_sum=False):
-        BlockMapper.__init__(self, 2)
+        BlockMapper.__init__(self, 128)
         self.atamat = None
         self.data = {'row':[],'col':[],'val':[]}
         self.direct_sum = direct_sum
