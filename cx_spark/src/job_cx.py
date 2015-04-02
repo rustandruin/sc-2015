@@ -8,7 +8,9 @@ from utils import prepare_matrix
 import os
 import logging.config
 logging.config.fileConfig('logging.conf',disable_existing_loggers=False)
+logger = logging.getLogger(__name__)
 
+logger.info("job_cx starting")
 print "job_cx making sc"
 sc = SparkContext()
 prefix = 'hdfs:///'
@@ -16,14 +18,14 @@ metapath = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.rdd'
 rddpath = prefix + 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked-100x100.rdd'
 #matpath = prefix + 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat'
 print "job_cx loading RDD from %s" % rddpath
-dataset = MSIDataset.load(sc, metapath, rddpath).cache()
+dataset = MSIDataset.load(sc, metapath, rddpath)#.cache()
 dataset.spectra = dataset.spectra.coalesce(256)
 msimat = MSIMatrix.from_dataset(sc, dataset)
 print "done loading"
 print "shape:", msimat.shape
 mat = prepare_matrix(msimat.nonzeros).cache()
 #mat = prepare_matrix(msimat.nonzeros.map(lambda (i,j,v): (j,i,v))).cache()
-mat = SparseRowMatrix(mat, "msimat", msimat.shape[0], msimat.shape[1])
+mat = SparseRowMatrix(mat, "msimat", msimat.shape[0], msimat.shape[1], cache=False)
 print "job_cx entering cx"
 cx = CX(mat)
 print "job_cx done cx"

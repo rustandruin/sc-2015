@@ -81,17 +81,15 @@ class SparseRowMatrix(object):
             return self.__atamat_sub(mat,direct_sum)
 
     def __atamat_sub(self,mat,direct_sum):
-        mat = self.rdd.context.broadcast(mat)
-
         n = self.n
 
         atamat_mapper = MatrixAtABMapper(direct_sum)
         if direct_sum:
             print "using direct sum"
-            b = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,n=n) ).filter(lambda x: x is not None).sum()
+            b = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat,n=n) ).filter(lambda x: x is not None).sum()
         else:
             print "not using direct sum"
-            b_dict = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat.value,n=n) ).filter(lambda x: x is not None).reduceByKey(add).collectAsMap()
+            b_dict = self.rdd.mapPartitions(lambda records: atamat_mapper(records,mat=mat,n=n) ).filter(lambda x: x is not None).reduceByKey(add).collectAsMap()
             logger.info('In atamat, finish collecting results!')
 
             order = sorted(b_dict.keys())
@@ -101,8 +99,6 @@ class SparseRowMatrix(object):
 
             b = np.vstack(b)
             logger.info('In atamat, finish sorting and forming the prodcut!')
-
-        mat.unpersist()
 
         return b
 
@@ -163,7 +159,7 @@ class MatrixAtABMapper(BlockMapper):
         for r in emit_results(self.atamat, self.direct_sum, axis=0):
             yield r
 
-def emit_results(b,direct_sum,axis,block_sz=1e3):
+def emit_results(b,direct_sum,axis,block_sz=100):
     # axis (=0 or 1) determines which dimension to partition along
     if b is None:
         yield None

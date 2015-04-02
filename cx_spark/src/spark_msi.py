@@ -136,7 +136,7 @@ class MSIMatrix(object):
                 yield (r, c, intensity)
 
         raw_nonzeros = dataset.spectra.flatMap(to_raw_matrix)
-        raw_nonzeros = raw_nonzeros.cache()
+        raw_nonzeros = raw_nonzeros#.cache()
         seen_rows = sorted(raw_nonzeros.map(lambda (r, c, v): r).mapPartitions(set).distinct().collect())
         seen_cols = sorted(raw_nonzeros.map(lambda (r, c, v): c).mapPartitions(set).distinct().collect())
         seen_bcast = sc.broadcast((seen_rows, seen_cols))
