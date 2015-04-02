@@ -187,14 +187,14 @@ class MSIMatrix(object):
     def save(self, csvpath, metapath, name):
         self.nonzeros. \
             map(lambda entry: ",".join(map(str, entry))). \
-            saveAsTextFile(os.path.join(csvpath, name + ".csv"))
+            saveAsTextFile(os.path.join(csvpath, name + ".mat.csv"))
         metadata = {
             'dataset_shape' : self.dataset_shape,
             'raw_shape' : self.raw_shape,
             'shape' : self.shape,
             'seen' : self.seen_bcast.value
         }
-        with file(os.path.join(metapath, name + ".meta"), 'w') as outf:
+        with file(os.path.join(metapath, name + ".mat.meta"), 'w') as outf:
             pickle.dump(metadata, outf)
 
     @staticmethod
