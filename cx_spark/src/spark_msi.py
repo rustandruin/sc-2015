@@ -136,8 +136,6 @@ class MSIMatrix(object):
                 yield (r, c, intensity)
 
         raw_nonzeros = dataset.spectra.flatMap(to_raw_matrix)
-        raw_nonzeros = raw_nonzeros.repartition(8192)  # FIXME HACK?
-        raw_nonzeros = raw_nonzeros.cache()
         seen_rows = sorted(raw_nonzeros.map(lambda (r, c, v): r).mapPartitions(set).distinct().collect())
         seen_cols = sorted(raw_nonzeros.map(lambda (r, c, v): c).mapPartitions(set).distinct().collect())
         seen_bcast = sc.broadcast((seen_rows, seen_cols))
@@ -186,25 +184,25 @@ class MSIMatrix(object):
         self.nonzeros.cache()
         return self
 
-    def save(self, path):
-        self.nonzeros.map(lambda entry: ",".join(map(str, entry))).saveAsTextFile(path + ".csv")
+    def save(self, csvpath, metapath):
+        self.nonzeros.map(lambda entry: ",".join(map(str, entry))).saveAsTextFile(csvpath + ".csv")
         metadata = {
             'dataset_shape' : self.dataset_shape,
             'raw_shape' : self.raw_shape,
             'shape' : self.shape,
             'seen' : self.seen_bcast.value
         }
-        with file(path + ".meta", 'w') as outf:
+        with file(metapath + ".meta", 'w') as outf:
             pickle.dump(metadata, outf)
 
     @staticmethod
-    def load(sc, metapath, csvpath):
-        with file(metapath) as inf:
+    def load(sc, csvpath, metapath):
+        with file(metapath + ".meta") as inf:
             meta = pickle.load(inf)
         def parse_nonzero(line):
             row, col, value = line.split(',')
             return (int(row), int(col), float(value))
-        nonzeros = sc.textFile(csvpath).map(parse_nonzero)
+        nonzeros = sc.textFile(csvpath + ".csv").map(parse_nonzero)
         seen_bcast = sc.broadcast(meta['seen'])
         result = MSIMatrix(
                 meta['dataset_shape'],
@@ -332,9 +330,9 @@ class MSIDataset(object):
             pickle.dump(metadata, outf)
 
     @staticmethod
-    def load(sc, path, minPartitions=None):
-        metadata = pickle.load(file(path + ".meta"))
-        spectra = sc.pickleFile(path + ".spectra", minPartitions=minPartitions)
+    def load(sc, metapath, rddpath, minPartitions=None):
+        metadata = pickle.load(file(metapath + ".meta"))
+        spectra = sc.pickleFile(rddpath + ".spectra", minPartitions=minPartitions)
         return MSIDataset(metadata['mz_range'], spectra, metadata['shape'], metadata.get('mask', None))
 
     @staticmethod
