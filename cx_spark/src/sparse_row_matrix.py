@@ -65,14 +65,15 @@ class SparseRowMatrix(object):
 
         [n,c] = mat.shape
 
-        if n*c > 1e8: # the size of mat is too large to broadcast
+        if n*c > 1e4: # the size of mat is too large to broadcast
             b = []
-            mini_batch_sz = 1e8/n # make sure that each mini batch has less than 1e8 elements
+            #mini_batch_sz = 1e8/n # make sure that each mini batch has less than 1e8 elements
+            mini_batch_sz = 4
             start_idx = np.arange(0, c, mini_batch_sz)
             end_idx = np.append(np.arange(mini_batch_sz, c, mini_batch_sz), c)
 
             for j in range(len(start_idx)):
-                print "processing mini batch {0}".format(j)
+                logger.info("processing mini batch {0}".format(j))
                 b.append(self.__atamat_sub(mat[:,start_idx[j]:end_idx[j]],direct_sum))
             
             return np.hstack(b)
@@ -108,7 +109,7 @@ class SparseRowMatrix(object):
 class GaussianProjectionMapper(BlockMapper):
 
     def __init__(self,direct_sum=False):
-        BlockMapper.__init__(self, 100)
+        BlockMapper.__init__(self, 2)
         self.gp = None
         self.data = {'row':[],'col':[],'val':[]}
         self.direct_sum = direct_sum
@@ -136,7 +137,7 @@ class GaussianProjectionMapper(BlockMapper):
 class MatrixAtABMapper(BlockMapper):
 
     def __init__(self,direct_sum=False):
-        BlockMapper.__init__(self, 100)
+        BlockMapper.__init__(self, 2)
         self.atamat = None
         self.data = {'row':[],'col':[],'val':[]}
         self.direct_sum = direct_sum
