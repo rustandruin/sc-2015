@@ -237,6 +237,39 @@ class MSIDataset(object):
             mask = np.logical_and(self.mask, mask)
         return MSIDataset(self.mz_range, self.spectra, self._shape, mask)
 
+    def targeted_smooth(self, mz_target, mz_stddev, tol=0.01):
+        mz_axis = self.mz_axis
+        idx = bisect_left(mz_axis, mz_target)
+        bucket_width = (mz_axis[idx + 1] - mz_axis[idx - 1]) / 2.0
+        return self.smooth(mz_stddev / bucket_width, tol)
+
+    def smooth(self, stddev=100, tol=0.01):
+        """
+        Smoothes each spectrum by applying a Gaussian filter.
+        Note that stddev is given in terms of buckets, even though the mz_axis has a log scale.
+        Smoothed values above tol are kept.
+        """
+        from scipy import signal, stats
+        mz_len = len(self.mz_axis)
+        # truncate kernel at 4 sigma
+        kernel = signal.gaussian(8 * stddev, stddev)
+        def smooth_one(spectrum):
+            x, y, t, ions = spectrum
+            mzs = np.zeros((mz_len,))
+            values = np.zeros((mz_len,))
+            for bucket, mz, intensity in ions:
+                assert mzs[bucket] == 0
+                mzs[bucket] = mz
+                values[bucket] = intensity
+            values = signal.fftconvolve(values, kernel, mode='same')
+            assert (values >= -1e-4).all()
+            def make_ions():
+                for bucket in np.flatnonzero(values >= tol):
+                    yield (bucket, self.mz_axis[bucket], values[bucket])
+            return (x, y, t, list(make_ions()))
+        smoothed_spectra = self.spectra.map(smooth_one)
+        return MSIDataset(self.mz_range, smoothed_spectra, self._shape, self.mask)
+
     def __getstate__(self):
         # don't pickle RDDs
         result = self.__dict__.copy()
