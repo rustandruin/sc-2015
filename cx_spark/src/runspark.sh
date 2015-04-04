@@ -67,6 +67,9 @@ spark-submit \
     --conf pbs.jobId=$PBS_JOBID \
     --conf spark.eventLog.enabled=true  \
     --conf spark.eventLog.dir=$SPARK_EVENTLOG_DIR  \
+    --conf spark.cleaner.referenceTracking=true \
+    --conf spark.cleaner.referenceTracking.blocking=true \
+    --conf spark.cleaner.referenceTracking.blocking.shuffle=true \
     --master $SPARKURL  \
     --executor-memory 48G  \
     --driver-memory 48G \

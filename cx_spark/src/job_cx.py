@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 sc = SparkContext()
 logger.info("job_cx starting with appId=" + sc._jsc.sc().applicationId())
-prefix = 'hdfs:///sc-2015/'
+prefix = 's3n://amp-jey-west/sc-2015/Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat/'
+#prefix = 'hdfs:///sc-2015/Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat/'
 name = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked'
 logger.info("job_cx loading RDD from %s" % name)
 #dataset = MSIDataset.load(sc, 'meta/' + name, prefix + name).cache()
