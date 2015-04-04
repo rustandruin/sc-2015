@@ -237,7 +237,7 @@ class MSIDataset(object):
             mask = np.logical_and(self.mask, mask)
         return MSIDataset(self.mz_range, self.spectra, self._shape, mask)
 
-    def targeted_smooth(self, mz_target, mz_stddev, tol=0.01):
+    def smooth_targeted(self, mz_target, mz_stddev, tol=0.01):
         mz_axis = self.mz_axis
         idx = bisect_left(mz_axis, mz_target)
         bucket_width = (mz_axis[idx + 1] - mz_axis[idx - 1]) / 2.0
@@ -251,15 +251,16 @@ class MSIDataset(object):
         """
         from scipy import signal, stats
         mz_len = len(self.mz_axis)
+        # apply monkeypatch to speed up fftconvolve()
+        import pyfftw
+        signal.signaltools.fftn = pyfftw.interfaces.scipy_fftpack.fftn
+        signal.signaltools.ifftn = pyfftw.interfaces.scipy_fftpack.ifftn
         # truncate kernel at 4 sigma
         kernel = signal.gaussian(8 * stddev, stddev)
         def smooth_one(spectrum):
             x, y, t, ions = spectrum
-            mzs = np.zeros((mz_len,))
             values = np.zeros((mz_len,))
             for bucket, mz, intensity in ions:
-                assert mzs[bucket] == 0
-                mzs[bucket] = mz
                 values[bucket] = intensity
             values = signal.fftconvolve(values, kernel, mode='same')
             assert (values >= -1e-4).all()
@@ -358,10 +359,10 @@ class MSIDataset(object):
         self.spectra.cache()
         return self
 
-    def save(self, path):
-        self.spectra.saveAsPickleFile(path + ".spectra")
+    def save(self, metapath, rddpath):
+        self.spectra.saveAsPickleFile(rddpath + ".spectra")
         metadata = { 'mz_range' : self.mz_range, 'shape' : self.shape }
-        with file(path + ".meta", 'w') as outf:
+        with file(metapath + ".meta", 'w') as outf:
             pickle.dump(metadata, outf)
 
     @staticmethod
