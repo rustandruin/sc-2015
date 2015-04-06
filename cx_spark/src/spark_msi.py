@@ -334,9 +334,10 @@ class MSIDataset(object):
         def f(spectrum):
             x, y, t, ions = spectrum
             for bucket, mz, intensity in ions:
-                yield mz, intensity
+                yield bucket, intensity
         results = self.spectra.flatMap(f).reduceByKey(operator.add).sortByKey().collect()
-        return zip(*results)
+        buckets, values = zip(*results)
+        return (self.mz_axis[np.array(buckets)], values)
 
     def intensity_vs_time(self):
         def f(spectrum):
