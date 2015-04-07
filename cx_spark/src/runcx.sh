@@ -1,9 +1,10 @@
-pyfiles=`find $PWD -name \*.py | paste -sd , -`
+pyfiles=`find . -name \*.py | paste -sd , -`
 export PYSPARK_PYTHON=python27
 #    --conf spark.shuffle.blockTransferService=nio \
 spark-submit \
     --verbose \
-    --driver-memory 107353m \
+    --driver-memory 64G \
+    --conf spark.python.worker.memory=8G \
     --conf spark.ui.showConsoleProgress=false \
     --conf spark.eventLog.enabled=true  \
     --conf spark.eventLog.dir=logs/events  \
