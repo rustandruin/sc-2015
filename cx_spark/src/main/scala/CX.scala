@@ -7,6 +7,10 @@ import org.apache.spark.mllib.linalg.distributed._
 import breeze.linalg.{Matrix => BM, DenseMatrix => BDM, DenseVector => BDV, Axis, qr, svd, sum, axpy, SparseVector => BSV}
 import math.{ceil, log}
 
+import spray.json._
+import DefaultJsonProtocol._
+import java.io.{File, PrintWriter}
+
 object CX {
   def fromBreeze(mat: BDM[Double]): DenseMatrix = {
     // FIXME: does not support strided matrices (e.g. views)
@@ -56,10 +60,10 @@ object CX {
   }
 
   def main(args: Array[String]) {
-    val name = "Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked"
-    //val name = "Lewis_Dalisay_Peltatum_20131115_PDX_Std_1"
-    val prefix = s"hdfs:///$name.mat"
-    //val prefix = "hdfs:///"
+    //val name = "Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked"
+    val name = "Lewis_Dalisay_Peltatum_20131115_PDX_Std_1"
+    //val prefix = s"hdfs:///$name.mat"
+    val prefix = "hdfs:///"
     //val prefix = s"/home/jey/proj/openmsi/data/2014Nov15_PDX_IMS_imzML/$name"
     val inpath = s"$prefix/$name.mat.csv"
     val conf = new SparkConf().setAppName("CX")
@@ -67,9 +71,9 @@ object CX {
     val sc = new SparkContext(conf)
 
     /* params */
-    val numIters = 2
+    val numIters = 0
     // rank of approximation
-    val rank = 8
+    val rank = 4
     // extra slack to improve the approximation
     val slack = ceil(log(rank)/log(2)).toInt
     val k = rank + slack
@@ -77,9 +81,9 @@ object CX {
     /* load matrix */
     val nonzeros = sc.textFile(inpath).map(_.split(",")).
           map(x => new MatrixEntry(x(0).toLong, x(1).toLong, x(2).toDouble))
-    //val coomat = new CoordinateMatrix(nonzeros, 951, 781210) // FIXME: magics
+    val coomat = new CoordinateMatrix(nonzeros, 951, 781210) // FIXME: magics
     //val coomat = new CoordinateMatrix(nonzeros, 9574, 3743324) // FIXME: magics
-    val coomat = new CoordinateMatrix(nonzeros, 131048, 8258911)
+    //val coomat = new CoordinateMatrix(nonzeros, 131048, 8258911)
     val mat = coomat.toIndexedRowMatrix()
     mat.rows.cache()
 
@@ -102,13 +106,14 @@ object CX {
     val collev = sum(V :^ 2.0, Axis._1)
     val colp = collev / rank.toDouble
 
-    println("S:\n")
-    println(S)
-    /*
-    println("RowP:")
-    println(rowp)
-    println("\nColP:")
-    println(colp)
-    */
+    /* write output */
+    val json = Map(
+      "singvals" -> S.toArray.toSeq,
+      "rowp" -> rowp.toArray.toSeq,
+      "colp" -> colp.toArray.toSeq
+    ).toJson
+    val outw = new PrintWriter(new File("cx-out.json"))
+    outw.println(json.compactPrint)
+    outw.close()
   }
 }
