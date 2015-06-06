@@ -68,58 +68,51 @@ object CX {
   // returns `mat.transpose * randn(m, rank)`
   def gaussianProjection(mat: IndexedRowMatrix, rank: Int): DenseMatrix = {
     val rng = new java.util.Random
-    //val omega = DenseMatrix.randn(mat.numRows.toInt, rank, rng)
-    //transposeMultiply(mat, DenseMatrix.randn(mat.numRows.toInt, rank, rng))
-    DenseMatrix.randn(mat.numCols.toInt, rank, rng)
+    transposeMultiply(mat, DenseMatrix.randn(mat.numRows.toInt, rank, rng))
   }
 
   def main(args: Array[String]) {
     val conf = new SparkConf().setAppName("CX")
-    conf.set("spark.driver.maxResultSize", "32g")
-    conf.set("spark.eventLog.enabled", "true")
-    conf.set("spark.eventLog.dir", "/root/spark/eventlogs")
     conf.set("spark.task.maxFailures", "1")
     val sc = new SparkContext(conf)
 
-    /* params */
-    val numIters = 2
+    if(args.length != 8) {
+      Console.err.println("Expected args: [csv|idxrow] inpath nrows ncols outpath rank slack niters")
+      System.exit(1)
+    }
+
+    val matkind = args(0)
+    val inpath = args(1)
+    val shape = (args(2).toInt, args(3).toInt)
+    val outpath = args(4)
+
     // rank of approximation
-    val rank = 8
+    val rank = args(5).toInt
+
     // extra slack to improve the approximation
-    val slack = ceil(log(rank)/log(2)).toInt
+    val slack = args(6).toInt
+
+    // number of power iterations to perform
+    val numIters = args(7).toInt
+
     val k = rank + slack
-
-    /* load matrix */
-    val name = "Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked"
-    val prefix = s"hdfs:///$name.mat"
-    val shape = (131048, 8258911)
-
-    /*
-    val name = "Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked-100x100"
-    val prefix = s"hdfs:///$name.mat"
-    val shape = (9574, 3743324)
-    */
-
-    /*
-    val name = "Lewis_Dalisay_Peltatum_20131115_PDX_Std_1"
-    val prefix = "hdfs:///"
-    val shape = (951, 781210)
-    */
-
-    /*
-    val inpath = s"$prefix/$name.mat.csv"
-    val nonzeros = sc.textFile(inpath).map(_.split(",")).
-          map(x => new MatrixEntry(x(0).toLong, x(1).toLong, x(2).toDouble))
-    val coomat = new CoordinateMatrix(nonzeros, shape._1, shape._2).transpose
-    val mat = coomat.toIndexedRowMatrix()
-    mat.rows.saveAsObjectFile(s"hdfs:///$name.rowmat")
-    */
-
-    val rows = sc.objectFile[IndexedRow](s"hdfs:///$name.rowmat")
-    val mat = new IndexedRowMatrix(rows, shape._2, shape._1)
+    val mat =
+      if(matkind == "csv") {
+        val nonzeros = sc.textFile(inpath).map(_.split(",")).
+        map(x => new MatrixEntry(x(1).toLong, x(0).toLong, x(2).toDouble))
+        val coomat = new CoordinateMatrix(nonzeros, shape._1, shape._2)
+        val mat = coomat.toIndexedRowMatrix()
+        //mat.rows.saveAsObjectFile(s"hdfs:///$name.rowmat")
+        mat
+      } else if(matkind == "idxrow") {
+        val rows = sc.objectFile[IndexedRow](inpath)
+        new IndexedRowMatrix(rows, shape._1, shape._2)
+      } else {
+        throw new RuntimeException(s"unrecognized matkind: $matkind")
+      }
     mat.rows.cache()
 
-    /* perform randomized SVD */
+    /* perform randomized SVD of A' */
     var Y = gaussianProjection(mat, k).toBreeze.asInstanceOf[BDM[Double]]
     for(i <- 0 until numIters) {
       Y = multiplyGramianBy(mat, fromBreeze(Y)).toBreeze.asInstanceOf[BDM[Double]]
@@ -128,7 +121,8 @@ object CX {
     assert(Q.cols == k)
     val B = mat.multiply(fromBreeze(Q)).toBreeze.asInstanceOf[BDM[Double]].t
     val Bsvd = svd.reduced(B)
-    // Since we computed randomized SVD of A', we unswap U and V here:
+    // Since we computed the randomized SVD of A', unswap U and V here
+    // to get back to svd(A) = U S V'
     val V = (Q * Bsvd.U).apply(::, 0 until rank)
     val S = Bsvd.S(0 until rank)
     val U = Bsvd.Vt(0 until rank, ::).t
@@ -147,7 +141,7 @@ object CX {
       "rowp" -> rowp.toArray.toSeq,
       "colp" -> colp.toArray.toSeq
     ).toJson
-    val outw = new PrintWriter(new File("cx-out.json"))
+    val outw = new PrintWriter(new File(outpath))
     outw.println(json.compactPrint)
     outw.close()
   }
