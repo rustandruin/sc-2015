@@ -19,5 +19,5 @@ submit <<= (assembly in Compile) map {
 
 lazy val runTest = taskKey[Unit]("Submit test job")
 runTest <<= (assembly in Compile) map {
-  (jarFile: File) => s"spark-submit --driver-memory 4G ${jarFile} test A_1K_16K.mtx B_1K_32.mtx" !
+  (jarFile: File) => s"spark-submit --driver-memory 4G ${jarFile} test A_16K_1K.mtx B_1K_32.mtx" !
 }

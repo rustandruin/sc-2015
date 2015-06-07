@@ -159,18 +159,7 @@ object CX {
     require(input.next() == "%%MatrixMarket matrix coordinate real general")
     val dims = input.next().split(' ').map(_.toInt)
     val seen = BDM.zeros[Int](dims(0), dims(1))
-    // deal with duplicate entries by only keeping the first one
-    val input2 = input.filter(line => {
-      val toks = line.split(" ")
-      val i = toks(0).toInt - 1
-      val j = toks(1).toInt - 1
-      val result = seen(i, j) == 0
-      require(i >= 0 && i < dims(0))
-      require(j >= 0 && j < dims(1))
-      seen(i, j) = 1
-      result
-    })
-    val entries = input2.map(line => {
+    val entries = input.map(line => {
       val toks = line.split(" ")
       val i = toks(0).toInt - 1
       val j = toks(1).toInt - 1
@@ -178,8 +167,8 @@ object CX {
       require(toks.length == 3)
       new MatrixEntry(i, j, v)
     }).toSeq
-    //require(entries.length == dims(2))
-    new CoordinateMatrix(sc.parallelize(entries, 1), dims(0), dims(1)).transpose.toIndexedRowMatrix
+    require(entries.length == dims(2))
+    new CoordinateMatrix(sc.parallelize(entries, 1), dims(0), dims(1)).toIndexedRowMatrix
   }
 
   def loadMatrixB(fn: String) = {
@@ -212,7 +201,7 @@ object CX {
     writer.write(s"${mat.numRows} ${mat.numCols} ${mat.numRows*mat.numCols}\n")
     for(i <- 0 until mat.numRows) {
       for(j <- 0 until mat.numCols) {
-        writer.write(s"$i $j ${mat(i, j)}\n")
+        writer.write(f"${i+1} ${j+1} ${mat(i, j)}%f\n")
       }
     }
     writer.close
@@ -220,7 +209,7 @@ object CX {
 
   def testMain(sc: SparkContext, args: Array[String]) = {
     val A = loadMatrixA(sc, args(0))
-    val B = loadMatrixB(args(1))
+    val B = fromBreeze(BDM.ones[Double](1024, 32))
     val X = multiplyGramianBy(A, B)
     writeMatrix(X, "result.mtx")
   }
