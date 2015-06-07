@@ -12,7 +12,12 @@ libraryDependencies += "com.github.fommil.netlib" % "all" % "1.1.2"
 
 libraryDependencies += "io.spray" %%  "spray-json" % "1.3.2"
 
-lazy val submit = taskKey[Unit]("Submits Spark job")
+lazy val submit = taskKey[Unit]("Submit CX job")
 submit <<= (assembly in Compile) map {
   (jarFile: File) => "src/runcx.sh" !
+}
+
+lazy val runTest = taskKey[Unit]("Submit test job")
+runTest <<= (assembly in Compile) map {
+  (jarFile: File) => s"spark-submit --driver-memory 4G ${jarFile} test A_1K_16K.mtx B_1K_32.mtx" !
 }
