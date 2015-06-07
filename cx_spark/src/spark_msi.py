@@ -185,9 +185,6 @@ class MSIMatrix(object):
         return self
 
     def save(self, csvpath, metapath, name):
-        self.nonzeros. \
-            map(lambda entry: ",".join(map(str, entry))). \
-            saveAsTextFile(os.path.join(csvpath, name + ".mat.csv"))
         metadata = {
             'dataset_shape' : self.dataset_shape,
             'raw_shape' : self.raw_shape,
@@ -196,6 +193,9 @@ class MSIMatrix(object):
         }
         with file(os.path.join(metapath, name + ".mat.meta"), 'w') as outf:
             pickle.dump(metadata, outf)
+        self.nonzeros. \
+            map(lambda entry: ",".join(map(str, entry))). \
+            saveAsTextFile(os.path.join(csvpath, name + ".mat.csv"))
 
     @staticmethod
     def load(sc, csvpath, metapath, name):
@@ -485,18 +485,17 @@ def converter():
 
 
 if __name__ == '__main__':
-    # big
-    name = 'Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked'
-    # small
-    #name = '2014Nov15_PDX_IMS_imzML'
-    datapath = '/scratch1/scratchdirs/jeyk/data/'
-    inpath = os.path.join(datapath, name, name)
-    outpath = os.path.join(os.getenv('SCRATCH'), 'dev-data', name, name)
+    name = "Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-smoothed-mz=437.11407-sd=0.05"
+    rddpath = "s3n://amp-jey/sc-2015/Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-smoothed-mz=437.11407-sd=0.05"
+    metapath = "meta/Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-smoothed-mz=437.11407-sd=0.05"
     from pyspark import SparkContext
     sc = SparkContext()
-    dataset = MSIDataset.load(sc, inpath + ".rdd")
-    dataset = dataset[100:200, 100:200, :]
-    mat = MSIMatrix(dataset)
-    print "shape: ", mat.raw_shape, " -> ", mat.shape
-    mat.save(outpath + "-test.mat")
+    dataset = MSIDataset.load(sc, metapath, rddpath)
+    def f(spectrum):
+      x, y, t, ions = spectrum
+      ions = filter(lambda (bucket, mz, intensity): intensity >= 1, ions)
+      return (x, y, t, ions)
+    dataset.spectra = dataset.spectra.map(f)
+    mat = MSIMatrix.from_dataset(sc, dataset)
+    mat.save("s3n://amp-jey/sc-2015/", "meta/", name)
     sc.stop()
