@@ -78,9 +78,49 @@ object CX {
 
     if(args(0) == "test") {
       testMain(sc, args.tail)
+    } else if(args(0) == "genmat") {
+      genmatMain(sc, args.tail)
     } else {
       appMain(sc, args)
     }
+  }
+
+  def genmatMain(sc: SparkContext, args: Array[String]) = {
+    if(args.length != 2) {
+      Console.err.println("Expected args: inpath outpath")
+      System.exit(1)
+    }
+
+    val inpath = args(0)
+    val outpath = args(1)
+    val sqlctx = new org.apache.spark.sql.SQLContext(sc)
+    import sqlctx.implicits._
+
+    val entries = sc.textFile(inpath).map(_.split(",")).
+        map(x => (x(1).toInt, x(0).toInt, x(2).toDouble)).
+        toDF("i", "j", "value")
+    entries.registerTempTable("entry")
+    //entries.cache()
+
+    val rowids = entries.select("i").distinct.rdd.zipWithIndex.toDF("old", "new")
+    rowids.registerTempTable("rowid")
+    //rowids.cache()
+    //rowids.saveAsParquetFile(outpath + "/rowids")
+
+    val colids = entries.select("j").distinct.rdd.zipWithIndex.toDF("old", "new")
+    colids.registerTempTable("colid")
+    //colids.cache()
+    //colids.saveAsParquetFile(outpath + "/colids")
+
+    val query =
+        """
+        SELECT rowid.new AS i, colid.new AS j, entry.value
+        FROM entry, rowid, colid
+        WHERE entry.i == rowid.old AND entry.j == colid.old
+        GROUP BY rowid.new
+        """
+    val newEntries = sqlctx.sql(query)
+    newEntries.explain()
   }
 
   def appMain(sc: SparkContext, args: Array[String]) = {

@@ -14,7 +14,7 @@ libraryDependencies += "io.spray" %%  "spray-json" % "1.3.2"
 
 lazy val submit = taskKey[Unit]("Submit CX job")
 submit <<= (assembly in Compile) map {
-  (jarFile: File) => "src/runcx.sh" !
+  (jarFile: File) => s"src/runcx.sh ${jarFile}" !
 }
 
 lazy val runTest = taskKey[Unit]("Submit test job")

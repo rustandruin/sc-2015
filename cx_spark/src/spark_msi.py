@@ -114,7 +114,7 @@ def closest_index(data, val):
     return closest(highIndex, lowIndex)
 
 
-# Note: "raw" means with empty rows/cols
+# Note: "raw" means including any empty rows/cols
 class MSIMatrix(object):
     def __init__(self, dataset_shape, raw_shape, shape, seen_bcast, nonzeros):
         self.dataset_shape = dataset_shape
@@ -124,18 +124,32 @@ class MSIMatrix(object):
         self.nonzeros = nonzeros
 
     @staticmethod
-    def from_dataset(sc, dataset):
+    def to_raw_matrix(dataset):
         xlen, ylen, tlen, mzlen = dataset.shape
         raw_shape = (xlen * ylen, tlen * mzlen)
 
-        def to_raw_matrix(spectrum):
+        def f(spectrum):
             x, y, t, ions = spectrum
             r = y * xlen + x
             for bucket, mz, intensity in ions:
                 c = bucket * tlen + t
                 yield (r, c, intensity)
 
-        raw_nonzeros = dataset.spectra.flatMap(to_raw_matrix)
+        raw_nonzeros = dataset.spectra.flatMap(f)
+        return (raw_shape, raw_nonzeros)
+
+    @staticmethod
+    def dump_dataset(dataset, outpath):
+        raw_shape, raw_nonzeros = MSIMatrix.to_raw_matrix(dataset)
+        print raw_shape
+        return
+        result = raw_nonzeros.map(lambda (r, c, v): "%d,%d,%.17g" % (r, c, v))
+        result.saveAsTextFile(outpath + ".rawmat.csv.gz",
+            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
+
+    @staticmethod
+    def from_dataset(sc, dataset):
+        raw_shape, raw_nonzeros = MSIMatrix.to_raw_matrix(dataset)
         seen_rows = sorted(raw_nonzeros.map(lambda (r, c, v): r).mapPartitions(set).distinct().collect())
         seen_cols = sorted(raw_nonzeros.map(lambda (r, c, v): c).mapPartitions(set).distinct().collect())
         seen_bcast = sc.broadcast((seen_rows, seen_cols))
@@ -494,8 +508,10 @@ if __name__ == '__main__':
     def f(spectrum):
       x, y, t, ions = spectrum
       ions = filter(lambda (bucket, mz, intensity): intensity >= 1, ions)
-      return (x, y, t, ions)
-    dataset.spectra = dataset.spectra.map(f)
-    mat = MSIMatrix.from_dataset(sc, dataset)
-    mat.save("s3n://amp-jey/sc-2015/", "meta/", name)
+      if len(ions) > 0:
+        yield (x, y, t, ions)
+    dataset.spectra = dataset.spectra.flatMap(f)
+    MSIMatrix.dump_dataset(dataset, "hdfs:///" + name)
+    #mat = MSIMatrix.from_dataset(sc, dataset)
+    #mat.save("s3n://amp-jey/sc-2015/", "meta/", name)
     sc.stop()
