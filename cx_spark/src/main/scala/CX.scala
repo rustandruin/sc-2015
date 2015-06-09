@@ -4,12 +4,14 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
 import org.apache.spark.mllib.linalg.{Matrices, DenseMatrix, Matrix, DenseVector, Vector, SparseVector}
 import org.apache.spark.mllib.linalg.distributed._
+import org.apache.spark.sql.{SQLContext, Row => SQLRow}
 import breeze.linalg.{DenseMatrix => BDM, DenseVector => BDV, Axis, qr, svd, sum, SparseVector => BSV}
 import math.{ceil, log}
 
 import spray.json._
 import DefaultJsonProtocol._
 import java.io.{File, PrintWriter}
+import java.util.Arrays
 
 object CX {
   def fromBreeze(mat: BDM[Double]): DenseMatrix = {
@@ -91,43 +93,42 @@ object CX {
       System.exit(1)
     }
 
-    val inpath = args(0)
-    val outpath = args(1)
     val sqlctx = new org.apache.spark.sql.SQLContext(sc)
     import sqlctx.implicits._
 
-    val entries = sc.textFile(inpath).map(_.split(",")).
-        map(x => (x(1).toInt, x(0).toInt, x(2).toDouble)).
-        toDF("i", "j", "value")
-    entries.registerTempTable("entry")
-    //entries.cache()
+    val inpath = args(0)
+    val outpath = args(1)
+    val rows = sc.textFile(inpath).map(_.split(",")).
+        map(x => (x(1).toInt, (x(0).toInt, x(2).toDouble))).
+        groupByKey.
+        map(x => (x._1, x._2.toSeq.sortBy(_._1)))
+    rows.cache()
 
-    val rowids = entries.select("i").distinct.rdd.zipWithIndex.toDF("old", "new")
-    rowids.registerTempTable("rowid")
-    //rowids.cache()
-    //rowids.saveAsParquetFile(outpath + "/rowids")
+    val rowtabRdd = rows.keys.distinct.sortBy(identity).cache
+    val coltabRdd = rows.values.flatMap(_.map(_._1)).distinct.sortBy(identity).cache
+    rowtabRdd.saveAsTextFile(outpath + "/rowtab.txt")
+    coltabRdd.saveAsTextFile(outpath + "/coltab.txt")
 
-    val colids = entries.select("j").distinct.rdd.zipWithIndex.toDF("old", "new")
-    colids.registerTempTable("colid")
-    //colids.cache()
-    //colids.saveAsParquetFile(outpath + "/colids")
-
-    val query =
-        """
-        SELECT rowid.new AS i, colid.new AS j, entry.value
-        FROM entry, rowid, colid
-        WHERE entry.i == rowid.old AND entry.j == colid.old
-        GROUP BY rowid.new
-        """
-    val newEntries = sqlctx.sql(query)
-    newEntries.explain()
+    val rowtab: Array[Int] = rowtabRdd.collect
+    val coltab: Array[Int] = coltabRdd.collect
+    def rowid(i: Int) = Arrays.binarySearch(rowtab, i)
+    def colid(i: Int) = Arrays.binarySearch(coltab, i)
+    val newRows = rows.map(x => {
+        val indices = x._2.map(y => colid(y._1)).toArray
+        val values = x._2.map(y => y._2).toArray
+        new IndexedRow(rowid(x._1), new SparseVector(coltab.length, indices, values))
+    }).toDF
+    newRows.saveAsParquetFile(outpath + "/matrix.parquet")
   }
 
   def appMain(sc: SparkContext, args: Array[String]) = {
     if(args.length != 8) {
-      Console.err.println("Expected args: [csv|idxrow] inpath nrows ncols outpath rank slack niters")
+      Console.err.println("Expected args: [csv|idxrow|df] inpath nrows ncols outpath rank slack niters")
       System.exit(1)
     }
+
+    val sqlctx = new org.apache.spark.sql.SQLContext(sc)
+    import sqlctx.implicits._
 
     val matkind = args(0)
     val inpath = args(1)
@@ -144,7 +145,7 @@ object CX {
     val numIters = args(7).toInt
 
     val k = rank + slack
-    val mat =
+    val mat: IndexedRowMatrix =
       if(matkind == "csv") {
         val nonzeros = sc.textFile(inpath).map(_.split(",")).
         map(x => new MatrixEntry(x(1).toLong, x(0).toLong, x(2).toDouble))
@@ -155,6 +156,17 @@ object CX {
       } else if(matkind == "idxrow") {
         val rows = sc.objectFile[IndexedRow](inpath)
         new IndexedRowMatrix(rows, shape._1, shape._2)
+      } else if(matkind == "df") {
+        val numRows = sc.textFile(inpath + "/rowtab.txt").count.toInt
+        val numCols = sc.textFile(inpath + "/coltab.txt").count.toInt
+        assert(numRows == shape._1)
+        assert(numCols == shape._2)
+        val rows =
+          sqlctx.parquetFile(inpath + "/matrix.parquet").rdd.map {
+            case SQLRow(index: Long, vector: Vector) =>
+              new IndexedRow(index, vector)
+          }
+        new IndexedRowMatrix(rows, numRows, numCols)
       } else {
         throw new RuntimeException(s"unrecognized matkind: $matkind")
       }
