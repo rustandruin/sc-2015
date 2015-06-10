@@ -1,17 +1,17 @@
 spark-submit --verbose \
   --driver-memory 96G \
-  --conf spark.driver.maxResultSize=8g \
+  --conf spark.driver.maxResultSize=64g \
   $1 \
-  idxrow s3n://amp-jey/sc-2015/Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat/Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat.csv \
-  8258911 131048 \
+  df hdfs:///Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-smoothed-mz=437.11407-sd=0.05.mat.df \
+  0 0 \
   dump.out \
-  16 2 1
+  4 2 1
 
 #  genmat \
 #  hdfs:///Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat/Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat.csv \
 #  hdfs:///test.out
 
-#  idxrow hdfs:///test.out/matrix.idxrow  \
+#  df hdfs:///test.out \
 #  8258911 131048 \
 #  dump.out \
 #  16 2 1

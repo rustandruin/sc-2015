@@ -2,6 +2,7 @@ package org.apache.spark.mllib.linalg.distributed
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
+import org.apache.spark.storage.StorageLevel
 import org.apache.spark.mllib.linalg.{Matrices, DenseMatrix, Matrix, DenseVector, Vector, SparseVector}
 import org.apache.spark.mllib.linalg.distributed._
 import org.apache.spark.sql.{SQLContext, Row => SQLRow}
@@ -70,7 +71,8 @@ object CX {
   // returns `mat.transpose * randn(m, rank)`
   def gaussianProjection(mat: IndexedRowMatrix, rank: Int): DenseMatrix = {
     val rng = new java.util.Random
-    transposeMultiply(mat, DenseMatrix.randn(mat.numRows.toInt, rank, rng))
+    //transposeMultiply(mat, DenseMatrix.randn(mat.numRows.toInt, rank, rng))
+    DenseMatrix.randn(mat.numCols.toInt, rank, rng)
   }
 
   def main(args: Array[String]) = {
@@ -102,11 +104,14 @@ object CX {
         map(x => (x(1).toInt, (x(0).toInt, x(2).toDouble))).
         groupByKey.
         map(x => (x._1, x._2.toSeq.sortBy(_._1)))
-    rows.cache()
+    rows.persist(StorageLevel.MEMORY_AND_DISK_SER)
 
-    val rowtabRdd = rows.keys.distinct.sortBy(identity).cache
-    val coltabRdd = rows.values.flatMap(_.map(_._1)).distinct.sortBy(identity).cache
+    val rowtabRdd = rows.keys.distinct(128).sortBy(identity)
+    rowtabRdd.persist(StorageLevel.MEMORY_AND_DISK)
     rowtabRdd.saveAsTextFile(outpath + "/rowtab.txt")
+
+    val coltabRdd = rows.values.flatMap(_.map(_._1)).distinct(128).sortBy(identity)
+    coltabRdd.persist(StorageLevel.MEMORY_AND_DISK)
     coltabRdd.saveAsTextFile(outpath + "/coltab.txt")
 
     val rowtab: Array[Int] = rowtabRdd.collect
@@ -159,8 +164,8 @@ object CX {
       } else if(matkind == "df") {
         val numRows = sc.textFile(inpath + "/rowtab.txt").count.toInt
         val numCols = sc.textFile(inpath + "/coltab.txt").count.toInt
-        assert(numRows == shape._1)
-        assert(numCols == shape._2)
+        assert(numRows == shape._1 || shape._1 == 0)
+        assert(numCols == shape._2 || shape._1 == 0)
         val rows =
           sqlctx.parquetFile(inpath + "/matrix.parquet").rdd.map {
             case SQLRow(index: Long, vector: Vector) =>
@@ -177,10 +182,14 @@ object CX {
     for(i <- 0 until numIters) {
       Y = multiplyGramianBy(mat, fromBreeze(Y)).toBreeze.asInstanceOf[BDM[Double]]
     }
+    println("performing QR")
     val Q = qr.reduced.justQ(Y)
+    println("done performing QR")
     assert(Q.cols == k)
     val B = mat.multiply(fromBreeze(Q)).toBreeze.asInstanceOf[BDM[Double]].t
+    println("performing SVD")
     val Bsvd = svd.reduced(B)
+    println("done performing SVD")
     // Since we computed the randomized SVD of A', unswap U and V here
     // to get back to svd(A) = U S V'
     val V = (Q * Bsvd.U).apply(::, 0 until rank)
