@@ -11,8 +11,8 @@ import math.{ceil, log}
 
 import spray.json._
 import DefaultJsonProtocol._
-import java.io.{File, PrintWriter}
 import java.util.Arrays
+import java.io.{DataOutputStream, BufferedOutputStream, FileOutputStream, File}
 
 object CX {
   def fromBreeze(mat: BDM[Double]): DenseMatrix = {
@@ -162,10 +162,8 @@ object CX {
         val rows = sc.objectFile[IndexedRow](inpath)
         new IndexedRowMatrix(rows, shape._1, shape._2)
       } else if(matkind == "df") {
-        val numRows = sc.textFile(inpath + "/rowtab.txt").count.toInt
-        val numCols = sc.textFile(inpath + "/coltab.txt").count.toInt
-        assert(numRows == shape._1 || shape._1 == 0)
-        assert(numCols == shape._2 || shape._1 == 0)
+        val numRows = if(shape._1 != 0) shape._1 else sc.textFile(inpath + "/rowtab.txt").count.toInt
+        val numCols = if(shape._2 != 0) shape._2 else sc.textFile(inpath + "/coltab.txt").count.toInt
         val rows =
           sqlctx.parquetFile(inpath + "/matrix.parquet").rdd.map {
             case SQLRow(index: Long, vector: Vector) =>
@@ -181,6 +179,7 @@ object CX {
     var Y = gaussianProjection(mat, k).toBreeze.asInstanceOf[BDM[Double]]
     for(i <- 0 until numIters) {
       Y = multiplyGramianBy(mat, fromBreeze(Y)).toBreeze.asInstanceOf[BDM[Double]]
+      Y = qr.reduced.justQ(Y)
     }
     println("performing QR")
     val Q = qr.reduced.justQ(Y)
@@ -205,16 +204,19 @@ object CX {
     assert(colp.length == mat.numCols)
 
     /* write output */
-    val json = Map(
-      "singvals" -> S.toArray.toSeq,
-      "rowp" -> rowp.toArray.toSeq,
-      "colp" -> colp.toArray.toSeq
-    ).toJson
-    val outw = new PrintWriter(new File(outpath))
-    outw.println(json.compactPrint)
-    outw.close()
+    val outf = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(new File(outpath))))
+    dump(outf, S)
+    dump(outf, rowp)
+    dump(outf, colp)
+    outf.close()
   }
 
+  def dump(outf: DataOutputStream, v: BDV[Double]) = {
+    outf.writeInt(v.length)
+    for(i <- 0 until v.length) {
+      outf.writeDouble(v(i))
+    }
+  }
   def loadMatrixA(sc: SparkContext, fn: String) = {
     val input = scala.io.Source.fromFile(fn).getLines()
     require(input.next() == "%%MatrixMarket matrix coordinate real general")
