@@ -175,6 +175,9 @@ object CX {
       }
     mat.rows.cache()
 
+    // force materialization of the RDD so we can separate I/O from compute
+    mat.rows.count()
+
     /* perform randomized SVD of A' */
     var Y = gaussianProjection(mat, k).toBreeze.asInstanceOf[BDM[Double]]
     for(i <- 0 until numIters) {
