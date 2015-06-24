@@ -127,8 +127,8 @@ object CX {
   }
 
   def appMain(sc: SparkContext, args: Array[String]) = {
-    if(args.length != 8) {
-      Console.err.println("Expected args: [csv|idxrow|df] inpath nrows ncols outpath rank slack niters")
+    if(args.length < 8) {
+      Console.err.println("Expected args: [csv|idxrow|df] inpath nrows ncols outpath rank slack niters [nparts]")
       System.exit(1)
     }
 
@@ -150,7 +150,7 @@ object CX {
     val numIters = args(7).toInt
 
     val k = rank + slack
-    val mat: IndexedRowMatrix =
+    val mat0: IndexedRowMatrix =
       if(matkind == "csv") {
         val nonzeros = sc.textFile(inpath).map(_.split(",")).
         map(x => new MatrixEntry(x(1).toLong, x(0).toLong, x(2).toDouble))
@@ -173,6 +173,16 @@ object CX {
       } else {
         throw new RuntimeException(s"unrecognized matkind: $matkind")
       }
+
+    // coalesce partitions if needed
+    val mat: IndexedRowMatrix =
+      if(args.length >= 9) {
+        val nparts = args(8).toInt
+        new IndexedRowMatrix(mat0.rows.coalesce(nparts), mat0.numRows, mat0.numCols.toInt)
+      } else {
+        mat0
+      }
+
     mat.rows.cache()
 
     // force materialization of the RDD so we can separate I/O from compute

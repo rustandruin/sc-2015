@@ -1,13 +1,20 @@
+DIR="$(cd "`dirname "$0"`"/..; pwd)"
+NAME="sm-cx-16-0-5-1024"
 spark-submit --verbose \
-  --driver-memory 96G \
+  --driver-memory 64G \
   --conf spark.eventLog.enabled=true \
-  --conf spark.eventLog.dir=$PWD/eventlogs \
+  --conf spark.eventLog.dir=$DIR/../eventlogs \
   --conf spark.driver.maxResultSize=64g \
+  --jars $1 \
   $1 \
-  csv hdfs:///Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-smoothed-mz=437.11407-sd=0.05.mat.df \
+  df hdfs:///Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat.df \
   0 0 \
-  cx-32-4-4-orth.out \
-  32 4 4
+  /mnt/out/"$NAME".out \
+  16 0 5 1024 \
+  2>&1 | tee "$NAME".log
+
+#  df hdfs:///Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-smoothed-mz=437.11407-sd=0.05.mat.df \
+#  df hdfs:///sc-2015/Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat.df \
 
 #  genmat \
 #  hdfs:///Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat/Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat.csv \
