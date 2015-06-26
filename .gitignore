@@ -63,3 +63,6 @@ cx_spark/data/*.txt
 *.err
 *.log
 *.out
+
+# vim swap files
+.*.swp
