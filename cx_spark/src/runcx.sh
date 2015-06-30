@@ -6,6 +6,7 @@ spark-submit --verbose \
   --conf spark.eventLog.dir=$DIR/../eventlogs \
   --conf spark.driver.maxResultSize=64g \
   --jars $1 \
+  --class org.apache.spark.mllib.linalg.distributed.CX \
   $1 \
   df hdfs:///Lewis_Dalisay_Peltatum_20131115_hexandrum_1_1-masked.mat.df \
   0 0 \

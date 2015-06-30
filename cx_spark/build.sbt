@@ -17,7 +17,17 @@ submit <<= (assembly in Compile) map {
   (jarFile: File) => s"src/runcx.sh ${jarFile}" !
 }
 
-lazy val runTest = taskKey[Unit]("Submit test job")
+lazy val runTest = taskKey[Unit]("Submit test job for CX")
 runTest <<= (assembly in Compile) map {
-  (jarFile: File) => s"spark-submit --driver-memory 4G ${jarFile} test A_16K_1K.mtx B_1K_32.mtx" !
+  (jarFile: File) => s"spark-submit --driver-memory 4G --class org.apache.spark.mllib.linalg.distributed.CX ${jarFile} test A_16K_1K.mtx B_1K_32.mtx" !
+}
+
+lazy val testPCAvariants = taskKey[Unit]("Test the PCA variants")
+testPCAvariants <<= (assembly in Compile) map {
+  (jarFile: File) => s"src/run_pca_variants_test.sh ${jarFile}" !
+}
+
+lazy val submitPCAvariants = taskKey[Unit]("Submit the PCA variants job")
+submitPCAvariants <<= (assembly in Compile) map {
+  (jarFile: File) => s"src/runpcavariants.sh ${jarFile}" !
 }
