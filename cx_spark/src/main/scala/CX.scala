@@ -24,7 +24,7 @@ object CX {
   def multiplyGramianBy(mat: IndexedRowMatrix, rhs: DenseMatrix): DenseMatrix = {
     val rhsBrz = rhs.toBreeze.asInstanceOf[BDM[Double]]
     val result =
-      mat.rows.treeAggregate(BDM.zeros[Double](mat.numCols.toInt, rhs.numCols))(
+      mat.rows.treeAggregate(BDM.zeros[Double](rhs.numCols, mat.numCols.toInt))(
         seqOp = (U: BDM[Double], row: IndexedRow) => {
           val rowBrz = row.vector.toBreeze.asInstanceOf[BSV[Double]]
           val tmp: BDV[Double] = rhsBrz.t * rowBrz
@@ -34,13 +34,13 @@ object CX {
             val i = rowBrz.index(ipos)
             val ival = rowBrz.data(ipos)
             for(j <- 0 until tmp.length) {
-              U(i, j) += ival * tmp(j)
+              U(j, i) += ival * tmp(j)
             }
           }
           U
         },
         combOp = (U1, U2) => U1 += U2
-      )
+      ).t
     fromBreeze(result)
   }
 
