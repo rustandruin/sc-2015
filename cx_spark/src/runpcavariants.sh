@@ -41,5 +41,5 @@ spark-submit --verbose \
   --jars $JARNAME \
   --class org.apache.spark.mllib.linalg.distributed.PCAvariants \
   $JARNAME \
-  csv $INSOURCE $NUMROWS $NUMCOLS $OUTDEST $RANK $SLACK $NITERS $NPARTS
+  csv $INSOURCE $NUMROWS $NUMCOLS $OUTDEST $RANK $SLACK $NITERS $NPARTS \
   2>&1 | tee $LOGNAME
