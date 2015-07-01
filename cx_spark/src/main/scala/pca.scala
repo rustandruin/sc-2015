@@ -1,5 +1,3 @@
-/* TODO: be more clever w/ computing estimated Frobenius norm: do it in manageable chunks so can use 1000 test vectors w/o issues */
-
 package org.apache.spark.mllib.linalg.distributed
 
 import org.apache.spark.SparkContext
@@ -30,21 +28,6 @@ object PCAvariants {
     // FIXME: does not support strided matrices (e.g. views)
     new DenseMatrix(mat.rows, mat.cols, mat.data, mat.isTranspose)
   }
-
-  /*
-  def toRowPartitionedMatrix(mat: IndexedRowMatrix) = {
-    def densify(partition: Iterator[IndexedRow]) : Iterator[BDM[Double]] = {
-      var block : BDM[Double] = BDM.zeros[Double](partition.length, mat.numCols.toInt)
-      var currow = 0
-      while(partition.hasNext) {
-        block(currow, ::) := partition.next.vector.toBreeze.asInstanceOf[BDV[Double]].t
-        currow += 1 
-      }
-      List(block).toIterator
-    }
-    RowPartitionedMatrix.fromMatrix(mat.rows.mapPartitions(densify))
-  }
-  */
 
   def report(message: String, verbose: Boolean = false) = {
     if(verbose) {
@@ -79,25 +62,6 @@ object PCAvariants {
     omega
   }
 
-  def sampleColumns(mat: IndexedRowMatrix, numcols: Int, probs: BDV[Double]) = {
-    val rng = new java.util.Random
-    val observations = List.fill(numcols)(rng.nextDouble)
-    val colCumProbs = accumulate(probs).toArray.zipWithIndex
-    val keepIndices = observations.map( u => colCumProbs.find(_._2 >= u).getOrElse(Tuple2(mat.numCols.toInt, 1.0))._1 )
-
-    def subsampleVector(v : Vector) = {
-      v match {
-        case v: SparseVector => {
-          val indexValPairs = (v.indices zip v.values) filter (pair => keepIndices contains pair._1)
-          val (indices, values) = indexValPairs.unzip
-          new SparseVector(numcols, indices.toArray, values.toArray)
-        }
-        case _ => throw new java.lang.IllegalArgumentException("expecting a SparseVector, got something else")
-      }
-    }
-    new IndexedRowMatrix(mat.rows.map(row => IndexedRow(row.index, subsampleVector(row.vector))), mat.numRows, numcols)
-  }
-
   // Returns `(mat.transpose * mat - avg*avg.transpose) * rhs`
   def multiplyCenteredGramianBy(mat: IndexedRowMatrix, rhs: DenseMatrix, avg: BDV[Double]): DenseMatrix = {
     val rhsBrz = rhs.toBreeze.asInstanceOf[BDM[Double]]
@@ -123,7 +87,7 @@ object PCAvariants {
     fromBreeze(1.0/mat.numRows * result - avg * tmp.t)
   }
 
-  /* get low-rank approximation to the input matrix using randomized PCA
+  /* get low-rank approximation to the covariance matrix for input using randomized PCA
    * algorithm. The rows of mat are the observations, 
    */
   def computeRPCA(mat: IndexedRowMatrix, rank: Int, slack: Int, numIters: Int,
@@ -211,6 +175,23 @@ object PCAvariants {
       }
   }
 
+  def dumpMat(outf: DataOutputStream, mat: BDM[Double]) = {
+    outf.writeInt(mat.rows)
+    outf.writeInt(mat.cols)
+    for(i <- 0 until mat.rows) {
+      for(j <- 0 until mat.cols) {
+        outf.writeDouble(mat(i,j))
+      }
+    }
+  }
+
+  def dumpV(outf: DataOutputStream, v: BDV[Double]) = {
+    outf.writeInt(v.length) 
+    for(i <- 0 until v.length) {
+      outf.writeDouble(v(i))
+    }
+  }
+
   def appMain(sc: SparkContext, args: Array[String]) = {
     if(args.length < 8) {
       Console.err.println("Expected args: [csv|idxrow|df] inpath nrows ncols outpath rank slack niters [nparts]")
@@ -262,8 +243,8 @@ object PCAvariants {
     report("Done forming X", true)
 
     //do the PCA
-    val tol = 1e-10
-    val maxIter = 10 // was 300, but it actually used this many iterations, too much time
+    val tol = 1e-10 // using same value as in MLLib
+    val maxIter = 30 // was 300, but it actually used this many iterations, too much time
     val covOperator = ( v: BDV[Double] ) =>  multiplyCenteredGramianBy(mat, fromBreeze(v.toDenseMatrix).transpose, mean).toBreeze.asInstanceOf[BDM[Double]].toDenseVector
     report("Using ARPACK to form the EVD of the covariance operator", true)
     val (lambda2, u2) = EigenValueDecomposition.symmetricEigs(covOperator, mat.numCols.toInt, rank, tol, maxIter)
@@ -272,25 +253,46 @@ object PCAvariants {
     val pcaEvecs = u2
 
     // estimate the relative Frobenius norm reconstruction errors
+    // to save memory, generate the product with the random matrix and calculate its Frobenius norm in blocks of columns
+    report("Computing the Frobenius norm relative errors", true)
+
+    var estFrobNorm : Double = 0.0
+    var rpcaEstFrobNormErr : Double = 0.0
+    var pcaEstFrobNormErr : Double = 0.0
+    var cxEstFrobNormErr : Double = 0.0
+
     val rng = new java.util.Random
-    val numSamps = 100 // 1000 samples seem to cause an out of memory error at the treeAggregate call from two lines below, why? this is only 4*1000*132000/(1024^3) ~ .5G
-    val omega = DenseMatrix.randn(mat.numCols.toInt, numSamps, rng).toBreeze.asInstanceOf[BDM[Double]]
-    report("Forming the matrix-matrix product to estimate the Frobenius norm of the covariance matrix", true)
-    var m = multiplyCenteredGramianBy(mat, fromBreeze(omega), mean).toBreeze.asInstanceOf[BDM[Double]] 
-    report("Done forming the matrix-matrix product", true)
-    val estFrobNorm = sqrt(1.0/numSamps * sum(m :* m))
+    val numSamps = 1000 // 1000 samples at once seem to cause an out of memory error at the treeAggregate call from two lines below, why? this is only 4*1000*132000/(1024^3) ~ .5G
+    val chunkSize = 100
+    var omegaPartial = DenseMatrix.zeros(mat.numCols.toInt, chunkSize)
+    var matrixProdPartial = BDM.zeros[Double](mat.numCols.toInt, chunkSize)
+    var diffPartial = BDM.zeros[Double](mat.numCols.toInt, chunkSize)
 
-    // estimate Frobenius norm approximation errors
-    report("Computing the Frobenius norm errors locally", true)
-    var diff = m - rpcaEvecs*(diag(rpcaEvals)*rpcaEvecs.t*omega)
-    val rpcaEstFrobNormErr = sqrt(1.0/numSamps * sum(diff :* diff))
-    diff = m - pcaEvecs*(diag(pcaEvals)*pcaEvecs.t*omega)
-    val pcaEstFrobNormErr = sqrt(1.0/numSamps * sum(diff :* diff))
-    diff = m - colsMat * (xMat * omega)
-//    diff = m - cxQ * (multiplyCenteredGramianBy(mat, fromBreeze(cxQ), mean).toBreeze.asInstanceOf[BDM[Double]].t * omega)
-    val cxEstFrobNormErr = sqrt(1.0/numSamps * sum(diff :* diff))
+    for( i <- 1 to numSamps/chunkSize) {
+      omegaPartial = DenseMatrix.randn(mat.numCols.toInt, numSamps, rng)
+
+      // accumulate the Frobenius norm estimate for the covariance matrix
+      matrixProdPartial = multiplyCenteredGramianBy(mat, omegaPartial, mean).toBreeze.asInstanceOf[BDM[Double]]
+      estFrobNorm = estFrobNorm + 1/numSamps.toDouble * sum(matrixProdPartial :* matrixProdPartial) 
+
+      // accumulate the RPCA Frobenius norm error estimate
+      diffPartial = matrixProdPartial - rpcaEvecs*(diag(rpcaEvals)*rpcaEvecs.t*omegaPartial.toBreeze.asInstanceOf[BDM[Double]])
+      rpcaEstFrobNormErr = rpcaEstFrobNormErr + 1/numSamps.toDouble * sum(diffPartial :* diffPartial)
+
+      // accumulate the PCA Frobenius norm error estimate
+      diffPartial = matrixProdPartial - pcaEvecs*(diag(pcaEvals)*pcaEvecs.t*omegaPartial.toBreeze.asInstanceOf[BDM[Double]])
+      pcaEstFrobNormErr = pcaEstFrobNormErr + 1/numSamps.toDouble * sum(diffPartial :* diffPartial)
+
+      //accumulate the CX Frobenius norm error estimate
+      diffPartial = matrixProdPartial - colsMat * (xMat * omegaPartial.toBreeze.asInstanceOf[BDM[Double]])
+      cxEstFrobNormErr = cxEstFrobNormErr + 1/numSamps.toDouble * sum(diffPartial :* diffPartial)
+    }
+    estFrobNorm = sqrt(estFrobNorm)
+    rpcaEstFrobNormErr = sqrt(rpcaEstFrobNormErr)
+    pcaEstFrobNormErr = sqrt(pcaEstFrobNormErr)
+    cxEstFrobNormErr = sqrt(cxEstFrobNormErr)
+
     report("Done computing the Frobenius norm errors", true)
-
     report(f"RPCA estimated relative frobenius norm err ${rpcaEstFrobNormErr/estFrobNorm}", true)
     report(f"PCA estimated relative frobenius norm err ${pcaEstFrobNormErr/estFrobNorm}", true)
     report(f"CX estimated relative frobenius norm err ${cxEstFrobNormErr/estFrobNorm}", true)
@@ -316,65 +318,6 @@ object PCAvariants {
     dumpMat(outf, colsMat)
     dumpMat(outf, xMat)
     outf.close()
-  }
-
-  def dumpMat(outf: DataOutputStream, mat: BDM[Double]) = {
-    outf.writeInt(mat.rows)
-    outf.writeInt(mat.cols)
-    for(i <- 0 until mat.rows) {
-      for(j <- 0 until mat.cols) {
-        outf.writeDouble(mat(i,j))
-      }
-    }
-  }
-
-  def dumpV(outf: DataOutputStream, v: BDV[Double]) = {
-    outf.writeInt(v.length) 
-    for(i <- 0 until v.length) {
-      outf.writeDouble(v(i))
-    }
-  }
-
-  def loadMatrixA(sc: SparkContext, fn: String) = {
-    val input = scala.io.Source.fromFile(fn).getLines()
-    require(input.next() == "%%MatrixMarket matrix coordinate real general")
-    val dims = input.next().split(' ').map(_.toInt)
-    val seen = BDM.zeros[Int](dims(0), dims(1))
-    val entries = input.map(line => {
-      val toks = line.split(" ")
-      val i = toks(0).toInt - 1
-      val j = toks(1).toInt - 1
-      val v = toks(2).toDouble
-      require(toks.length == 3)
-      new MatrixEntry(i, j, v)
-    }).toSeq
-    require(entries.length == dims(2))
-    new CoordinateMatrix(sc.parallelize(entries, 1), dims(0), dims(1)).toIndexedRowMatrix
-  }
-
-  def writeMatrix(mat: DenseMatrix, fn: String) = {
-    val writer = new java.io.FileWriter(new java.io.File(fn))
-    writer.write("%%MatrixMarket matrix coordinate real general\n")
-    writer.write(s"${mat.numRows} ${mat.numCols} ${mat.numRows*mat.numCols}\n")
-    for(i <- 0 until mat.numRows) {
-      for(j <- 0 until mat.numCols) {
-        writer.write(f"${i+1} ${j+1} ${mat(i, j)}%f\n")
-      }
-    }
-    writer.close
-  }
-
-  def testEVD(sc: SparkContext) = {
-    val tol = 1e-10
-    val maxIter = 300
-    val rank = 10
-    var testmat = DenseMatrix.ones(50,50).toBreeze.asInstanceOf[BDM[Double]]
-    testmat *= testmat.t
-
-    def covOperator(v : BDV[Double]) :BDV[Double] = { testmat*v }
-    val (lambda2, u2) = EigenValueDecomposition.symmetricEigs(covOperator, 50, rank, tol, maxIter)
-
-    println(lambda2)
   }
 
   def main(args: Array[String]) {
