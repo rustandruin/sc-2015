@@ -48,7 +48,7 @@ object PCAvariants {
 
   def report(message: String, verbose: Boolean = false) = {
     if(verbose) {
-      println(message)
+      println("STATUS REPORT: " + message)
     }
   }
 

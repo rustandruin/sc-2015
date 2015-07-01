@@ -1,5 +1,4 @@
 #!/bin/env bash
-# NB: use yum install expect to install unbuffer before using
 #
 # Runs the PCA variants:
 # - CX on uncentered data
@@ -32,7 +31,6 @@ LOGNAME="$JOBNAME.log"
 
 [ -e $OUTDEST ] && (echo "Job already run successfully, stopping"; exit 1)
 
-unbuffer \
 spark-submit --verbose \
   --driver-memory 64G \
   --conf spark.eventLog.enabled=true \
