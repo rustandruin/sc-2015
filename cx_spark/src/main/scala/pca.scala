@@ -1,3 +1,5 @@
+/* TODO: be more clever w/ computing estimated Frobenius norm: do it in manageable chunks so can use 1000 test vectors w/o issues */
+
 package org.apache.spark.mllib.linalg.distributed
 
 import org.apache.spark.SparkContext
@@ -155,10 +157,16 @@ object PCAvariants {
     // so d is in the reverse of the usual mathematical order
     val eigSym.EigSym(lambdatilde, utilde) = eigSym(B)
     report("done performing EVD", verbose)
-    val lambda = lambdatilde(k-1 until k-1-rank by -1)
-    val U = (Q*utilde).apply(::, k-1 until k-1-rank by -1).copy
 
-    (lambda, U, rowavg)
+    if (k > rank) {
+      val lambda = lambdatilde(k-1 until k-1-rank by -1)
+      val U = (Q*utilde).apply(::, k-1 until k-1-rank by -1).copy
+      (lambda, U, rowavg)
+    } else {
+      val lambda = lambdatilde((0 until k).reverse)
+      val U = (Q*utilde).apply(::, (0 until k).reverse).copy
+      (lambda, U, rowavg)
+     }
   }
 
   def loadMSIData(sc: SparkContext, matkind: String, shape: Tuple2[Int, Int], inpath: String, nparts: Int = 0) = {
@@ -239,28 +247,41 @@ object PCAvariants {
 
     //compute the CX (on centered data, this just uses the evecs from RPCA)
     val levProbs = sum(rpcaEvecs :^ 2.0, Axis._1) / rank.toDouble
+    report("Sampling the identity matrix according to leverage scores", true)
     val sampleMat = sampledIdentityColumns(mat.numCols.toInt, rank, levProbs)
+    report("Done sampling", true)
+    report("Sampling the covariance matrix columns", true)
     val colsMat = multiplyCenteredGramianBy(mat, fromBreeze(sampleMat), mean).toBreeze.asInstanceOf[BDM[Double]]
+    report("Done sampling columns", true)
+    report("Taking the QR of the columns", true)
     val qr.QR(q, r) = qr.reduced(colsMat)
+    report("Done with QR", true)
     val cxQ = q
+    report("Getting X in CX decomposition", true)
     val xMat = r \ multiplyCenteredGramianBy(mat, fromBreeze(cxQ), mean).toBreeze.asInstanceOf[BDM[Double]].t 
+    report("Done forming X", true)
 
     //do the PCA
     val tol = 1e-10
-    val maxIter = 300
+    val maxIter = 10 // was 300, but it actually used this many iterations, too much time
     val covOperator = ( v: BDV[Double] ) =>  multiplyCenteredGramianBy(mat, fromBreeze(v.toDenseMatrix).transpose, mean).toBreeze.asInstanceOf[BDM[Double]].toDenseVector
+    report("Using ARPACK to form the EVD of the covariance operator", true)
     val (lambda2, u2) = EigenValueDecomposition.symmetricEigs(covOperator, mat.numCols.toInt, rank, tol, maxIter)
+    report("Done with EVD of covariance operator", true)
     val pcaEvals = lambda2
     val pcaEvecs = u2
 
     // estimate the relative Frobenius norm reconstruction errors
     val rng = new java.util.Random
-    val numSamps = 1000
+    val numSamps = 100 // 1000 samples seem to cause an out of memory error at the treeAggregate call from two lines below, why? this is only 4*1000*132000/(1024^3) ~ .5G
     val omega = DenseMatrix.randn(mat.numCols.toInt, numSamps, rng).toBreeze.asInstanceOf[BDM[Double]]
+    report("Forming the matrix-matrix product to estimate the Frobenius norm of the covariance matrix", true)
     var m = multiplyCenteredGramianBy(mat, fromBreeze(omega), mean).toBreeze.asInstanceOf[BDM[Double]] 
+    report("Done forming the matrix-matrix product", true)
     val estFrobNorm = sqrt(1.0/numSamps * sum(m :* m))
 
     // estimate Frobenius norm approximation errors
+    report("Computing the Frobenius norm errors locally", true)
     var diff = m - rpcaEvecs*(diag(rpcaEvals)*rpcaEvecs.t*omega)
     val rpcaEstFrobNormErr = sqrt(1.0/numSamps * sum(diff :* diff))
     diff = m - pcaEvecs*(diag(pcaEvals)*pcaEvecs.t*omega)
@@ -268,14 +289,15 @@ object PCAvariants {
     diff = m - colsMat * (xMat * omega)
 //    diff = m - cxQ * (multiplyCenteredGramianBy(mat, fromBreeze(cxQ), mean).toBreeze.asInstanceOf[BDM[Double]].t * omega)
     val cxEstFrobNormErr = sqrt(1.0/numSamps * sum(diff :* diff))
+    report("Done computing the Frobenius norm errors", true)
 
-    println(f"RPCA estimated relative frobenius norm err ${rpcaEstFrobNormErr/estFrobNorm}")
-    println(f"PCA estimated relative frobenius norm err ${pcaEstFrobNormErr/estFrobNorm}")
-    println(f"CX estimated relative frobenius norm err ${cxEstFrobNormErr/estFrobNorm}")
-//    println(f"CX uncentered relative frobenius norm err ${cxEstUncenteredFrobNormErr/estUncenteredFrobNorm}")
+    report(f"RPCA estimated relative frobenius norm err ${rpcaEstFrobNormErr/estFrobNorm}", true)
+    report(f"PCA estimated relative frobenius norm err ${pcaEstFrobNormErr/estFrobNorm}", true)
+    report(f"CX estimated relative frobenius norm err ${cxEstFrobNormErr/estFrobNorm}", true)
     
     // write output 
     val outf = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(new File(outpath))))
+    report("Writing parameters and decompositions to file", true)
     outf.writeInt(shape._1)
     outf.writeInt(shape._2)
     outf.writeInt(rank)
@@ -356,7 +378,7 @@ object PCAvariants {
   }
 
   def main(args: Array[String]) {
-    val conf = new SparkConf().setAppName("testEVD")
+    val conf = new SparkConf().setAppName("pcavariants")
     conf.set("spark.task.maxFailures", "1")
     val sc = new SparkContext(conf)
 

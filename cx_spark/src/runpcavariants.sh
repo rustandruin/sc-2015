@@ -1,3 +1,6 @@
+#!/bin/env bash
+# NB: use yum install expect to install unbuffer before using
+#
 # Runs the PCA variants:
 # - CX on uncentered data
 # - CX, RPCA, PCA on centered data
@@ -10,6 +13,7 @@
 
 DIR="$(cd "`dirname "$0"`"/..; pwd)"
 LOGDIR="$DIR/../eventlogs"
+DATADIR="$DIR/data"
 JARNAME=$1
 
 INSOURCE=hdfs:///Lewis_Dalisay_Peltatum_100G
@@ -23,11 +27,12 @@ NITERS=5
 NPARTS="" #default, 960, 1920
 
 JOBNAME="pcavariants-$NUMROWS-$NUMCOLS-$RANK-$SLACK-$NITERS-$NPARTS"
-OUTDEST="$JOBNAME.bin"
+OUTDEST="$DATADIR/$JOBNAME.bin"
 LOGNAME="$JOBNAME.log"
 
-[-e $OUTDEST] && (echo "Job already run, stopping"; exit 1)
+[ -e $OUTDEST ] && (echo "Job already run successfully, stopping"; exit 1)
 
+unbuffer \
 spark-submit --verbose \
   --driver-memory 64G \
   --conf spark.eventLog.enabled=true \
