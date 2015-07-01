@@ -1,6 +1,6 @@
 # This sets up YARN so you can pull from S3 to HDFS on a Hadoop 2.0.0 cluster launched by spark-ec2. It might be irrelevant soon, or already is on some instance types. Check for the yarn-site.xml in ephemeral-hdfs/conf directory: if it exists, then don't run this file
 
-# before running, ensure that you've exported AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY_ID in the environment
+# before running, ensure that you've exported AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in the environment
 import os
 import boto.utils
 import boto.ec2
@@ -41,10 +41,10 @@ _mapred_site_template="""
 """
 
 _configuration_sync_commands="""
-export HADOOP_HOME=/root/ephemeral-hdfs
+export HADOOP_HOME=/root/ephemeral-hdfs;
 for HOST in `cat $HADOOP_HOME/conf/slaves`
   do
-    echo "scp -r $HADOOP_HOME/conf $HOST:$HADOOP_HOME"
+    scp -rBv $HADOOP_HOME/conf $HOST:$HADOOP_HOME
   done
 """
 
@@ -92,8 +92,7 @@ def _open_ports():
   master_group = [g for g in conn.get_all_security_groups() if g.name==master_group_name][0]
   slave_group = [g for g in conn.get_all_security_groups() if g.name==slave_group_name][0]
 
-  # might need to add port 9000
-  for portnum in [8025,8030,8040]:
+  for portnum in [9000,8025,8030,8040]:
     master_group.authorize(src_group=slave_group, ip_protocol='tcp', from_port=portnum, to_port=portnum, cidr_ip='0.0.0.0/0')
 
 def _pulls3data():
