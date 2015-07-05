@@ -33,7 +33,7 @@
 \vspace*{0.1in} 
 {\bf{{ {Optimizing $A^TAB$:}}}}
     Optimizing sparse matrix-matrix  multiplication continues to be an
-    active area of research~\cite{patwary15,ballard}, with focus on
+    active area of research~\cite{ballard13,patwary15}, with focus on
     reducing communication, and the state of the art implementations
     are bound by the memory bandwidth and heavily
     underutilize the compute resources. 
@@ -92,7 +92,7 @@
 %%
      On modern computing platforms, SIMD width (number of simultaneous
      operations that can be performed) is
-     growing~\cite{intel1?,intel2}. SSE can perform 4
+     growing~\cite{intel1,intel2}. SSE can perform 4
      single-precision floating point operations in a single op., while
      AVX (our SPARK platform) performs 8 ops. Let $\mathcal{S}$ denote the SIMD width
      (defined as number of double-precision floating point ops. per op
@@ -102,14 +102,14 @@
      compiler version.} for computing $C_{\it{i}}$ ($\forall$ $A_{{\it{i}},{\it{j}}}$ $\neq$ 0)
      \vspace*{0.05in}
 
-     \hspace*{-0.13in}xmm\_a = {\it{vec\_load\_and\_splat}}($A_{{\it{i}},{\it{j}}}$); \\
+     \hspace*{-0.0in}xmm\_a = {\it{vec\_load\_and\_splat}}($A_{{\it{i}},{\it{j}}}$); \\
      for\hspace*{0.02in}({\it{z}} = 0; {\it{z}} $<$ {\it{k}}; {\it{z}} += $\mathcal{S}$)\\
      \{\\
          \hspace*{0.2in}xmm\_c = {\it{vec\_load}}  ($C_{{\it{j}}}$ + z); \\
          \hspace*{0.2in}xmm\_b = {\it{vec\_load}}  ($B_{{\it{j}}}$ + z); \\
          \hspace*{0.2in}xmm\_ab = {\it{vec\_mul}}  (xmm\_a, xmm\_b); \\
          \hspace*{0.2in}xmm\_c = {\it{vec\_add}}  (xmm\_ab, xmm\_c); \\
-         \hspace*{0.2in}i{\it{vec\_store}} (xmm\_C,  $C_{{\it{j}}}$ + z); \\
+         \hspace*{0.2in}{\it{vec\_store}} (xmm\_C,  $C_{{\it{j}}}$ + z); \\
      \}\\
 
      As evident from the self explanatory code, for each
