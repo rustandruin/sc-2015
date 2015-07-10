@@ -34,16 +34,16 @@ Importantly, for any target rank $k$, the best rank-$k$ approximation is given b
   \end{equation}
 where $U_k$ and $V_k$ contain the top $k$ singular vectors, i.e., the first $k$ columns of $U$ and $V$, respectively, and $\Sigma_k$ is a diagonal matrix containing the top-$k$ singular values.
 
-Principle component analysis (PCA) and SVD are closely related.
-PCA aims at converting the original features into a set of linearly uncorrelated variables called {\it principle components}.
-To be more specific, the first principle component is defined as the direction along with the highest variance possible among the data points is attained, and each succeeding component in turn has the largest variance possible subject to the constraint that it is orthogonal to the preceding components.
-Usually the number of principle components is far less than the number of original features. Thus the goal of dimension reduction is achieved.
+Principal component analysis (PCA) and SVD are closely related.
+PCA aims at converting the original features into a set of linearly uncorrelated variables called {\it principal components}.
+To be more specific, the first principal component is defined as the direction along with the highest variance possible among the data points is attained, and each succeeding component in turn has the largest variance possible subject to the constraint that it is orthogonal to the preceding components.
+Usually the number of principal components is far less than the number of original features. Thus the goal of dimension reduction is achieved.
 
-When the columns of matrix $A$ have been centered and have unit variance, the top principle components are given by the truncated SVD.
+When the columns of matrix $A$ have been centered and have unit variance, the top principal components are given by the truncated SVD.
 XXX: MORE DETAILS.
 
 \subsection{CX}
-As pointed out above, principle components are linear combinations of the original features, which are less interpretable. A natural question arises: can we reconstruct the matrix using only a few columns?
+As pointed out above, principal components are linear combinations of the original features, which are less interpretable. A natural question arises: can we reconstruct the matrix using only a few columns?
 
 Given an $m \times n$ matrix $A$, the CX decomposition factorizes $A$ into two matrices $C$ and $X$, where $C$ is an $m\times c$ matrix that consists of $c$ actual columns
 of $A$, and $X$ is a $c \times n$ matrix such that $A\approx CX$.
