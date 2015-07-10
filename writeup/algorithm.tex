@@ -1,5 +1,116 @@
 \section{CX Algorithm}
 \textit{Owners: Jiyan, Michael Mahoney (1 page)}
+
+\subsection{Low-rank matrix factorization}
+Matrix factorization is an important topic in linear algebra and numerical analysis.
+It finds use in a variety of scientific fields, such as signal processing, pattern recognition (REFERENCE).
+In particular, the data matrix $A$ is close to a matrix of low rank and a low-rank factorization is of great interest.
+Typically, we seek to find two or more smaller matrices such that their product approximates the original matrix well.
+That is,
+\begin{equation}
+    A \approx B \times C.
+\end{equation}
+
+Such a low-rank matrix factorization has the following advantages.
+\begin{compactitem}
+\item
+In modern applications, datasets containing e stupendously many features arise. As many classical algorithms are not well adapted to solving large-scale problems, dimension reduction is necessary.
+\item
+The results are more interpretable.
+For example, in imaging analysis, the original images can be reconstructed using linear combination of basis images.
+\item
+Smaller matrices can be stored more efficiently.
+\end{compactitem}
+
+\subsection{SVD and PCA}
+The singular value decomposition (SVD) is the factorization of matrix $A$ into the product of three matrices $U\Sigma V^T$ where $U$ and $V$ have orthonormal columns and $D$ is a diagonal matrix with positive real entries. The columns of $U$ and $V$ are called left and right singular vectors and the diagonal entries of $D$ are called singular values. For notation convenience, we assume the singular values are sorted such that $\sigma_1\geq \cdots \geq \sigma_r\geq 0$, and
+this means that the columns of $U$ and $V$ are sorted by the order given by the singular values.
+
+%if optimality criterion to choose is the square loss ($\ell_2$ loss)
+
+Importantly, for any target rank $k$, the best rank-$k$ approximation is given by the truncated SVD. That is,
+  \begin{equation}
+     A_k = U_k \Sigma_k V_k^T = \arg\min_{rank(B) = k} \|A - B\|_F^2,
+  \end{equation}
+where $U_k$ and $V_k$ contain the top $k$ singular vectors, i.e., the first $k$ columns of $U$ and $V$, respectively, and $\Sigma_k$ is a diagonal matrix containing the top-$k$ singular values.
+
+Principle component analysis (PCA) and SVD are closely related.
+PCA aims at converting the original features into a set of linearly uncorrelated variables called {\it principle components}.
+To be more specific, the first principle component is defined as the direction along with the highest variance possible among the data points is attained, and each succeeding component in turn has the largest variance possible subject to the constraint that it is orthogonal to the preceding components.
+Usually the number of principle components is far less than the number of original features. Thus the goal of dimension reduction is achieved.
+
+When the columns of matrix $A$ have been centered and have unit variance, the top principle components are given by the truncated SVD.
+XXX: MORE DETAILS.
+
+\subsection{CX}
+As pointed out above, principle components are linear combinations of the original features, which are less interpretable. A natural question arises: can we reconstruct the matrix using only a few columns?
+
+Given an $m \times n$ matrix $A$, the CX decomposition factorizes $A$ into two matrices $C$ and $X$, where $C$ is an $m\times c$ matrix that consists of $c$ actual columns
+of $A$, and $X$ is a $c \times n$ matrix such that $A\approx CX$.
+%That is, linear combinations of the columns of $C$ can recover most of the ``information'' of the matrix $A$.
+%A quantitative measurement of the closeness between $CX$ and $A$ is obtained by using the matrix Frobenius norm of the difference:
+Formally, we seek matrices $C$ and $X$ such that the residual error $\|A-CX\|_F$ is small.
+
+The construction of $C$ follows the following two steps. First, compute (either exactly or approximately) the {\it statistical leverage scores} of the columns of $A$;
+and second, use those scores to select $c$ columns from $A$.
+Once the matrix $C$ is determined, the optimal matrix $X$ that minimizes $\|A-CX\|_F$ can be computed by a least-squares approximation as $X=C^\dagger A$.
+In the following, we give some intuition on the sampling distribution, i.e., normalized leverage scores, we use.
+
+Given an $m \times n$ matrix $A$ and a target rank parameter $k\geq0$, for $j=1,\ldots,n$, the $j$-th leverage score can be defined as
+\begin{equation}
+ \label{eq:lev}
+  \ell_j = \sum_{i=1}^k v_{ji}^2.
+\end{equation}
+These scores $\{\ell_j\}_{i=1}^{n}$ can be interpreted as how much ``leverage'' or ``influence'' the $j$-th column of $A$ exerts on the best rank-$k$ approximation to $A$~\cite{MD09}. 
+As mentioned abvoe, $A_k = \sum_{i=1}^k \sigma_i u_i v_i^T$ gives the best rank-$k$ approximation to $A$.
+In fact, $A_k$ can be viewed as the projection of $A$ onto the top-$k$ \emph{left} singular space spanned by the columns of $\begin{pmatrix} u_1 & \cdots & u_k \end{pmatrix}$.
+Since multiplying each column by the corresponding singular value does not alter the subspace, we can view
+$\begin{pmatrix} \sigma_1 u_1 & \cdots & \sigma_k u_k \end{pmatrix}$ as a basis for this space.  Then, for each column of $A$, we have that
+  $$  a_j = \sum_{i=1}^r (\sigma_i u_i) v_{ji} \approx \sum_{i=1}^k (\sigma_i u_i) v_{ji}.  $$
+That is, the $j$-th column of $A$ can be expressed as a linear combination of the basis of the top-$k$ left singular space with $v_{ji}$ as the coefficients.
+On the other hand, the scores $\{\ell_j\}_{j=1}^{n}$ equal the diagonal elements of the projection matrix onto the top-$k$ \emph{right} singular subspace spanned by $\begin{pmatrix} v_1 & \cdots & v_k \end{pmatrix}$, and thus these statistical leverage scores are a generalization of the diagonal elements of the ``hat matrix'' in regression diagnostics~\cite{MD09}.
+For $j=1,\ldots,n$, if we define the {\it normalized leverage scores} as
+\begin{equation}
+\label{eq:nlev}
+  p_j = \frac{\ell_j}{\sum_{i=1}^n \ell_i},
+\end{equation}      
+and choose columns from $A$ according to those normalized leverage scores, then
+the selected columns are able to reconstruct the matrix $A$ nearly as well as $A_k$ does.
+
+To compute the normalized leverage scores exactly, i.e., using \eqref{eq:lev} and \eqref{eq:nlev}, one needs to compute the full SVD.  This takes $O(mn\cdot\min(m,n))$ time, which becomes inapplicable when dealing with datasets of even moderately-large size. 
+Faster algorithms for approximating leverage scores are available in \cite{DMMW12}.  
+%These algorithms compute high-quality approximations to the normalized leverage scores of the input matrix, and the running time of these algorithms depends on the time to apply a random projection to the input matrix, which is much faster than computing the full (or even a truncated) SVD.
+
+
+
+Finally, our main algorithm {\sc CX Decomposition} is the following.  It takes as input an $m \times n$ matrix $A$, a rank parameter $k$, and desired number of columns $c$ as inputs.
+
+ \begin{algorithm}[tb]
+ \caption{{\sc ColSelect} Algorithm}
+  \label{alg:cs}
+  \begin{algorithmic}[1]
+    \Require $A \in \reals^{n\times d}$, rank parameter $k \leq \textrm{rank}(A)$ and $r\leq d$.
+
+    \Ensure $C$.
+    
+    %\Function{ColSelect}{$A,k,r$}
+
+    \State Compute the SVD of $A$, \emph{i.e.}, $A = U \Sigma V^T$.
+
+    \State Let $\ell_i = \| V_{k,(i)}\|_2$, where $V_k$ consists of the top-$k$ right singular vectors of $A$, for $i = 1, \ldots, d$. 
+    
+    \State Define $p_i = \ell_i / \sum_{j=1}^d$ for $i=1,\ldots,d$.
+    
+    \State Sample $c$ columns based on $\{p_i\}_{i=1}^d$.
+
+    %\State \Return The indices with the top $r$ $\ell_i$s.
+    
+    %\EndFunction
+
+    \end{algorithmic}
+\end{algorithm}
+
+
 \begin{itemize}
 
   \item Chat about matrix factorization, PCA, RPCA, CX 
