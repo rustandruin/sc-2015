@@ -13,16 +13,25 @@
 
   \item One graph showing the following:
   \begin{itemize}
-    \item EC2, Edison and Athena times
+    \item EC2, XC40 and experimental Cray cluster times
     \item 100GB and 1TB sized dataset
     \item stacked plot corresponding to all 4 phases
+    \begin{itemize}
+      \item Load Matrix Metadata
+      \item Load Matrix
+      \item Iterations
+      \item Postprocessing/Collect
+    
     \begin{figure} [h]
     \begin{centering}
     \includegraphics[scale=0.4]{images/CX_Size_Scaling_Rank_16_Partitions_default.eps}
     \end{centering}
-    \caption{ Run times for the various stages of computation for CX for two different dataset sizes for the three platforms using rank 32 and default partitioning for the given platform} 
+    \caption{ Run times for the various stages of computation for CX for two different dataset sizes for the three platforms using rank 16 and default partitioning for the given platform} 
     \end{figure}
-   
+    \item XC40 is Cray XC40
+    \item EC2 is Amazon EC2 r.large?
+    \item EXP\_CC is an Experimental Cray Cluster
+    \end{itemize}
   \end{itemize}
  \item Comparison of CX, PCA, RPCA quantitatively (Alex will work on this)? 
   \begin{itemize}
