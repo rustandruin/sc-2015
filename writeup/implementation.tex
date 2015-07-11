@@ -2,7 +2,45 @@
 
 \newpage
 \section{Parallel Implementation}
-\textit{Owners: Jatin, Jey}
+
+
+\begin{algorithm}[tb]
+ \caption{{\sc RandomizedSVD} Algorithm}
+  \label{alg:rsvd}
+  \begin{algorithmic}[1]
+    % TODO: clarify that $A$ is a distributed matrix?
+    \Require $A \in \reals^{n\times d}$, rank parameter $k$, slack parameter $\ell$, and $k+\ell \leq \textrm{rank}(A)$.
+
+    % TODO: domain of each result
+    \Ensure $U, \Sigma, V$.
+
+    \State Initialize $B \in \reals^{d\times r}$ by sampling $B_{ij} \sim \mathcal{N}(0, 1)$.
+
+    \For{$q$ times}
+        \State $B \gets \Call{ApplyGramian}{A, B}$ \Comment{Parallel.}
+        % TODO: we only keep Q and discard R
+        \State $B \gets \Call{ThinQR}{B}$
+    \EndFor
+
+    \State Let $C = \Call{DistMultiply}{A, B^T}$. \Comment{Parallel.}
+
+    % TODO: explain this reversal or transpose C instead
+    \State Compute $U \Sigma \tilde V^T = \Call{ThinSVD}{C^T}$.
+
+    \State Let $V = \tilde V Q^T$.
+
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[tb]
+  \caption{{\sc ApplyGramian} Algorithm}
+  \label{alg:gram}
+  \begin{algorithmic}[1]
+    \Require Distributed matrix $A$, Local matrix $B$.
+    \Ensure $X = A^T A B$.
+    \State Compute $A^T A B$ in parallel. (TODO)
+  \end{algorithmic}
+\end{algorithm}
 
 %%%%%%%\begin{itemize}
 \subsection {Platform Used (SPARK) (explain it) }
