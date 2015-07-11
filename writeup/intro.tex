@@ -15,3 +15,28 @@
 \item Architecture trend... Increasing SIMD width, number of cores, etc. Memory bandwidth not increasing at the same rate. Imp. to devise algorithms that block for caches and thereby compute vs bandwidth bound <Jatin, Mike R.>
     
 \end{itemize}
+
+Matrices arise in many applications, e.g., SNPs, astro, mass spec.
+In many of these applications, a prototypical analysis technique is to perform PCA, i.e., get the leading eigenvectors or singular vectors of the data matrix and use the requiring low-rank space to do exploratory data analysis, perform clustering, classification, etc.
+While performing thei type of analysis is popular on smaller data, it presents challenges for very large-scale data.  
+Existing linear algebra code (e.g., LAPACK) is primarily develiped for single machines, and to do subspace iteration, Lanczos methods, etc. is involved in terms of linear algebra and commpunication.  
+While there are HPC implementations these are often specialized and require control over processors and communication.
+
+In particular, they do not mesh well with much of the work that has been popular recently in large scale data analysis.
+For example, MapReduce/Hadoop does such and such reading and writing at every step and thus iterative algorithms are prohibitive. 
+Apache SPark solves some of these problems by maintiaing some additional state, but even there systems are not designed for nontrivial matrix algorithms.
+LA methods that ahve been applied are typically PageRank, which are basically trivial from an LA perspective.
+
+In this paper, we report the result of several ralted low-rank matrix approximation algorithms in Spark in distributed data center as well as HPC systems.  
+In odeer to scale, we use algorithms from RLA.
+These algorithms do random projections and random sampling and they are of interest more generally.
+We evaluate their performance in Spark in two different tyeps of systems for a particular (and common for scientific analytics but uncommon for internet analytics) use case.
+
+Recent work in Randomized Linear Algebra (RLA) has focused on using randomization, e.g., random projection and random sampling methods, to perform scalable linear albegra computations~\cite{Mah-mat-rev_BOOK}.
+In addition to doing PCA/SVD/LS at scale, work in LRA has focused on so-called CX/CUR decompositions~\cite{DMM08_CURtheory_JRNL,CUR_PNAS}; these are low-rank matrix decompositions that are expressed in terms of a small number of columns/rows, i.e, actual data elements, and not a small number of eigencolumns/eigenrows.
+As such, they have found applicability in many scientific applications where coupling analytical techniques with domain knowleges is at a premium, including genetics~\cite{Paschou07b}, astronomy~\cite{Yip14-AJ}, and mass spectrometry imaging~\cite{YRPMB15}.
+
+Here is the Halko review~\cite{HMT09_SIREV}; and here is a review on implementing randomized matrix algorithms in parallel and distributed environments~\cite{YMM15_TR}.
+
+
+
