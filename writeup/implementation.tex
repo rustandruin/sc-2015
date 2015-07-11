@@ -14,20 +14,20 @@
     % TODO: domain of each result
     \Ensure $U, \Sigma, V$.
 
-    \State Initialize $B \in \reals^{d\times r}$ by sampling $B_{ij} \sim \mathcal{N}(0, 1)$.
+    \State Initialize $Q \in \reals^{d\times r}$ by sampling $Q_{ij} \sim \mathcal{N}(0, 1)$.
 
     \For{$q$ times}
-        \State $B \gets \Call{ApplyGramian}{A, B}$ \Comment{Parallel.}
+        \State $Q \gets \Call{ApplyGramian}{A, Q}$ \Comment{Parallel}
         % TODO: we only keep Q and discard R
-        \State $B \gets \Call{ThinQR}{B}$
+        \State $Q \gets \Call{ThinQR}{Q}$
     \EndFor
 
-    \State Let $C = \Call{DistMultiply}{A, B^T}$. \Comment{Parallel.}
+    \State Let $C = \Call{DistMultiply}{A, Q^T}$. \Comment{Parallel}
 
     % TODO: explain this reversal or transpose C instead
     \State Compute $U \Sigma \tilde V^T = \Call{ThinSVD}{C^T}$.
 
-    \State Let $V = \tilde V Q^T$.
+    \State Let $V = Q \tilde V$.
 
     \end{algorithmic}
 \end{algorithm}
