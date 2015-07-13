@@ -1,4 +1,4 @@
-We have investigated the performance, scalability, and applicability of low-rank matrix approximation algorithms, including randomized PCA and randomized CX/CUR low-rank matrix factorizations, on a 1 TB mass spectrometry imaging (MSI) dataset, using Apache Spark on an Amazon EC2 cluster, a Cray XC30, and an experimental Cray cluster.  
+We have investigated the performance, scalability, and applicability of low-rank matrix approximation algorithms, including randomized PCA and randomized CX/CUR low-rank matrix factorizations, on a 1 TB mass spectrometry imaging (MSI) dataset, using Apache Spark on an Amazon EC2 cluster, a Cray XC40, and an experimental Cray cluster.  
 %% (((
 %% PCA is a popular method that finds the mutually orthogonal eigencomponents 
 %% that maximize the variance captured by the factorization, and CX/CUR provides 
@@ -16,6 +16,6 @@ than is provided by typical commercial workloads.
 %% scales than previously possible.  
 %% )))
 The algorithms were implemented in Scala using the Apache Spark high-level cluster computing framework.  
-Competitive performance was obtained on EC2 and the experimental Cray cluster system: we were able to process the 1TB size dataset in under 30 minutes with 960 cores on both systems, with the experimental Cray cluster about 1.5 times faster than the EC2 cluster.  
+Competitive performance was obtained on all three platforms: we were able to process the 1TB size dataset in under 30 minutes with 960 cores on all systems, with the fastest times obtained on the experimental Cray cluster.
 We report these results, and conclude broader implications for hardware and software issues for supporting data-centric workloads in parallel and distributed environments.  
-We also identified important directions for future work to improve the performance of Spark on HPC-style architectures like the Cray XC30.
+
