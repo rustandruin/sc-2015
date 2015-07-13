@@ -55,7 +55,7 @@ Particularly, the $j$-th principal component of the $i$-th row of $A$ is given b
   t_{ij} = a^i v_j = \sigma_j U_{ij}.
 \end{equation}
 
-As discussed above, SVD is fundamental in PCA. However, in general, it takes $\bigO(mnk)$ time to compute the truncated SVD, which becomes inapplicable when dealing with datasets of even moderately-large size, e.g., $m = 10^6$ and $n = 10^4$. Recently, Halko et al.~\cite{HMT11} propose to use randomized algorithms to construct a rank-$k$ approximation to $A$ which approximates $A$ nearly as well as $A_k$ does but need less flops and passes over the data matrix. This becomes extremely useful in many large-scale data analytics.
+As discussed above, SVD is fundamental in PCA. However, in general, it takes $\bigO(mnk)$ time to compute the truncated SVD, which becomes inapplicable when dealing with datasets of even moderately-large size, e.g., $m = 10^6$ and $n = 10^4$. Recently, Halko et al.~\cite{HMT09_SIREV} propose to use randomized algorithms to construct a rank-$k$ approximation to $A$ which approximates $A$ nearly as well as $A_k$ does but need less flops and passes over the data matrix. This becomes extremely useful in many large-scale data analytics.
 
 
 \subsection{CX}
@@ -99,7 +99,7 @@ where $\ell_i$ is defined in~\eqref{eqn:lev} and choose columns from $A$ accordi
 the selected columns are able to reconstruct the matrix $A$ nearly as well as $A_k$ does.
 
 As computing the exact truncated SVD in prohibitive data with massive size, 
-in this work, we compute the {\it approximate} leverage scores, which are leverage scores of a matrix $\tilde A_k$ which is close to $A_k$. As mentioned above, such an approximation $\tilde A_k$ can be constructed using randomized SVD algorithm~\cite{HMT11} which runs in significantly less time and needs less number of passes over the data matrix. This idea is originally proposed by Drineas et al.~\cite{DMMW12_JMLR}. 
+in this work, we compute the {\it approximate} leverage scores, which are leverage scores of a matrix $\tilde A_k$ which is close to $A_k$. As mentioned above, such an approximation $\tilde A_k$ can be constructed using randomized SVD algorithm~\cite{HMT09_SIREV} which runs in significantly less time and needs less number of passes over the data matrix. This idea is originally proposed by Drineas et al.~\cite{DMMW12_JMLR}. 
 
 %These algorithms compute high-quality approximations to the normalized leverage scores of the input matrix, and the running time of these algorithms depends on the time to apply a random projection to the input matrix, which is much faster than computing the full (or even a truncated) SVD.
 
@@ -113,7 +113,7 @@ in this work, we compute the {\it approximate} leverage scores, which are levera
     
     %\Function{ColSelect}{$A,k,r$}
 
-    \State Compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using randomized SVD described in~\cite{HMT11} with $q$ power iterations.
+    \State Compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using randomized SVD described in~\cite{HMT09_SIREV} with $q$ power iterations.
     
     \State Let $\ell_i = \| \tilde V_k^i\|_2$, where $V_k^i$ is the $i$-th row of $V_k$, for $i = 1, \ldots, n$. 
     
