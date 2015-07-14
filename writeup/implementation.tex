@@ -1,10 +1,10 @@
-\newpage
-\section{Parallel Implementation}
+\section{Implementation}
+\label{sec:implementation}
 
 To support operating on datasets larger than can be stored and processed on a single node,
 we implement the algorithms using the Apache Spark cluster computing framework.
 
-\subsection{Spark Background}
+\subsection{Spark}
 Spark provides a high-level programming model and execution engine for
 fault-tolerant parallel and distributed computing, based on a core 
 abstraction called a \textit{resilient distributed dataset (RDD)}.
@@ -142,10 +142,11 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
 \end{algorithm}
 
 %%%%%%%\begin{itemize}
+\textcolor{red}{
 \subsection {Platform Used (SPARK) (explain it) }
     \Comment{Jatin}{Jey to explain the SPARK compute node, with some
     details on cache size, cores, SIMD width, etc.}
-
+}
 
 
 \subsection {Single Node Implementation/Optimizations}
@@ -482,16 +483,17 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
     if we are using some previous state of the art implementation, we
 should merely mention it here, and describe it briefly}
 
+\textcolor{red}{
 \subsection {Multi Node (Any scaling challenges?)}
 \Comment{Jatin}{Describe the data communication challenges also -- how
 much data is transferrred between nodes, etc.}
+}
 
-
+\textcolor{red}{
 \subsection {Putting it All Together?}
 \Comment{Jatin}{Describe the overall flow here -- for e.g. stuff that
 is not covered in multi-node section}
-    
-
+}
 
 
 
