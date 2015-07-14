@@ -28,13 +28,51 @@
 \end{itemize}
  \end{itemize}
 
+  
+
 
 
 
   \subsection{Single Node Scaling Table}
+  \label{sxn:results1}
 
+
+   
+  \vspace*{0.1in}
+
+      In Table~\ref{tab:single_node}, we show the benefits of various
+      optimizations described in
+      Sec.~\ref{sxn:single_node_opt} on a single-node of our Spark system. 
+      The test matrix $\mathcal{A}$ has {\it{m}} = 1.95M, {\it{n}} = 128K,
+      {\it{s}} = 0.004, and {\it{nnz}} = 10$^9$. The rank parameter,
+      {\it{k}} = 32. We started with a parallelized implementation,
+      without any of the described optimizations, and measured the
+      performance (in terms of time taken). We first implemented the
+      multi-core synchronization scheme, wherein a single copy of the
+      output matrix is maintained across all the threads (for the matrix multiplication).
+      This resulted in a speedup of around 6.5X, primarily due to
+      the reduction in the amount of data traffic between the
+      last-level cache and main memory (there was around 19X measured reduction
+      in traffic). We then implemented our cache blocking scheme,
+      primarily targeted towards ensuring that the output of the
+      matrix multiplication resides in the caches (since it is
+      accessed and updated frequently). This led to a further 2.4X
+     reduction in run-time, for an overall speedup of around 15.6X.
+
+     Once the memory traffic was optimized for, we implemented our
+     SIMD code, by vectorizing the element-row multiplication-add
+     operations (described in detail in Sec.~\ref{sxn:single_node_opt}). 
+     The resultant code sped up by a further 2.6X, for an overall
+     speedup of 39.7X. Although the effective SIMD width
+ ($\mathcal{S}$ = 4), there are overheads of address computation,
+ stores, and not all computations were vectorized (QR code is still
+ scalar).
+
+
+ 
+  \begin{table}
   \begin{center}
-  \begin{tabular}{ |c|c|c| } 
+  \begin{tabular}{ |c|c| } 
   \hline
   Single Node Optimization & Overall Speedup\\
   \hline
@@ -46,34 +84,10 @@
 
   \end{tabular}
   \end{center}
-  \textbf{Table 1: Single node optimizations to the CX C implementation and the subsequent speedup each additional optimization provides}
-
-  In Table~\ref{tab:fdsfds}, we show the benefits of various
-  optimizations described in Sec.~\ref{sec:fdsd} on a single-node of our Spark system. 
-  The matrix $\mathcal{A}$ has {\it{m}} = 1.95M, {\it{n}} = 128K,
-  {\it{s}} = 0.004, and {\it{nnz}} = 10$^9$. The rank parameter,
-  {\it{k}} = 32. We started with a parallelized implementation,
-  without any of the described optimizations, and measured the 
-  performance (in terms of time taken). We first implemented the 
-  multi-core synchronization scheme, wherein a single copy of the 
-  output matrix is kept (for the matrix multiplication).
-  This resulted in a speedup of around 6.5X, primarily due to
-  the reduction in the amount of data traffic between the 
-  last-level cache and main memory (there was around 19X measured reduction
-  in traffic). We then implemented our cache blocking scheme,
-  primarily targetted towards ensuring that the output of the 
-  matrix multiplication resides in the caches (since it is
-  accessed and updated frequently). This led to a further 2.4X
- reduction in run-time, for an overall speedup of around 15.6X.
-
- Once the memory traffic was optimized for, we implemented our 
- SIMD code, by vectorizing the element-row multiplication-add
- operations (described in detail in Sec.~\ref{sec:fdsfdsfds}). 
- The resultant code sped up by a further 2.6X, for an overall
- speedup of 39.7X. Although the effective SIMD width
- ($\mathcal{S}$ = 4), there are overheads of address computation,
- stores, and not all computations were vectorized (QR code is still
- scalar).
+  \caption{Single node optimizations to the CX C implementation and
+  the subsequent speedup  each additional optimization provides.}
+  \label{tab:single_node}
+  \end{table}
  
 
 
