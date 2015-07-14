@@ -1,4 +1,4 @@
-\newpage
+%%%%%%%%%\newpage
 \section{Parallel Implementation}
 
 To support operating on datasets larger than can be stored and processed on a single node,
@@ -48,6 +48,7 @@ may be reused rather than being recomputed.
 
 
 \subsection{CX and PCA on Spark}
+\label{sec:cx_spark}
 The main consideration when implementing CX and PCA in a parallel setting are
 efficient implementations of operations involving the data matrix $A$.
 All access of $A$ by the CX and PCA algorithms occurs through the
@@ -147,6 +148,12 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
     details on cache size, cores, SIMD width, etc.}
 
 
+     \begin{figure*}[htp]
+         \includegraphics[scale=0.254]{images/jatin_a}
+         \includegraphics[scale=0.254]{images/jatin_b}
+         \caption{ Data access pattern for computing ${C}_{\it{i}}$ (left) and {\it{Res}}$_{\it{j}}$ (right) respectively.}
+         \label{fig:access_pattern}
+           \end{figure*}
 
 \subsection {Single Node Implementation/Optimizations}
 \label{sxn:single_node_opt}
@@ -158,9 +165,9 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
     scalar serial CX
     code and optimizing the steps in the order of execution times.
     The max. time is spent in computing sparse-sparse-dense matrix
-    multiplication ($A^TAB$, Step 2a?, 91.2\%), followed by  sparse-dense matrix
-    multiplication ($AB$, Step 2c, 8.6\%) and finally, QR
-    decomposition (Step 2z?, 0.2\%)
+    multiplication ($A^TAB$, Step 3, 91.2\%), followed by  sparse-dense matrix
+    multiplication ($AQ$, Step 7, 8.6\%) and finally, QR
+    decomposition (Step 4, 0.2\%)
     for a representative dataset that fits in main memory. These
     {\it{three}} kernels account for more than 99.9\% of
     the execution time.
@@ -216,10 +223,14 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
      optimizations.
 
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      \vspace*{0.1in}
-     {\it{1. Exploiting SIMD}}: Refer to Fig.~\ref{fig:ffds?}. 
+     {\it{1. Exploiting SIMD}}: Refer to Fig.~\ref{fig:access_pattern}. 
      Consider element $A_{{\it{i}},{\it{j}}}$. To compute
      $C_{\it{i}}$, we need to scale each element of
      $B_{{\it{j}}}$ by  $A_{{\it{i}},{\it{j}}}$ and add it to
@@ -330,8 +341,7 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
      very low, and most of the parallelization overhead is due to the
      instruction overhead for grabbing and releasing the locks.
 
-     \Comment{Jatin}{What is the instruction overhead for grabbing
-     alock?}
+     %%%\Comment{Jatin}{What is the instruction overhead for grabbing alock?}
 
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -403,7 +413,7 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
      {\it{n}}$'$ = 64K seems to be a resonable chunk size for current
      architectures.
 
-     \Comment{Jatin}{How to store A might be an interesting way -- Say like n = 64K}.
+     %%%%%%%%%\Comment{Jatin}{How to store A might be an interesting way -- Say like n = 64K}.
      
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -457,8 +467,8 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
 \vspace*{0.1in} 
 {\bf{{ {Optimizing $AB$:}}}}
 
-    This step refers to Step 2z? in the algorithm description in
-    Sec.~\ref{sec:fds}. The data- and thread-level paralleization optimizations described 
+    This step refers to Step 7 in the algorithm description in
+    Sec.~\ref{sec:cx_spark}. The data- and thread-level paralleization optimizations described 
     in the previous subsection (optimizing $A^TAB$) apply here, since
     there we explicitly  compute $C$ = $AB$. As far as cache blocking is
     concerned, since $C$ does not have to be memory resident, we now have
@@ -487,10 +497,11 @@ should merely mention it here, and describe it briefly}
 \Comment{Jatin}{Describe the data communication challenges also -- how
 much data is transferrred between nodes, etc.}
 
-
+\iffalse
 \subsection {Putting it All Together?}
 \Comment{Jatin}{Describe the overall flow here -- for e.g. stuff that
 is not covered in multi-node section}
+\fi
     
 
 
@@ -507,5 +518,5 @@ is not covered in multi-node section}
 \end{itemize}
 \fi
 
-\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\newpage
 %%%%%%%\end{itemize}
