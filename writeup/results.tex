@@ -1,39 +1,11 @@
-\section{Performance Evaluation, Results, Discussion}
+\section{Results}
+\label{sec:results}
+
+%Performance Evaluation, Results, Discussion}
 
 \textit{owners: Evan: graphs, All: interpretation (2.75 pages)}
 
-\begin{itemize}
-\item Platform Descriptions
-\begin{itemize}
-  \item EC2
-
-  \item XC40
-  \item Experimental Cray Cluster (EXP\_CC)
-\end{itemize}
-
-\item CX Spark Implementation Phase Descriptions
- \begin{enumerate}
-      \item Load Matrix Metadata
-      \item Load Matrix
-      \item Iterations
-      \item Postprocessing/Collect
- \end{enumerate}
-
- \item Dataset Sizes
- \begin{itemize}
-  \item 100GB
-
-  \item 1 TB
-
-\end{itemize}
- \end{itemize}
-
-  
-
-
-
-
-  \subsection{Single Node Scaling Table}
+\subsection{Scaling on Single Node}
   \label{sxn:results1}
 
 
@@ -92,7 +64,8 @@
 
 
 
-  \subsection{Scaling}
+  \subsection{Scaling across Multiple Nodes}
+  \textcolor{red}{Mike R, Jatin: we need a narrative here}
     \begin{figure} [H]
     \begin{centering}
     \includegraphics[scale=0.4]{images/CX_Strong_Scaling_Rank_32_Partitions_default.pdf}
@@ -101,7 +74,7 @@
     \end{figure} 
 
 
-  \subsection{Platform Comparisons}
+  \subsection{Comparison across Multiple Platforms}
     
     \begin{figure} [H]
     \begin{centering}
@@ -116,16 +89,19 @@
 
   
 
-  \subsection{Comparison of CX, PCA, RPCA quantitatively (Alex will work on this)? }
+  \subsection{Comparison of CX, PCA, RPCA quantitatively \textcolor{red}{Alex: please insert results here} }
     \begin{itemize}
       \item (for 100GB sized dataset on EC2)
       \item runtime vs. accuracy?
       \item show distinction b/w cx, pca
-      \item alex will take ownership
     \end{itemize}
 
-  \subsection{Science plot for PCA, CX (Jiyan and Oliver will produce this)}
-  
+  \subsection{Science plot for PCA, CX \textcolor{red}{Jiyan, Jey, Oliver, Ben: please insert results here}}
+    \begin{itemize}
+      \item PCA plot + science interpretation from Ben Bowen
+      \item CX plot (spatial + ion dimensions) + science interpretation from Ben Bowen
+    \end{itemize}
+
   \subsection{Lessons Learned}
   
   \input{lessons.tex}
