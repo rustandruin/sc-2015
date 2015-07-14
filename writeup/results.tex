@@ -47,6 +47,33 @@
   \end{tabular}
   \end{center}
   \textbf{Table 1: Single node optimizations to the CX C implementation and the subsequent speedup each additional optimization provides}
+
+  In Table~\ref{tab:fdsfds}, we show the benefits of various
+  optimizations described in Sec.~\ref{sec:fdsd} on a single-node of our Spark system. 
+  The matrix $\mathcal{A}$ has {\it{m}} = 1.95M, {\it{n}} = 128K,
+  {\it{s}} = 0.004, and {\it{nnz}} = 10$^9$. The rank parameter,
+  {\it{k}} = 32. We started with a parallelized implementation,
+  without any of the described optimizations, and measured the 
+  performance (in terms of time taken). We first implemented the 
+  multi-core synchronization scheme, wherein a single copy of the 
+  output matrix is kept (for the matrix multiplication).
+  This resulted in a speedup of around 6.5X, primarily due to
+  the reduction in the amount of data traffic between the 
+  last-level cache and main memory (there was around 19X measured reduction
+  in traffic). We then implemented our cache blocking scheme,
+  primarily targetted towards ensuring that the output of the 
+  matrix multiplication resides in the caches (since it is
+  accessed and updated frequently). This led to a further 2.4X
+ reduction in run-time, for an overall speedup of around 15.6X.
+
+ Once the memory traffic was optimized for, we implemented our 
+ SIMD code, by vectorizing the element-row multiplication-add
+ operations (described in detail in Sec.~\ref{sec:fdsfdsfds}). 
+ The resultant code sped up by a further 2.6X, for an overall
+ speedup of 39.7X. Although the effective SIMD width
+ ($\mathcal{S}$ = 4), there are overheads of address computation,
+ stores, and not all computations were vectorized (QR code is still
+ scalar).
  
 
 
@@ -54,7 +81,7 @@
   \subsection{Scaling}
     \begin{figure} [H]
     \begin{centering}
-    \includegraphics[scale=0.4]{images/CX_Strong_Scaling_32_Partitions_default.eps}
+    \includegraphics[scale=0.4]{images/CX_Strong_Scaling_Rank_32_Partitions_default.eps}
     \end{centering}
     \caption{ Strong scaling for the 4 phases of CX on an XC40 for 100GB dataset at rank 32 and default partitioning as concurrency is increased.} 
     \end{figure} 
@@ -67,6 +94,13 @@
     \includegraphics[scale=0.4]{images/CX_Size_Scaling_Rank_16_Partitions_default.eps}
     \end{centering}
     \caption{ Run times for the various stages of computation for CX for two different dataset sizes for the three platforms using rank 16 and default partitioning for the given platform} 
+    \end{figure}
+
+      \begin{figure} [H]
+    \begin{centering}
+    \includegraphics[scale=0.4]{images/CX_Size_Scaling_Rank_32_Partitions_default.eps}
+    \end{centering}
+    \caption{ Run times for the various stages of computation for CX for two different dataset sizes for the three platforms using rank 32 and default partitioning for the given platform} 
     \end{figure}
   
 
