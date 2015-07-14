@@ -49,6 +49,27 @@ object SVDVariants {
       mat.numRows, numsamps).toBreeze)
   }
 
+  def sampleCenteredRows(mat: IndexedRowMatrix, numsamps: Int, probs: BDV[Double], rowavg: BDV[Double]) = {
+    val rng = new java.util.Random
+    val observations = List.fill(numsamps)(rng.nextDouble)
+    val rowCumProbs = accumulate(probs).toArray.zipWithIndex
+    val keepIndices = observations.map( u => rowCumProbs.find(_._1 >= u).getOrElse(Tuple2(1.0, mat.numRows.toInt))._2.asInstanceOf[Int] ).toArray
+    
+    val neededrows = mat.rows.filter(row => keepIndices.contains(row.index)).map(row => (row.index, row.vector.toBreeze.asInstanceOf[BSV[Double]])).collect()
+    
+    // stupid hack: how can you make a DenseMatrix out of a list of vectors? 
+    var result = BDM.zeros[Double](numsamps, mat.numCols.toInt)
+    for(rowpos <- 0 until numsamps) {
+       val currow = neededrows.find(_._1 == keepIndices(rowpos)).getOrElse(neededrows(0))._2
+       for( jpos <- 0 until currow.index.length) {
+         val j = currow.index(jpos)
+         val v = currow.data(jpos)
+         result(rowpos, j) = v
+       }
+    }
+    fromBreeze(result)
+  }
+
   def multiplyCenteredMatBy(mat: IndexedRowMatrix, rhs: DenseMatrix, avg: BDV[Double]) : DenseMatrix = {
     def centeredRow( row : Vector) : Vector = {
       val temp = (row.toBreeze.asInstanceOf[BSV[Double]] - avg).toArray
@@ -60,8 +81,7 @@ object SVDVariants {
     fromBreeze(rowmat.multiply(rhs).toBreeze)
   }
 
-  // Returns `(mat.transpose * mat - avg*avg.transpose) * rhs`
-  // Note this IS NOT THE COVARIANCE, because the scaling is not correct
+  // Returns `(1/numobs * mat.transpose * mat - avg*avg.transpose) * rhs`
   def multiplyCovarianceBy(mat: IndexedRowMatrix, rhs: DenseMatrix, avg: BDV[Double]): DenseMatrix = {
     val rhsBrz = rhs.toBreeze.asInstanceOf[BDM[Double]]
     val result =
@@ -83,7 +103,7 @@ object SVDVariants {
         combOp = (U1, U2) => U1 += U2
       )
     val tmp = rhsBrz.t * avg
-    fromBreeze(result - avg * tmp.t)
+    fromBreeze(1/mat.numRows.toDouble * result - avg * tmp.t)
   }
 
   // computes BA where B is a local matrix and A is distributed: let b_i denote the
@@ -173,7 +193,9 @@ object SVDVariants {
     val rng = new java.util.Random
     val k = rank + slack
     var Y = DenseMatrix.randn(mat.numCols.toInt, k, rng).toBreeze.asInstanceOf[BDM[Double]]
+    report("Computing mean of observations", verbose)
     val rowavg = getRowMean(mat)
+    report("Done computing mean of observations", verbose)
 
     report("performing iterations", verbose)
     for(i <- 0 until numIters) {
@@ -250,26 +272,39 @@ object SVDVariants {
     val rsvdV = rsvdResults._3
     val mean = rsvdResults._4
 
-    // compute the CX (on centered data, this uses the singvecs from PCA)
-    val levProbs = sum(rsvdV :^ 2.0, Axis._1) / rank.toDouble
+    // compute the CX (on centered data, this uses the singvecs from PCA); use column selection
+    val colLevProbs = sum(rsvdV :^ 2.0, Axis._1) / rank.toDouble
     report("Sampling the columns according to leverage scores", true)
-    val colsMat = sampleCenteredColumns(mat, rank, levProbs, mean).toBreeze.asInstanceOf[BDM[Double]]
+    val colsMat = sampleCenteredColumns(mat, rank, colLevProbs, mean).toBreeze.asInstanceOf[BDM[Double]]
     report("Done sampling columns", true)
     report("Taking the QR of the columns", true)
     val qr.QR(q, r) = qr.reduced(colsMat)
     report ("Done with QR", true)
     val cxQ = q
-    report("Getting X in the CX decomposition", true)
-    val xMat = r \ leftMultiplyCenteredMatrixBy(mat, fromBreeze(cxQ.t), mean).toBreeze.asInstanceOf[BDM[Double]]
+    report("Getting X in the column CX decomposition", true)
+    val cxMat = r \ leftMultiplyCenteredMatrixBy(mat, fromBreeze(cxQ.t), mean).toBreeze.asInstanceOf[BDM[Double]]
+    report("Done forming X", true)
+
+    // compute the CX (on centered data, this uses the singvecs from PCA); use row selection
+    val rowLevProbs = sum(rsvdU :^ 2.0, Axis._1) / rank.toDouble
+    report("Sampling the rows according to leverage scores", true)
+    val rowsMat = sampleCenteredRows(mat, rank, rowLevProbs, mean).toBreeze.asInstanceOf[BDM[Double]]
+    report("Done sampling rows", true)
+    report("Taking the QR of the rows", true)
+    val qr.QR(q2, r2) = qr.reduced(rowsMat.t)
+    report("Done with QR", true)
+    val rxQ = q2
+    report("Getting X in the row CX decomposition", true)
+    val rxMat = r2 \ multiplyCenteredMatBy(mat, fromBreeze(rxQ), mean).toBreeze.asInstanceOf[BDM[Double]].t
     report("Done forming X", true)
 
     // compute the truncated SVD by using PCA to get the right singular vectors
     // todo: port PROPACK here
-    val tol = 1e-8
+    val tol = 1e-10
     val maxIter = 50
     val covOperator = (v : BDV[Double]) => multiplyCovarianceBy(mat, fromBreeze(v.toDenseMatrix).transpose, mean).toBreeze.asInstanceOf[BDM[Double]].toDenseVector
     report("Done with centered RSVD and centered CX, now computing truncated centered SVD", true)
-    // find PCs first using EVD, then project data unto these and find left singular vectors
+    // find PCs first using EVD, then project data unto these and recompute the SVD
     report("Computing truncated EVD of covariance operator", true)
     val (lambda2, u2) = EigenValueDecomposition.symmetricEigs(covOperator, mat.numCols.toInt, rank, tol, maxIter)
     report("Done with truncated EVD of covariance operator", true)
@@ -285,17 +320,20 @@ object SVDVariants {
 
     var frobNorm : Double = 0.0
     var rsvdFrobNormErr : Double = 0.0
-    var cxFrobNormErr : Double = 0.0
+    var colCXFrobNormErr : Double = 0.0
+    var rowCXFrobNormErr : Double = 0.0
     var tsvdFrobNormErr : Double = 0.0
 
     frobNorm = math.sqrt(mat.rows.map(row => math.pow(norm(row.vector.toBreeze.asInstanceOf[BSV[Double]] - mean), 2)).reduce( (x:Double, y: Double) => x + y))
     rsvdFrobNormErr = calcCenteredFrobNormErr(mat, rsvdU, diag(rsvdSingVals) * rsvdV.t ,mean)
-    cxFrobNormErr = calcCenteredFrobNormErr(mat, colsMat, xMat, mean)
+    colCXFrobNormErr = calcCenteredFrobNormErr(mat, colsMat, cxMat, mean)
+    rowCXFrobNormErr = calcCenteredFrobNormErr(mat, rxMat.t, rowsMat, mean)
     tsvdFrobNormErr = calcCenteredFrobNormErr(mat, tsvdU, diag(tsvdSingVals)*tsvdV.t, mean)
 
     report(f"Frobenius norm of centered matrix: ${frobNorm}", true)
     report(f"RSVD relative Frobenius norm error: ${rsvdFrobNormErr/frobNorm}", true)
-    report(f"CX relative Frobenius norm error: ${cxFrobNormErr/frobNorm}", true)
+    report(f"column CX relative Frobenius norm error: ${colCXFrobNormErr/frobNorm}", true)
+    report(f"row CX relative Frobenius norm error: ${rowCXFrobNormErr/frobNorm}", true)
     report(f"TSVD relative Frobenius norm error: ${tsvdFrobNormErr/frobNorm}", true)
 
     val outf = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(new File(outpath))))
@@ -308,7 +346,8 @@ object SVDVariants {
     outf.writeInt(nparts)
     outf.writeDouble(frobNorm)
     outf.writeDouble(rsvdFrobNormErr)
-    outf.writeDouble(cxFrobNormErr)
+    outf.writeDouble(colCXFrobNormErr)
+    outf.writeDouble(rowCXFrobNormErr)
     outf.writeDouble(tsvdFrobNormErr)
     outf.close()
   }

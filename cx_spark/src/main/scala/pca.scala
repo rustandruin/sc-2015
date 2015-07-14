@@ -62,7 +62,7 @@ object PCAvariants {
     omega
   }
 
-  // Returns `1/(numrowsofmat) * (mat.transpose * mat - avg*avg.transpose) * rhs`
+  // Returns `(1/(numrowsofmat) * mat.transpose * mat - avg*avg.transpose) * rhs`
   def multiplyCovarianceBy(mat: IndexedRowMatrix, rhs: DenseMatrix, avg: BDV[Double]): DenseMatrix = {
     val rhsBrz = rhs.toBreeze.asInstanceOf[BDM[Double]]
     val result =
@@ -95,7 +95,9 @@ object PCAvariants {
     val rng = new java.util.Random
     val k = rank + slack
     var Y = DenseMatrix.randn(mat.numCols.toInt, k, rng).toBreeze.asInstanceOf[BDM[Double]]
+    report("Computing mean of observations", verbose)
     val rowavg = getRowMean(mat)
+    report("Done computing mean of observations", verbose)
 
     report("performing iterations", verbose)
     for(i <- 0 until numIters) {
