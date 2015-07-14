@@ -1,44 +1,143 @@
-%\newcommand{\Comment}[2]{{\color{red}{#1} :::  \color{blue}{#2}}\\}
-
 \newpage
 \section{Parallel Implementation}
+
+To support operating on datasets larger than can be stored and processed on a single node,
+we implement the algorithms using the Apache Spark cluster computing framework.
+
+\subsection{Spark Background}
+Spark provides a high-level programming model and execution engine for
+fault-tolerant parallel and distributed computing, based on a core 
+abstraction called a \textit{resilient distributed dataset (RDD)}.
+Each RDD may be thought of as a distributed collection of objects that is
+partitioned and stored across the Spark cluster.
+RDDs are immutable lazily materialized collections supporting functional
+programming operations such as \ttt{map}, \ttt{filter}, and \ttt{reduce},
+each of which returns a new RDD.
+RDDs may be loaded from a distributed file system, computed from other RDDs,
+or created by parallelizing a collection within the user's application.
+RDDs of key-value pairs may also be treated as associative arrays, with
+operations such as \ttt{reduceByKey}, \ttt{join}, and \ttt{cogroup}.
+For example, to compute word frequencies of a text dataset in HDFS:
+\begin{verbatim}
+val dataset: RDD[String] =
+      spark.textFile("hdfs://...")
+
+val counts: RDD[(String, Int)] =
+      dataset.
+      flatMap(line => line.split(" ")).
+      map(word => (word, 1)).
+      reduceByKey(_ + _)
+
+val countsMap: Map[String, Int] =
+      counts.collectAsMap
+\end{verbatim}
+
+%%% this para is very incomplete
+Spark employs a lazy evaluation strategy for efficiency.
+All Spark operations without any immediate side-effects other than returning an RDD are deferred
+if possible.
+Instead, most operations simply create an entry in the program DAG, recording the input
+dependencies and capturing any closures and values needed.
+This approach allows Spark to defer computations as much as possible, and when the evaluation
+is unavoidable the entire Spark job can be examined by the Scheduler.
+This allows the Spark execution engine to batch together related operations, optimize data locality,
+and perform more sophisticated scheduling.
+A major benefit of Spark over MapReduce is the use of in-memory caching and storage so that data structures
+may be reused rather than being recomputed.
+
+
+
+\subsection{CX and PCA on Spark}
+The main consideration when implementing CX and PCA in a parallel setting are
+efficient implementations of operations involving the data matrix $A$.
+All access of $A$ by the CX and PCA algorithms occurs through the
+\ttt{RandomizedSVD} routine shared in common.
+\ttt{RandomizedSVD} in turn accesses $A$ only through the \ttt{MultiplyGramian} and
+\ttt{Multiply} routines, with repeated invocations of \ttt{MultiplyGramian}
+accounting for the majority of the algorithm's execution time.
+
+The matrix $A$ is stored as an RDD containing one \ttt{IndexedRow} per row of the input matrix,
+where each \ttt{IndexedRow} consists of the row's index and corresponding data vector.
+This is a natural storage format for many datasets stored on a distributed or shared file
+system, where each row of the matrix is formed from one record of the
+input dataset, thereby preserving locality by not requiring data shuffling
+during construction of $A$.
+
+We then express \ttt{MultiplyGramian} in a form amenable to efficient distributed implementation
+by exploiting the fact that the matrix product $A^TAB$ can be written as a sum of outer products,
+as shown in \ref{alg:gram}. This allows for full parallelism across the rows of the matrix with
+each row's contribution computed independently, followed by a summation step to accumulate the result.
+This approach may be implemented in Spark as a \ttt{map} forming the outer products followed by a \ttt{reduce}
+to accumulate the results:
+\begin{verbatim}
+def multiplyGramian(A: RowMatrix, B: LocalMatrix) =
+  A.rows.map(row => row * row.t * B).reduce(_ + _)
+\end{verbatim}
+This approach forms $2m$ unnecessary temporary matrices of same dimension as the output matrix $n\times k$,
+with one per row as the result of the \ttt{map} expression, and the \ttt{reduce} is not done in-place so it
+too allocates a new matrix per row.
+This results in high GC pressure and makes poor use of the CPU cache, so
+we instead remedy this by accumulating the results in-place by replacing the \ttt{map}
+and \ttt{reduce} with a single \ttt{treeAggregate}.
+The \ttt{treeAggregate} operation is a map-reduce that executes in-place to accumulate the contribution of a 
+single worker node, followed by a
+tree-structured reduction that efficiently aggregates the results from each worker.
+The reduction is performed in multiple stages using a tree topology to avoid creating a single
+bottleneck at the driver node to accumulate the results from each worker node.
+Each worker emits a relatively large result with dimension $n\times k$, so the
+communication savings of having multiple reducer tasks is significant.
+\begin{verbatim}
+def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
+  A.rows.treeAggregate(LocalMatrix.zeros(n, k))(
+    seqOp = (X, row) => X += row * row.t * B,
+    combOp = (X, Y) => X += Y
+  )
+}
+\end{verbatim}
+
 
 
 \begin{algorithm}[tb]
  \caption{{\sc RandomizedSVD} Algorithm}
   \label{alg:rsvd}
   \begin{algorithmic}[1]
-    % TODO: clarify that $A$ is a distributed matrix?
-    \Require $A \in \reals^{n\times d}$, rank parameter $k$, slack parameter $\ell$, and $k+\ell \leq \textrm{rank}(A)$.
+    \Require $A \in \reals^{m\times n}$, \
+      number of power iterations $q \ge 1$, \
+      and rank $r > 0$, slack $\ell \ge 0$ such that $k=r+\ell \leq \operatorname{rank}(A)$.
 
     % TODO: domain of each result
-    \Ensure $U, \Sigma, V$.
+    \Ensure $U \Sigma V^T \approx \Call{ThinSVD}{A, r}$.
 
-    \State Initialize $Q \in \reals^{d\times r}$ by sampling $Q_{ij} \sim \mathcal{N}(0, 1)$.
+    \State Initialize $B \in \reals^{n\times k}$ by sampling $B_{ij} \sim \mathcal{N}(0, 1)$.
 
     \For{$q$ times}
-        \State $Q \gets \Call{ApplyGramian}{A, Q}$ \Comment{Parallel}
-        % TODO: we only keep Q and discard R
-        \State $Q \gets \Call{ThinQR}{Q}$
+        \State $B \gets \Call{MultiplyGramian}{A, B}$
+        \State $(B, \_) \gets \Call{ThinQR}{B}$
     \EndFor
 
-    \State Let $C = \Call{DistMultiply}{A, Q^T}$. \Comment{Parallel}
+    \State Let $Q$ be the first $r$ columns of $B$.
 
-    % TODO: explain this reversal or transpose C instead
-    \State Compute $U \Sigma \tilde V^T = \Call{ThinSVD}{C^T}$.
+    \State Let $C = \Call{Multiply}{A, Q}$.
+
+    \State Compute $(U, \Sigma, \tilde V^T) = \Call{ThinSVD}{C}$.
 
     \State Let $V = Q \tilde V$.
+    % alternative that doesn't require knowing the distributivity of transpose but looks silly:
+    %\State Let $V^T = \tilde V^T Q^T$.
 
     \end{algorithmic}
 \end{algorithm}
 
 \begin{algorithm}[tb]
-  \caption{{\sc ApplyGramian} Algorithm}
+  \caption{{\sc MultiplyGramian} Algorithm}
   \label{alg:gram}
   \begin{algorithmic}[1]
-    \Require Distributed matrix $A$, Local matrix $B$.
+    \Require $A \in \reals^{m\times n}$, $B \in \reals^{n\times k}$.
     \Ensure $X = A^T A B$.
-    \State Compute $A^T A B$ in parallel. (TODO)
+    \State Initialize $X = 0$.
+    \For{each row $a$ in $A$}
+        \State $X \gets X + a a^T B$.
+    \EndFor
   \end{algorithmic}
 \end{algorithm}
 
