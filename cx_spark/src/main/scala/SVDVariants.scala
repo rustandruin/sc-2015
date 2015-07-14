@@ -128,7 +128,10 @@ object SVDVariants {
     appMain(sc, args)
   }
 
+  // hack to avoid centering without writing a lot more code
   def getRowMean(mat: IndexedRowMatrix) = {
+    BDV.zeros[Double](mat.numCols.toInt)
+    /*
     1.0/mat.numRows * mat.rows.treeAggregate(BDV.zeros[Double](mat.numCols.toInt))(
       seqOp = (avg: BDV[Double], row: IndexedRow) => {
         val rowBrz = row.vector.toBreeze.asInstanceOf[BSV[Double]]
@@ -141,6 +144,7 @@ object SVDVariants {
       },
       combOp = (avg1, avg2) => avg1 += avg2
       )
+    */
   }
 
   def loadMSIData(sc: SparkContext, matkind: String, shape: Tuple2[Int, Int], inpath: String, nparts: Int = 0) = {
