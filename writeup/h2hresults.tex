@@ -1,4 +1,4 @@
-        \begin{figure} [H]
+    \begin{figure} [H]
     \begin{centering}
     \includegraphics[scale=0.4]{images/CX_Size_Scaling_Rank_32_Partitions_default.pdf}
     \end{centering}
@@ -25,7 +25,7 @@
     Cray XC40 & 32 & 41.2 min & 2.28 min & 4.01 min &  7.5 sec & 25.0 sec & 15.4 sec \\
     \midrule
    Experimental Cray cluster & 32 & 35.8 min & 0.81 min & 3.82 min &  6.8 sec & 27.9 sec & 15.5 sec \\
-   \midrule
+   \bottomrule
     \end{tabular}
     \end{center}
     \caption{Total runtime for the 1 TB dataset, broken down into load time and per-iteration time. The per-iteration time is further broken down into the average time for each task of the local stage and each task of the aggregation stage.  We also show the average amount of time spent waiting for a network fetch, to illustrate the impact of the interconnect.}
@@ -57,11 +57,3 @@ Spark divides each iteration into two stages.  The first \emph{local} stage comp
 Examining our three platforms, we notice two key hardware differences that impact shuffle operations.  First, both the EC2 nodes and the experimental Cray cluster nodes have fast SSD storage local to the compute nodes.  The Cray XC40, on the other hand, has no local block storage.  Thus it must emulate local storage with a remote Lustre filesystem.  The impacts of this can be somewhat mitigated, however, by leaving sufficient memory to store some of the scratch data in local RAM disk, and to locally cache some of the remote writes to Lustre.\footnote{This is an ideal usage of caching, since Spark assumes the scratch space is only locally accessible; thus we are guaranteed that the only node that reads a scratch file will be the same node that wrote it.}  Second, the Cray XC40 and the experimental Cray cluster both communicate over the HPC-optimized Cray Aries interconnect, while the EC2 nodes use 10 Gigabit Ethernet.  
 
 We can see the impact of differing interconnect capabilities in the Average Network Wait column in Table~\ref{tab:h2hres1TB}.   These lower average network wait times explain why the two Cray platforms outperform the EC2 instance (with the experimental cluster achieving a speedup of roughly 1.5x over EC2).  The XC40 is still slightly slower than the experimental Cray platform, however, in particular at rank 16.  This can be understood by looking at the Maximum Aggregation Task and Maximum Network Wait columns.  \textbf{(NOTE: Verify that this is correct when Evan adds max data to Google Docs table, and add these to paper table.)}  Despite having lower average task and network wait times, the iteration time is actually higher because we have to synchronize after each iteration and wait for the slower tasks to complete.  These slow running tasks are indicative of data that was written to the remote Lustre filesystem and not locally cached (or subsequently evicted from the local cache).
-
-The difference in performance between the XC40 and the experimental Cray platform also point to optimizations to Spark that could improve its performance on HPC-style architectures.  In particular:
-\begin{itemize}
-\item Spark is currently inefficient in cleaning up its local scratch space.  In particular, shuffle data is not immediately cleaned up after a shuffle completes.  This makes fault recovery more efficient, but results in higher storage requirements for scratch space.  If clean up was more efficient, it would be more feasible to fit all of the scratch data in a local RAM disk and not rely on Lustre at all.
-\item Spark does not currently allow you to configure primary and backup scratch directories.  Instead you list all scratch directories in a single list, and it distributes data in a round round fashion between them as long as space is available.  You can bias it towards one storage device (e.g., RAM disk vs. Lustre) by listing multiple directories on the preferred device, but ideally we would like to use RAM disk exclusively unless and until it fills, and then switch to Lustre.
-\item Spark does not allow you to specify that a scratch directory is globally accessible.  Thus non-chached data is stored to the remote Lustre directory by the sender, then later retrieved by the sender and sent to the receiver.  This wastes a step, since the receiver could easily fetch the data directly.
-\item Alternatively, a push model of communication (as opposed to the current pull model) might be possible - however this would have implications for reliability and handling of very large data sets.\footnote{Storing the shuffle data to a large persistent block storage device, and only sending it as needed, allows us to send more data than could fit in a memory buffer on the remote side.}
-\end{itemize}
