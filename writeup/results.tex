@@ -93,8 +93,6 @@ Figure~\ref{fig:xc40scaling} shows how the distributed Spark portion of our code
 
 When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x from doubling the cores: 233 seconds versus 146 seconds.  However, as the number of partitions per core drops below two, and the amount of computation-per-core relative to communication overhead drops, the scaling slows down (as expected).  This results in a lower speedup of approximately 1.4x (146 seconds versus 102 seconds) when we again double the core count to 960.
 
-\textbf{NOTE: Replace times, speedups with exact figures}
-
   \subsection{Comparison across Multiple Platforms}
   \label{sect:h2h}
     
