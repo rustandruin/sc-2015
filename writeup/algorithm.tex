@@ -1,4 +1,5 @@
 \section{Low-rank matrix factorization}
+\label{sxn:low-rank-methods}
 \textit{Owners: Jiyan, Michael Mahoney (1 page)}
 
 Low-rank matrix factorization is an important topic in linear algebra and numerical analysis.
@@ -104,7 +105,7 @@ the selected columns are able to reconstruct the matrix $A$ nearly as well as $A
 
 To compute the leverage scores based on \eqref{eqn:lev}, one needs to compute the top $k$ right-singular vectors $V_k$. As pointed out above, this is prohibitive data with massive size.
 However, like in PCA, one can use randomized SVD as a remedy.
-That is, in this work, we compute the {\it approximate} leverage scores, which are computed based on the randomized SVD algorithm~\cite{HMT11}.
+That is, in this work, we compute the {\it approximate} leverage scores, which are computed based on the randomized SVD algorithm~\cite{HMT09_SIREV}.
 This approach requires less flops and less number of passes over the data matrix to obtain $\{\ell_i\}_{i=1}^n$, and it is originally proposed by Drineas et al.~\cite{DMMW12_JMLR}.
 We summarize the major steps of CX decomposition using approximate leverage scores in Algorithm~\ref{alg:cx}.
 
@@ -124,7 +125,7 @@ To make the algorithms practical on large-scale dataset, one can alleviate the d
     
     %\Function{ColSelect}{$A,k,r$}
 
-    \State Compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using randomized SVD described in~\cite{HMT11} with $q$ power iterations.
+    \State Compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using randomized SVD described in~\cite{HMT09_SIREV} with $q$ power iterations.
     
     \State Let $\ell_i = \| \tilde V_k^i\|_2$, where $V_k^i$ is the $i$-th row of $V_k$, for $i = 1, \ldots, n$. 
     

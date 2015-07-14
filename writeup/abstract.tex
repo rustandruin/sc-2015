@@ -1,23 +1,21 @@
-We have investigated the performance, scalability, and applicability of
-low-rank matrix approximations, including randomized PCA and randomized CX/CUR
-low-rank matrix factorizations on a 1 TB mass spectrometry imaging (MSI)
-dataset using Apache Spark on an Amazon EC2 cluster, a Cray XC30, and an
-experimental Cray cluster.  CX/CUR provides an interpretable low-rank
-factorization by selecting a small number of columns from the original data
-matrix as its factors, while PCA finds the orthogonal components that maximize
-the variance captured by the factorization.  In contrast to typical commercial
-workloads, these computations provide a much more powerful stress test of
-linear algebra algorithms in large-scale distributed analytics frameworks.  We
-have evaluated the scaling properties in both these distributed and parallel
-environments for these methods, and we have confirmed that we can provide
-interpretable low-rank approximation results to mass spectrometry scientists at
-much larger size scales than previously possible.  The algorithms were
-implemented in Scala using the Apache Spark high-level cluster computing
-framework.  Competitive performance was obtained on EC2 and the experimental
-Cray cluster system; we were able to process the 1TB size dataset in under 30
-minutes with 960 cores on both systems, with the experimental Cray cluster
-about 1.5 times faster than the EC2 cluster.  We report these results, and
-conclude broader implications for hardware and software issues for supporting
-data-centric workloads.  We also identified important directions for future
-work to improve the performance of Spark on HPC-style architectures like the
-Cray XC30.
+We have investigated the performance, scalability, and applicability of low-rank matrix approximation algorithms, including randomized PCA and randomized CX/CUR low-rank matrix factorizations, on a 1 TB mass spectrometry imaging (MSI) dataset, using Apache Spark on an Amazon EC2 cluster, a Cray XC30, and an experimental Cray cluster.  
+%% (((
+%% PCA is a popular method that finds the mutually orthogonal eigencomponents 
+%% that maximize the variance captured by the factorization, and CX/CUR provides 
+%% an interpretable low-rank factorization by selecting a small number of 
+%% columns/rows from the original data matrix as its factors.
+%% )))
+While these low-rank matrix computations are popular in small- to medium-scale machine learning and scientific data analysis, computing them provides a much more powerful ``stress test'' of linear algebra algorithms in large-scale distributed analytics frameworks than is provided by, e.g., low-precision PageRank computations.
+In addition, scientific applications such as MSI data analysis provides a very different use case 
+than is provided by typical commercial workloads.
+%% (((
+%% We have evaluated the scaling properties in both these distributed and 
+%% parallel environments for these matrix computations, and we have confirmed 
+%% that we can provide PCA-based as well as interpretable CX/CUR low-rank 
+%% approximation results to mass spectrometry scientists at much larger size 
+%% scales than previously possible.  
+%% )))
+The algorithms were implemented in Scala using the Apache Spark high-level cluster computing framework.  
+Competitive performance was obtained on EC2 and the experimental Cray cluster system: we were able to process the 1TB size dataset in under 30 minutes with 960 cores on both systems, with the experimental Cray cluster about 1.5 times faster than the EC2 cluster.  
+We report these results, and conclude broader implications for hardware and software issues for supporting data-centric workloads in parallel and distributed environments.  
+We also identified important directions for future work to improve the performance of Spark on HPC-style architectures like the Cray XC30.
