@@ -31,7 +31,8 @@ More formally, the quality of such a low-rank approximation is described as a da
 \end{equation}
 where $\| \cdot \|_F$ is the Frobenius norm defined as $\|X\|_F = \sqrt{ \sum_{i=1}^m \sum_{j=1}^n X_{ij}^2 }$.
 
-In this work, we consider using two factorization techniques, namely, SVD/PCA and CX decomposition, which are briefly outlined in the rest of this section. For an arbitrary matrix $A$, denote by $\a_i$ its $i$-th column, $\a^j$ its $j$-th row and $\a_{ij}$ its $(i,j)$-th element. Hereby, we assume the data matrix $A$ has size $m$ by $n$ and rank $r$.
+Depending on the application, various low-rank factorization techniques have been exploited by practitioners. Popular choices include principal component analysis~\cite{pcaBook}, rank-revealing QR factorization~\cite{GE96}, nonnegative matrix factorization~\cite{NMFalg}, CUR/CX decomposition~\cite{CUR_PNAS}.
+In this work, we consider using PCA and CX decomposition for our scalable and interpretable data analysis, which are briefly outlined in the rest of this section. Throughout the rest of the section, for an arbitrary matrix $A$, denote by $\a_i$ its $i$-th column, $\a^j$ its $j$-th row and $\a_{ij}$ its $(i,j)$-th element. Hereby, we assume the data matrix $A$ has size $m$ by $n$ and rank $r$.
 
 \subsection{SVD and PCA}
 The singular value decomposition (SVD) is the factorization of matrix $A \in \reals^{m\times n}$ into the product of three matrices $U\Sigma V^T$ where $U \in \reals^{m\times r}$ and $V\in \reals^{r\times n}$ have orthonormal columns and $D\in \reals^{r\times r}$ is a diagonal matrix with positive real entries. The columns of $U$ and $V$ are called left and right singular vectors and the diagonal entries of $D$ are called singular values. For notation convenience, we assume the singular values are sorted such that $\sigma_1\geq \cdots \geq \sigma_r\geq 0$, and
@@ -127,7 +128,7 @@ To make the algorithms practical on large-scale dataset, one can alleviate the d
 
     \State Compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using randomized SVD described in~\cite{HMT09_SIREV} with $q$ power iterations.
     
-    \State Let $\ell_i = \| \tilde V_k^i\|_2$, where $V_k^i$ is the $i$-th row of $V_k$, for $i = 1, \ldots, n$. 
+    \State Let $\ell_i = \sum_{j=1}^k \tilde \v_{ij}^2$, where $\tilde \v_{ij}^2$ is the $(i,j)$-th element of $\tilde V_k$, for $i = 1, \ldots, n$. 
     
     \State Define $p_i = \ell_i / \sum_{j=1}^d \ell_j$ for $i=1,\ldots,n$.
     
