@@ -68,15 +68,20 @@
   \textcolor{red}{Mike R, Jatin: we need a narrative here}
     \begin{itemize}
       \item discuss and name phases
-      \item communication/computation tradeoff?
     \end{itemize}
     \begin{figure} [H]
     \begin{centering}
     \includegraphics[scale=0.4]{images/CX_Strong_Scaling_Rank_32_Partitions_default.pdf}
     \end{centering}
     \caption{ Strong scaling for the 4 phases of CX on an XC40 for 100GB dataset at rank 32 and default partitioning as concurrency is increased.} 
+    \label{fig:xc40scaling}
     \end{figure} 
 
+Figure~\ref{fig:xc40scaling} shows how the distributed Spark portion of our code scales as we add additional processors.  We considered 240, 480, and 960 cores.  An additional doubling (to 1920 cores) would be ineffective as there are only 1654 partitions, so many cores would remain unused.  In addition, with fewer partitions per core there are less opportunities for load balancing and speculative reexecution of slow tasks.
+
+We observed reasonable scaling from 240 to 480 cores (approximately a 1.6x speedup from 2x the cores: 240 seconds versus 150 seconds).  As the number of partitions per core drops below two, and the amount of computation-per-core relative to communication overhead drops, we begin to see less scaling.  This results in a lower speedup of approximately 1.5x (150 seconds versus 100 seconds) when we again double the core count to 960.
+
+\textbf{NOTE: Replace times, speedups with exact figures}
 
   \subsection{Comparison across Multiple Platforms}
   \label{sect:h2h}
