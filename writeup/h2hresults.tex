@@ -1,0 +1,67 @@
+        \begin{figure} [H]
+    \begin{centering}
+    \includegraphics[scale=0.4]{images/CX_Size_Scaling_Rank_32_Partitions_default.pdf}
+    \end{centering}
+    \caption{ Run times for the various stages of computation for CX for two different dataset sizes for the three platforms using rank 32 and default partitioning for the given platform}
+    \label{fig:h2hrank32} 
+    \end{figure}
+    
+    \begin{table*}
+    \begin{center}
+    \begin{tabular}{| l | c | c | c | c | c | c | c |}
+    \toprule
+    \textbf{Platform} & \textbf{Rank} & \textbf{Total} & \textbf{Load} & \textbf{Time Per} & \textbf{Average} & \textbf{Average} & \textbf{Average} \\
+                               & & \textbf{Runtime} & \textbf{Time} & \textbf{Iteration} & \textbf{Local} & \textbf{Aggregation} & \textbf{Network} \\
+                               & & & & & \textbf{Task} & \textbf{Task} & \textbf{Wait} \\
+    \midrule
+    Amazon EC2 r3.8xlarge & 16 & 24.0 min & 1.53 min & 2.69 min & 4.4 sec & 27.1 sec & 21.7 sec \\
+    \midrule
+    Cray XC40 & 16 & 23.1 min& 2.32 min & 2.09 min &  3.5 sec & 6.8 sec & 1.1 sec \\
+    \midrule
+    Experimental Cray cluster & 16 & 15.2 min & 0.88 min & 1.54 min &  2.8 sec & 9.9 sec & 2.7 sec \\
+    \midrule
+    Amazon EC2 r3.8xlarge & 32 & 52.6 min& 1.57 min & 5.42 min &  8.7 sec & 60.1 sec & 48.7 sec \\
+    \midrule
+    Cray XC40 & 32 & 41.2 min & 2.28 min & 4.01 min &  7.5 sec & 25.0 sec & 15.4 sec \\
+    \midrule
+   Experimental Cray cluster & 32 & 35.8 min & 0.81 min & 3.82 min &  6.8 sec & 27.9 sec & 15.5 sec \\
+   \midrule
+    \end{tabular}
+    \end{center}
+    \caption{Total runtime for the 1 TB dataset, broken down into load time and per-iteration time. The per-iteration time is further broken down into the average time for each task of the local stage and each task of the aggregation stage.  We also show the average amount of time spent waiting for a network fetch, to illustrate the impact of the interconnect.}
+    \label{tab:h2hres1TB}
+    \end{table*}
+    
+Table~\ref{tab:h2hres1TB} shows the total runtime of CX for the 1 TB dataset on our three platforms.  The distributed Spark portion of the computation is also depicted visually in Figures~\ref{fig:h2hrank16} (rank 16) and~\ref{fig:h2hrank32} (rank 32).  All three platforms were able to successfully process the 1 TB dataset at rank 16 in under 25 minutes.  As the table and figures illustrate, most of the variation between the platforms occurred during the \texttt{MultiplyGramian} iterations.  Table~\ref{tab:hwspecs} shows the specifications of the three platforms. In this section, we explore how these difference relate to the performance of the matrix iterations.
+
+  \begin{table*}
+    \begin{center}
+    \begin{tabular}{| l | c | c | c | c | c | c | c |}
+    \toprule
+    \textbf{Platform} & \textbf{Total Cores} & \textbf{Core Frequency} & \textbf{Interconnect} & \textbf{DRAM} & \textbf{SSDs} \\
+    \midrule
+    Amazon EC2 r3.8xlarge & 960 (32 per-node) & 2.5 GHz & 10 Gigabit Ethernet & 244 GiB & 2 x 320 GB \\
+    \midrule
+    Cray XC40 & 960 (32 per-node) & 2.3 GHz & Cray Aries\texttrademark & 252 GiB & None \\
+    \midrule
+    Experimental Cray cluster & 960 (24 per-node) & 2.5 GHz & Cray Aries\texttrademark & 126 GiB & 1 x 800 GB \\
+    \bottomrule
+    \end{tabular}
+    \end{center}
+    \caption{Specifications of the three hardware platforms used in these performance experiments.}
+    \label{tab:hwspecs}
+  \end{table*}
+
+Spark divides each iteration into two stages.  The first \emph{local} stage computes each row's contribution, sums the local results (the rows computed by the same worker node), and records these locally-aggregated results.  The second \emph{aggregation} stage combines all of the workers' locally-aggregated results using a tree-structured reduction.  Most of the variation between platforms occurs during the aggregation phase, where data from remote worker nodes is fetched and combined.  In Spark, all inter-node data exchange occurs via \emph{shuffle operations}.  In a shuffle, workers with data to send write the data to their local scratch space.  Once all data has been written, workers with data to retrieve from remote nodes request that data from the sender's block manager, which in turns retrieves if from the senders local scratch space, and sends it over the interconnect to the receiving node.
+
+Examining our three platforms, we notice two key hardware differences that impact shuffle operations.  First, both the EC2 nodes and the experimental Cray cluster nodes have fast SSD storage local to the compute nodes.  The Cray XC40, on the other hand, has no local block storage.  Thus it must emulate local storage with a remote Lustre filesystem.  The impacts of this can be somewhat mitigated, however, by leaving sufficient memory to store some of the scratch data in local RAM disk, and to locally cache some of the remote writes to Lustre.\footnote{This is an ideal usage of caching, since Spark assumes the scratch space is only locally accessible; thus we are guaranteed that the only node that reads a scratch file will be the same node that wrote it.}  Second, the Cray XC40 and the experimental Cray cluster both communicate over the HPC-optimized Cray Aries interconnect, while the EC2 nodes use 10 Gigabit Ethernet.  
+
+We can see the impact of differing interconnect capabilities in the Average Network Wait column in Table~\ref{tab:h2hres1TB}.   These lower average network wait times explain why the two Cray platforms outperform the EC2 instance (with the experimental cluster achieving a speedup of roughly 1.5x over EC2).  The XC40 is still slightly slower than the experimental Cray platform, however, in particular at rank 16.  This can be understood by looking at the Maximum Aggregation Task and Maximum Network Wait columns.  \textbf{(NOTE: Verify that this is correct when Evan adds max data to Google Docs table, and add these to paper table.)}  Despite having lower average task and network wait times, the iteration time is actually higher because we have to synchronize after each iteration and wait for the slower tasks to complete.  These slow running tasks are indicative of data that was written to the remote Lustre filesystem and not locally cached (or subsequently evicted from the local cache).
+
+The difference in performance between the XC40 and the experimental Cray platform also point to optimizations to Spark that could improve its performance on HPC-style architectures.  In particular:
+\begin{itemize}
+\item Spark is currently inefficient in cleaning up its local scratch space.  In particular, shuffle data is not immediately cleaned up after a shuffle completes.  This makes fault recovery more efficient, but results in higher storage requirements for scratch space.  If clean up was more efficient, it would be more feasible to fit all of the scratch data in a local RAM disk and not rely on Lustre at all.
+\item Spark does not currently allow you to configure primary and backup scratch directories.  Instead you list all scratch directories in a single list, and it distributes data in a round round fashion between them as long as space is available.  You can bias it towards one storage device (e.g., RAM disk vs. Lustre) by listing multiple directories on the preferred device, but ideally we would like to use RAM disk exclusively unless and until it fills, and then switch to Lustre.
+\item Spark does not allow you to specify that a scratch directory is globally accessible.  Thus non-chached data is stored to the remote Lustre directory by the sender, then later retrieved by the sender and sent to the receiver.  This wastes a step, since the receiver could easily fetch the data directly.
+\item Alternatively, a push model of communication (as opposed to the current pull model) might be possible - however this would have implications for reliability and handling of very large data sets.\footnote{Storing the shuffle data to a large persistent block storage device, and only sending it as needed, allows us to send more data than could fit in a memory buffer on the remote side.}
+\end{itemize}

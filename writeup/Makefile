@@ -6,3 +6,6 @@ heromsi.pdf:
 	pdflatex heromsi
 	pdflatex heromsi
 
+.PHONY: endless
+endless:
+	ls *.tex *.bib | entr make heromsi.pdf

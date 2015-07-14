@@ -1,45 +1,128 @@
-
 \section{Performance Evaluation, Results, Discussion}
 
 \textit{owners: Evan: graphs, All: interpretation (2.75 pages)}
-\begin{itemize}
-  \item One graph showing benefits of various schemes for single-node scaling (cache, SIMD, etc.) [Fix the dataset -- $10^9$ nnzs?, Jatin will provide sample dataset]
-  \item One scaling plot showing the following (Not sure if we have time to get scaling):
-  \begin{itemize}
-    \item Runtime for 4 CX phases
-    \item Fix 1TB sized dataset
-    \item Run on 960, 1920, 3840 cores on EC2  
-  \end{itemize}
 
-  \item One graph showing the following:
-  \begin{itemize}
-    \item EC2, XC40 and experimental Cray cluster times
-    \item 100GB and 1TB sized dataset
-    \item stacked plot corresponding to all 4 phases
-    \begin{itemize}
+\begin{itemize}
+\item Platform Descriptions
+\begin{itemize}
+  \item EC2
+
+  \item XC40
+  \item Experimental Cray Cluster (EXP\_CC)
+\end{itemize}
+
+\item CX Spark Implementation Phase Descriptions
+ \begin{enumerate}
       \item Load Matrix Metadata
       \item Load Matrix
       \item Iterations
       \item Postprocessing/Collect
-    
-    \begin{figure} [h]
+ \end{enumerate}
+
+ \item Dataset Sizes
+ \begin{itemize}
+  \item 100GB
+
+  \item 1 TB
+
+\end{itemize}
+ \end{itemize}
+
+  
+
+
+
+
+  \subsection{Single Node Scaling Table}
+  \label{sxn:results1}
+
+
+   
+  \vspace*{0.1in}
+
+      In Table~\ref{tab:single_node}, we show the benefits of various
+      optimizations described in
+      Sec.~\ref{sxn:single_node_opt} on a single-node of our Spark system. 
+      The test matrix $\mathcal{A}$ has {\it{m}} = 1.95M, {\it{n}} = 128K,
+      {\it{s}} = 0.004, and {\it{nnz}} = 10$^9$. The rank parameter,
+      {\it{k}} = 32. We started with a parallelized implementation,
+      without any of the described optimizations, and measured the
+      performance (in terms of time taken). We first implemented the
+      multi-core synchronization scheme, wherein a single copy of the
+      output matrix is maintained across all the threads (for the matrix multiplication).
+      This resulted in a speedup of around 6.5X, primarily due to
+      the reduction in the amount of data traffic between the
+      last-level cache and main memory (there was around 19X measured reduction
+      in traffic). We then implemented our cache blocking scheme,
+      primarily targeted towards ensuring that the output of the
+      matrix multiplication resides in the caches (since it is
+      accessed and updated frequently). This led to a further 2.4X
+     reduction in run-time, for an overall speedup of around 15.6X.
+
+     Once the memory traffic was optimized for, we implemented our
+     SIMD code, by vectorizing the element-row multiplication-add
+     operations (described in detail in Sec.~\ref{sxn:single_node_opt}). 
+     The resultant code sped up by a further 2.6X, for an overall
+     speedup of 39.7X. Although the effective SIMD width
+ ($\mathcal{S}$ = 4), there are overheads of address computation,
+ stores, and not all computations were vectorized (QR code is still
+ scalar).
+
+
+ 
+  \begin{table}
+  \begin{center}
+  \begin{tabular}{ |c|c| } 
+  \hline
+  Single Node Optimization & Overall Speedup\\
+  \hline
+  Original Implementation & 1.0  \\
+  Multi-Core Synchronization & 6.5 \\
+  Cache Blocking & 15.6 \\
+  SIMD & 39.7 \\
+  \hline
+
+  \end{tabular}
+  \end{center}
+  \caption{Single node optimizations to the CX C implementation and
+  the subsequent speedup  each additional optimization provides.}
+  \label{tab:single_node}
+  \end{table}
+ 
+
+
+
+  \subsection{Scaling}
+    \begin{figure} [H]
     \begin{centering}
-    \includegraphics[scale=0.4]{images/CX_Size_Scaling_Rank_16_Partitions_default.eps}
+    \includegraphics[scale=0.4]{images/CX_Strong_Scaling_Rank_32_Partitions_default.pdf}
+    \end{centering}
+    \caption{ Strong scaling for the 4 phases of CX on an XC40 for 100GB dataset at rank 32 and default partitioning as concurrency is increased.} 
+    \end{figure} 
+
+
+  \subsection{Platform Comparisons}
+    
+    \begin{figure} [H]
+    \begin{centering}
+    \includegraphics[scale=0.4]{images/CX_Size_Scaling_Rank_16_Partitions_default.pdf}
     \end{centering}
     \caption{ Run times for the various stages of computation for CX for two different dataset sizes for the three platforms using rank 16 and default partitioning for the given platform} 
+    \label{fig:h2hrank16} 
     \end{figure}
-    \item XC40 is Cray XC40
-    \item EC2 is Amazon EC2 r.large?
-    \item EXP\_CC is an Experimental Cray Cluster
-    \end{itemize}
-  \end{itemize}
- \item Comparison of CX, PCA, RPCA quantitatively (Alex will work on this)? 
-  \begin{itemize}
-    \item (for 100GB sized dataset on EC2)
-    \item runtime vs. accuracy?
-    \item show distinction b/w cx, pca
-    \item alex will take ownership
-  \end{itemize}
 
- \item Science plot for PCA, CX (Jiyan and Oliver will produce this)
-\end{itemize}
+    
+  \input{h2hresults.tex}
+
+  
+
+  \subsection{Comparison of CX, PCA, RPCA quantitatively (Alex will work on this)? }
+    \begin{itemize}
+      \item (for 100GB sized dataset on EC2)
+      \item runtime vs. accuracy?
+      \item show distinction b/w cx, pca
+      \item alex will take ownership
+    \end{itemize}
+
+  \subsection{Science plot for PCA, CX (Jiyan and Oliver will produce this)}
+
