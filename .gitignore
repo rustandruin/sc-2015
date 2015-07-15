@@ -58,6 +58,8 @@ target/
 
 # Datasets
 cx_spark/data/*.txt
+cx_spark/data/input.csv*
+cx_spark/data/*.bin
 
 # Logs
 *.err

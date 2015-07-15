@@ -1,4 +1,5 @@
 package org.apache.spark.mllib.linalg.distributed
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
@@ -114,9 +115,23 @@ object SVDVariants {
   // computes BA where B is a local matrix and A is distributed: let b_i denote the
   // ith col of B and a_i denote the ith row of A, then BA = sum(b_i a_i)
   def leftMultiplyCenteredMatrixBy(mat: IndexedRowMatrix, lhs: DenseMatrix, avg: BDV[Double]) : DenseMatrix = {
+   val lhsFactor = mat.rows.context.broadcast(lhs.toBreeze.asInstanceOf[BDM[Double]])
+  
+   val result = mat.rows.map(row => {
+       val lhs = lhsFactor.value
+       lhs(::, row.index.toInt) * (row.vector.toBreeze.asInstanceOf[BSV[Double]] - avg).t
+     }).reduce(_ + _)
+
+   fromBreeze(result)
+  }
+
+  /*
+  // computes BA where B is a local matrix and A is distributed: let b_i denote the
+  // ith col of B and a_i denote the ith row of A, then BA = sum(b_i a_i)
+  def leftMultiplyCenteredMatrixBy(mat: IndexedRowMatrix, lhs: DenseMatrix, avg: BDV[Double]) : DenseMatrix = {
    val lhsBrz = lhs.toBreeze.asInstanceOf[BDM[Double]]
    val result = 
-     mat.rows.treeAggregate(BDM.zeros[Double](lhs.numRows, mat.numCols.toInt))(
+     mat.rows.treeAggregate(BDM.zeros[Double](lhs.numRows.toInt, mat.numCols.toInt))(
        seqOp = (U: BDM[Double], row: IndexedRow) => {
          val rowBrz = row.vector.toBreeze.asInstanceOf[BSV[Double]] - avg
          U += lhsBrz(::, row.index.toInt) * rowBrz.t
@@ -125,10 +140,11 @@ object SVDVariants {
      )
    fromBreeze(result)
   }
+  */
 
   def main(args: Array[String]) = {
-    val conf = new SparkConf().setAppName("CX")
-    conf.set("spark.task.maxFailures", "1")
+    val conf = new SparkConf().setAppName("SVDVariants")
+    conf.set("spark.task.maxFailures", "1").set("spark.executor.memory", "64G").set("spark.driver.memory", "64G")
     val sc = new SparkContext(conf)
     appMain(sc, args)
   }
@@ -274,12 +290,15 @@ object SVDVariants {
     // force materialization of the RDD so we can separate I/O from compute
     mat.rows.count()
 
+    /*
     //try to force error to occur
     report("Number of partition of input matrix: " + mat.rows.partitions.size, true)
+
     val testtall = BDM.rand[Double](shape._1, rank)
     val testfat = BDM.rand[Double](rank, shape._2)
     val testmean = BDV.zeros[Double](shape._2)
     val test_colCXFrobNormErr = calcCenteredFrobNormErr(mat, testtall, testfat, testmean)
+    */
 
     /* perform randomized SVD of centered A' */
     val rsvdResults = computeRSVD(mat, rank, slack, numIters, true)
@@ -297,6 +316,7 @@ object SVDVariants {
     val qr.QR(q, r) = qr.reduced(colsMat)
     report ("Done with QR", true)
     val cxQ = q
+    report("Size of temporary array: " + fromBreeze(cxQ.t).numRows.toInt + "x" + mat.numCols.toInt, true)
     report("Getting X in the column CX decomposition", true)
     val cxMat = r \ leftMultiplyCenteredMatrixBy(mat, fromBreeze(cxQ.t), mean).toBreeze.asInstanceOf[BDM[Double]]
     report("Done forming X", true)
@@ -317,7 +337,7 @@ object SVDVariants {
     // compute the truncated SVD by using PCA to get the right singular vectors
     // todo: port PROPACK here
     val tol = 1e-10
-    val maxIter = 50
+    val maxIter = 100
     val covOperator = (v : BDV[Double]) => multiplyCovarianceBy(mat, fromBreeze(v.toDenseMatrix).transpose, mean).toBreeze.asInstanceOf[BDM[Double]].toDenseVector
     report("Done with centered RSVD and centered CX, now computing truncated centered SVD", true)
     // find PCs first using EVD, then project data unto these and recompute the SVD
@@ -369,14 +389,22 @@ object SVDVariants {
     outf.close()
   }
 
+  /*
   def calcCenteredFrobNormErr(mat: IndexedRowMatrix, lhsTall: BDM[Double], rhsFat: BDM[Double], mean: BDV[Double] ) : Double = {
-    def partitionDiffFrobNorm2(rowiter : Iterator[IndexedRow]) : Iterator[Double] = {
+    val lhsFactor = mat.rows.context.broadcast(lhsTall)
+    val rhsFactor = mat.rows.context.broadcast(rhsFat)
+
+    def partitionDiffFrobNorm2(rowiter : Iterator[IndexedRow], lhsFactor: Broadcast[BDM[Double]], rhsFactor: Broadcast[BDM[Double]]) : Iterator[Double] = {
+
+      val lhsTall = lhsFactor.value
+      val rhsFat = rhsFactor.value
+
       val rowlist = rowiter.toList
       val numrows = rowlist.length
       val matSubMat = BDM.zeros[Double](numrows, mat.numCols.toInt)
       val lhsSubMat = BDM.zeros[Double](numrows, lhsTall.cols)
 
-      var currowindex : Int = 0
+      var currowindex = 0
       rowlist.foreach( 
         (currow: IndexedRow) => {
           currow.vector.foreachActive { case (j, v) => matSubMat(currowindex, j) = v }
@@ -385,11 +413,27 @@ object SVDVariants {
         }
       )
 
-      val diffmat = matSubMat - lhsSubMat * rhsFat
+      val diffmat = matSubMat - lhsSubMat * rhsFat - BDV.ones[Double](matSubMat.rows)*mean.t
       List(sum(diffmat :* diffmat)).iterator
     }
 
-    math.sqrt(mat.rows.mapPartitions(partitionDiffFrobNorm2).reduce(_+_))
+    report("Beginning to compute Frobenius norm", true)
+    val res = mat.rows.mapPartitions(rowiter => partitionDiffFrobNorm2(rowiter, lhsFactor, rhsFactor)).reduce(_ + _)
+    report("Finished computing Frobenius norm", true)
+    math.sqrt(res)
+  }
+  */
+
+  def calcCenteredFrobNormErr(mat: IndexedRowMatrix, lhsTall: BDM[Double], rhsFat: BDM[Double], mean: BDV[Double]) : Double = {
+    val sc = mat.rows.context
+    val lhsFactor = sc.broadcast(lhsTall)
+    val rhsFactor = sc.broadcast(rhsFat)
+
+    math.sqrt(mat.rows.map( row => {
+        val lhs = lhsFactor.value
+        val rhs = rhsFactor.value
+        math.pow(norm( row.vector.toBreeze.toDenseVector - mean - (lhs(row.index.toInt, ::) * rhs).t.toDenseVector ), 2)
+      }).reduce(_ + _))
   }
 
   /*

@@ -19,7 +19,7 @@ NUMROWS=8258911
 NUMCOLS=131048
 
 # parameter settings taken from the google doc
-RANK=16 #32
+RANK=24
 SLACK=0
 NITERS=5
 NPARTS="" #default, 960, 1920
@@ -32,6 +32,7 @@ LOGNAME="$JOBNAME.log"
 
 spark-submit --verbose \
   --driver-memory 64G \
+  --executor-memory 64G \
   --conf spark.eventLog.enabled=true \
   --conf spark.eventLog.dir=$LOGDIR \
   --conf spark.driver.maxResultSize=64g \
