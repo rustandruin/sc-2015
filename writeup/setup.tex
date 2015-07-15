@@ -1,0 +1,40 @@
+\section{Setup}
+\label{sec:setup}
+
+\subsection{Platforms}
+
+  \begin{table*}
+    \begin{center}
+    \begin{tabular}{| l | c | c | c | c | c | c | c |}
+    \toprule
+    \textbf{Platform} & \textbf{Total Cores} & \textbf{Core Frequency} & \textbf{Interconnect} & \textbf{DRAM} & \textbf{SSDs} \\
+    \midrule
+    Amazon EC2 r3.8xlarge & 960 (32 per-node) & 2.5 GHz & 10 Gigabit Ethernet & 244 GiB & 2 x 320 GB \\
+    \midrule
+    Cray XC40 & 960 (32 per-node) & 2.3 GHz & Cray Aries\texttrademark & 252 GiB & None \\
+    \midrule
+    Experimental Cray cluster & 960 (24 per-node) & 2.5 GHz & Cray Aries\texttrademark & 126 GiB & 1 x 800 GB \\
+    \bottomrule
+    \end{tabular}
+    \end{center}
+    \caption{Specifications of the three hardware platforms used in these performance experiments.}
+    \label{tab:hwspecs}
+  \end{table*}
+  
+ We evaluated the performance of CX matrix factorization of three platforms:
+ \begin{itemize}
+ \item a Cray XC40,
+ \item an experimental Cray cluster, and
+ \item an Amazon EC2 r3.8xlarge instance.
+ \end{itemize}
+ For all platforms, we sized the Spark job to use 960 executors cores (except as otherwise mentioned).  Table~\ref{tab:hwspecs} shows the full specifications of the three platforms.
+  
+  \textbf{JEY - ANYTHING ELSE TO ADD?}
+
+\subsection{MSI Dataset}
+\textcolor{red}{Ben, Oliver, Jey: need details here}
+\begin{itemize}
+  \item 100GB
+  \item 1 TB
+\end{itemize}
+

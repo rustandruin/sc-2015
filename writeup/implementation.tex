@@ -1,10 +1,10 @@
-\newpage
-\section{Parallel Implementation}
+\section{Implementation}
+\label{sec:implementation}
 
 To support operating on datasets larger than can be stored and processed on a single node,
 we implement the algorithms using the Apache Spark cluster computing framework.
 
-\subsection{Spark Background}
+\subsection{Spark}
 Spark provides a high-level programming model and execution engine for
 fault-tolerant parallel and distributed computing, based on a core 
 abstraction called a \textit{resilient distributed dataset (RDD)}.
@@ -48,6 +48,7 @@ may be reused rather than being recomputed.
 
 
 \subsection{CX and PCA on Spark}
+\label{sec:cx_spark}
 The main consideration when implementing CX and PCA in a parallel setting are
 efficient implementations of operations involving the data matrix $A$.
 All access of $A$ by the CX and PCA algorithms occurs through the
@@ -97,56 +98,6 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
 
 
 
-\begin{algorithm}[tb]
- \caption{{\sc RandomizedSVD} Algorithm}
-  \label{alg:rsvd}
-  \begin{algorithmic}[1]
-    \Require $A \in \reals^{m\times n}$, \
-      number of power iterations $q \ge 1$, \
-      and rank $r > 0$, slack $\ell \ge 0$ such that $k=r+\ell \leq \operatorname{rank}(A)$.
-
-    % TODO: domain of each result
-    \Ensure $U \Sigma V^T \approx \Call{ThinSVD}{A, r}$.
-
-    \State Initialize $B \in \reals^{n\times k}$ by sampling $B_{ij} \sim \mathcal{N}(0, 1)$.
-
-    \For{$q$ times}
-        \State $B \gets \Call{MultiplyGramian}{A, B}$
-        \State $(B, \_) \gets \Call{ThinQR}{B}$
-    \EndFor
-
-    \State Let $Q$ be the first $r$ columns of $B$.
-
-    \State Let $C = \Call{Multiply}{A, Q}$.
-
-    \State Compute $(U, \Sigma, \tilde V^T) = \Call{ThinSVD}{C}$.
-
-    \State Let $V = Q \tilde V$.
-    % alternative that doesn't require knowing the distributivity of transpose but looks silly:
-    %\State Let $V^T = \tilde V^T Q^T$.
-
-    \end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[tb]
-  \caption{{\sc MultiplyGramian} Algorithm}
-  \label{alg:gram}
-  \begin{algorithmic}[1]
-    \Require $A \in \reals^{m\times n}$, $B \in \reals^{n\times k}$.
-    \Ensure $X = A^T A B$.
-    \State Initialize $X = 0$.
-    \For{each row $a$ in $A$}
-        \State $X \gets X + a a^T B$.
-    \EndFor
-  \end{algorithmic}
-\end{algorithm}
-
-%%%%%%%\begin{itemize}
-\subsection {Platform Used (SPARK) (explain it) }
-    \Comment{Jatin}{Jey to explain the SPARK compute node, with some
-    details on cache size, cores, SIMD width, etc.}
-
-
 
 \subsection {Single Node Implementation/Optimizations}
 \label{sxn:single_node_opt}
@@ -158,9 +109,9 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
     scalar serial CX
     code and optimizing the steps in the order of execution times.
     The max. time is spent in computing sparse-sparse-dense matrix
-    multiplication ($A^TAB$, Step 2a?, 91.2\%), followed by  sparse-dense matrix
-    multiplication ($AB$, Step 2c, 8.6\%) and finally, QR
-    decomposition (Step 2z?, 0.2\%)
+    multiplication ($A^TAB$, Step 3, 91.2\%), followed by  sparse-dense matrix
+    multiplication ($AQ$, Step 7, 8.6\%) and finally, QR
+    decomposition (Step 4, 0.2\%)
     for a representative dataset that fits in main memory. These
     {\it{three}} kernels account for more than 99.9\% of
     the execution time.
@@ -216,10 +167,14 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
      optimizations.
 
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      \vspace*{0.1in}
-     {\it{1. Exploiting SIMD}}: Refer to Fig.~\ref{fig:ffds?}. 
+     {\it{1. Exploiting SIMD}}: Refer to Fig.~\ref{fig:access_pattern}. 
      Consider element $A_{{\it{i}},{\it{j}}}$. To compute
      $C_{\it{i}}$, we need to scale each element of
      $B_{{\it{j}}}$ by  $A_{{\it{i}},{\it{j}}}$ and add it to
@@ -330,8 +285,7 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
      very low, and most of the parallelization overhead is due to the
      instruction overhead for grabbing and releasing the locks.
 
-     \Comment{Jatin}{What is the instruction overhead for grabbing
-     alock?}
+     %%%\Comment{Jatin}{What is the instruction overhead for grabbing alock?}
 
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -403,7 +357,7 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
      {\it{n}}$'$ = 64K seems to be a resonable chunk size for current
      architectures.
 
-     \Comment{Jatin}{How to store A might be an interesting way -- Say like n = 64K}.
+     %%%%%%%%%\Comment{Jatin}{How to store A might be an interesting way -- Say like n = 64K}.
      
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -457,8 +411,8 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
 \vspace*{0.1in} 
 {\bf{{ {Optimizing $AB$:}}}}
 
-    This step refers to Step 2z? in the algorithm description in
-    Sec.~\ref{sec:fds}. The data- and thread-level paralleization optimizations described 
+    This step refers to Step 7 in the algorithm description in
+    Sec.~\ref{sec:cx_spark}. The data- and thread-level paralleization optimizations described 
     in the previous subsection (optimizing $A^TAB$) apply here, since
     there we explicitly  compute $C$ = $AB$. As far as cache blocking is
     concerned, since $C$ does not have to be memory resident, we now have
@@ -477,26 +431,6 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
 
 
 
-\vspace*{0.1in} 
-{\bf{{ {Optimizing QR factorization:}}}}
-\Comment{Jatin}{LEts see if there is anything to talk about here -- we
-    if we are using some previous state of the art implementation, we
-should merely mention it here, and describe it briefly}
-
-\subsection {Multi Node (Any scaling challenges?)}
-\Comment{Jatin}{Describe the data communication challenges also -- how
-much data is transferrred between nodes, etc.}
-
-
-\subsection {Putting it All Together?}
-\Comment{Jatin}{Describe the overall flow here -- for e.g. stuff that
-is not covered in multi-node section}
-    
-
-
-
-
-
 
 \iffalse
 \begin{itemize}
@@ -507,5 +441,5 @@ is not covered in multi-node section}
 \end{itemize}
 \fi
 
-\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\newpage
 %%%%%%%\end{itemize}
