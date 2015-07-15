@@ -312,13 +312,13 @@ object SVDVariants {
     report("Computing truncated EVD of covariance operator", true)
     val (lambda2, u2) = EigenValueDecomposition.symmetricEigs(covOperator, mat.numCols.toInt, rank, tol, maxIter)
     report("Done with truncated EVD of covariance operator", true)
-    report("Extracting left singular vectors")
+    report("Extracting left singular vectors", true)
     val firstSVD = svd.reduced(multiplyCenteredMatBy(mat, fromBreeze(u2), mean).toBreeze.asInstanceOf[BDM[Double]])
     val secondSVD = svd.reduced(diag(firstSVD.S)*firstSVD.Vt*u2.t)
     val tsvdU = firstSVD.U * secondSVD.U
     val tsvdSingVals = secondSVD.S
     val tsvdV = secondSVD.Vt.t
-    report("Done extracting left singular vectors")
+    report("Done extracting left singular vectors", true)
 
     report("Computing the Frobenius norm relative errors of approximations of centered matrix", true)
 
