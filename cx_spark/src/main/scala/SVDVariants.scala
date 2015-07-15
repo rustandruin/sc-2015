@@ -275,7 +275,7 @@ object SVDVariants {
     mat.rows.count()
 
     //try to force error to occur
-    report("Number of partition of input matrix: " + mat.rows.partition.size, true)
+    report("Number of partition of input matrix: " + mat.rows.partitions.size, true)
     val testtall = BDM.rand[Double](shape._1, rank)
     val testfat = BDM.rand[Double](rank, shape._2)
     val testmean = BDV.zeros[Double](shape._2)
@@ -341,8 +341,6 @@ object SVDVariants {
     var tsvdFrobNormErr : Double = 0.0
 
     // calcCenteredFrobNormErr keeps dieing: think it may be because one executor is unbalanced, so timesout and gets killed?
-    mat.rows.repartition(200)
-
     frobNorm = math.sqrt(mat.rows.map(row => math.pow(norm(row.vector.toBreeze.asInstanceOf[BSV[Double]] - mean), 2)).reduce( (x:Double, y: Double) => x + y))
     rsvdFrobNormErr = calcCenteredFrobNormErr(mat, rsvdU, diag(rsvdSingVals) * rsvdV.t ,mean)
     colCXFrobNormErr = calcCenteredFrobNormErr(mat, colsMat, cxMat, mean)
@@ -371,6 +369,30 @@ object SVDVariants {
     outf.close()
   }
 
+  def calcCenteredFrobNormErr(mat: IndexedRowMatrix, lhsTall: BDM[Double], rhsFat: BDM[Double], mean: BDV[Double] ) : Double = {
+    def partitionDiffFrobNorm2(rowiter : Iterator[IndexedRow]) : Iterator[Double] = {
+      val rowlist = rowiter.toList
+      val numrows = rowlist.length
+      val matSubMat = BDM.zeros[Double](numrows, mat.numCols.toInt)
+      val lhsSubMat = BDM.zeros[Double](numrows, lhsTall.cols)
+
+      var currowindex : Int = 0
+      rowlist.foreach( 
+        (currow: IndexedRow) => {
+          currow.vector.foreachActive { case (j, v) => matSubMat(currowindex, j) = v }
+          lhsSubMat(currowindex, ::) := lhsTall(currow.index.toInt, ::)
+          currowindex += 1
+        }
+      )
+
+      val diffmat = matSubMat - lhsSubMat * rhsFat
+      List(sum(diffmat :* diffmat)).iterator
+    }
+
+    math.sqrt(mat.rows.mapPartitions(partitionDiffFrobNorm2).reduce(_+_))
+  }
+
+  /*
   def calcCenteredFrobNormErr(mat: IndexedRowMatrix, lhsTall: BDM[Double], rhsFat: BDM[Double], mean: BDV[Double]) : Double = {
     val sse = 
       mat.rows.treeAggregate(BDV.zeros[Double](1))(
@@ -383,6 +405,7 @@ object SVDVariants {
       )
     math.sqrt(sse(0))
   }
+  */
 
   def dump(outf: DataOutputStream, v: BDV[Double]) = {
     outf.writeInt(v.length)
