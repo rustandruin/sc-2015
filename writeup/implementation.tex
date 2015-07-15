@@ -66,27 +66,27 @@ during construction of $A$.
 
 We then express \ttt{MultiplyGramian} in a form amenable to efficient distributed implementation
 by exploiting the fact that the matrix product $A^TAB$ can be written as a sum of outer products,
-as shown in \ref{alg:gram}. This allows for full parallelism across the rows of the matrix with
+as shown in Algorithm \ref{alg:gram}. This allows for full parallelism across the rows of the matrix with
 each row's contribution computed independently, followed by a summation step to accumulate the result.
-This approach may be implemented in Spark as a \ttt{map} forming the outer products followed by a \ttt{reduce}
+This approach may be implemented in Spark as a \ttt{map} to form the outer products followed by a \ttt{reduce}
 to accumulate the results:
 \begin{verbatim}
 def multiplyGramian(A: RowMatrix, B: LocalMatrix) =
   A.rows.map(row => row * row.t * B).reduce(_ + _)
 \end{verbatim}
-This approach forms $2m$ unnecessary temporary matrices of same dimension as the output matrix $n\times k$,
+However, this approach forms $2m$ unnecessary temporary matrices of same dimension as the output matrix $n\times k$,
 with one per row as the result of the \ttt{map} expression, and the \ttt{reduce} is not done in-place so it
 too allocates a new matrix per row.
 This results in high GC pressure and makes poor use of the CPU cache, so
 we instead remedy this by accumulating the results in-place by replacing the \ttt{map}
 and \ttt{reduce} with a single \ttt{treeAggregate}.
-The \ttt{treeAggregate} operation is a map-reduce that executes in-place to accumulate the contribution of a 
+The \ttt{treeAggregate} operation is equivalent to a map-reduce that executes in-place to accumulate the contribution of a 
 single worker node, followed by a
 tree-structured reduction that efficiently aggregates the results from each worker.
 The reduction is performed in multiple stages using a tree topology to avoid creating a single
 bottleneck at the driver node to accumulate the results from each worker node.
 Each worker emits a relatively large result with dimension $n\times k$, so the
-communication savings of having multiple reducer tasks is significant.
+communication latency savings of having multiple reducer tasks is significant.
 \begin{verbatim}
 def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
   A.rows.treeAggregate(LocalMatrix.zeros(n, k))(
