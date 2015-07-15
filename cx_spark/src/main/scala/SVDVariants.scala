@@ -17,6 +17,8 @@ import spray.json._
 import DefaultJsonProtocol._
 import java.util.Arrays
 import java.io.{DataOutputStream, BufferedOutputStream, FileOutputStream, File}
+import java.util.Calendar
+import java.text.SimpleDateFormat
 
 object SVDVariants {
   def fromBreeze(mat: BDM[Double]): DenseMatrix = {
@@ -25,8 +27,11 @@ object SVDVariants {
   }
 
   def report(message: String, verbose: Boolean = false) = {
+    val now = Calendar.getInstance().getTime()
+    val formatter = new SimpleDateFormat("H:m:s")
+
     if(verbose) {
-      println("STATUS REPORT: " + message)
+      println("STATUS REPORT (" + formatter.format(now) + "): " + message)
     }
   }
 
@@ -269,6 +274,13 @@ object SVDVariants {
     // force materialization of the RDD so we can separate I/O from compute
     mat.rows.count()
 
+    //try to force error to occur
+    report("Number of partition of input matrix: " + mat.rows.partition.size, true)
+    val testtall = BDM.rand[Double](shape._1, rank)
+    val testfat = BDM.rand[Double](rank, shape._2)
+    val testmean = BDV.zeros[Double](shape._2)
+    val test_colCXFrobNormErr = calcCenteredFrobNormErr(mat, testtall, testfat, testmean)
+
     /* perform randomized SVD of centered A' */
     val rsvdResults = computeRSVD(mat, rank, slack, numIters, true)
     val rsvdU = rsvdResults._1
@@ -328,6 +340,9 @@ object SVDVariants {
     var rowCXFrobNormErr : Double = 0.0
     var tsvdFrobNormErr : Double = 0.0
 
+    // calcCenteredFrobNormErr keeps dieing: think it may be because one executor is unbalanced, so timesout and gets killed?
+    mat.rows.repartition(200)
+
     frobNorm = math.sqrt(mat.rows.map(row => math.pow(norm(row.vector.toBreeze.asInstanceOf[BSV[Double]] - mean), 2)).reduce( (x:Double, y: Double) => x + y))
     rsvdFrobNormErr = calcCenteredFrobNormErr(mat, rsvdU, diag(rsvdSingVals) * rsvdV.t ,mean)
     colCXFrobNormErr = calcCenteredFrobNormErr(mat, colsMat, cxMat, mean)
@@ -356,17 +371,17 @@ object SVDVariants {
     outf.close()
   }
 
-  def calcCenteredFrobNormErr(mat: IndexedRowMatrix, lhsTall: BDM[Double], rhsFat: BDM[Double], mean: BDV[Double]) = {
-    var accum : Double = 0
-    math.sqrt(
-      mat.rows.treeAggregate(accum)(
-        seqOp = (partial: Double, row: IndexedRow) => {
+  def calcCenteredFrobNormErr(mat: IndexedRowMatrix, lhsTall: BDM[Double], rhsFat: BDM[Double], mean: BDV[Double]) : Double = {
+    val sse = 
+      mat.rows.treeAggregate(BDV.zeros[Double](1))(
+        seqOp = (partial: BDV[Double], row: IndexedRow) => {
           val reconstructed = (lhsTall(row.index.toInt, ::) * rhsFat).t
-          partial + math.pow(norm(row.vector.toBreeze.asInstanceOf[BSV[Double]] - mean - reconstructed), 2)
+          partial(0) += math.pow(norm(row.vector.toBreeze.asInstanceOf[BSV[Double]] - mean - reconstructed), 2)
+          partial
         },
-        combOp = (partial1, partial2) => partial1 + partial2
+        combOp = (partial1, partial2) => partial1 += partial2
       )
-    )
+    math.sqrt(sse(0))
   }
 
   def dump(outf: DataOutputStream, v: BDV[Double]) = {
