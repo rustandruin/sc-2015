@@ -71,7 +71,7 @@ $t_{ij} = \a^i \v_j = \sigma_j \u_{ij}$.
 The computation of the SVD (and thus of PCA for a data matrix $A$) is expensive~\cite{GVL96}.
 For example, to compute the truncated SVD with rank $k$ using traditional deterministic methods, the running time complexity is $\bigO(mnk)$, and $\bigO(k)$ passes over the dataset are needed.
 This  becomes prohibitively expensive when dealing with datasets of even moderately-large size, e.g., $m = 10^6$, $n = 10^4$ and $k = 20$. 
-To address these and related issues, recent work in Randomized Linear Algebra (RLA) has focused on using randomization, e.g., random projection and random sampling methods, to perform scalable linear algebra computations%
+To address these and related issues, recent work in Randomized Linear Algebra (RLA) has focused on using randomized approximation, e.g., random projection and random sampling methods, to perform scalable linear algebra computations
 \footnote{For example, RLA algorithms have led to the best worst-case algorithms for least squares and least absolute deviations regression, they have been implemented to high precision and have been shown to beat LAPACK's direct dense least squares solver on essentially any tall dense matrix; they have been been shown to lead to improved low-rank matrix approximation in scientific computing applications, and they have been shown to have improved statistical properties~\cite{Mah-mat-rev_BOOK}.  Thus, while our focus here is on improved low-rank matrix approximation methods in Spark, we expect that similar improvements can be achieved for other related problems.} for large-scale data problems.
 For an overview of the RLA area, see~\cite{Mah-mat-rev_BOOK}; for a review of using RLA methods for low-rank matrix approximation, see~\cite{HMT09_SIREV}; and for a review of the theory underlying implementing RLA methods in parallel/distributed environments, see~\cite{YMM15_TR}.
 
@@ -134,7 +134,7 @@ However, these steps can be parallelized, and hence \textsc{RandomizedSVD} is we
 \subsection{CX/CUR decompositions}
 
 In addition to developing improved algorithms for PCA/SVD and related problems, work in RLA has also focused on so-called CX/CUR decompositions~\cite{DMM08,CUR_PNAS}.
-As a motivation, observe that principal components are eigenvectors of the Gram matrix, and thus they are linear combinations of up to all of the original variables. 
+As a motivation, observe that principal components are eigenvectors of the Gram matrix $A^TA$, and thus they are linear combinations of up to all of the original variables.
 A natural question arises: can we reconstruct the matrix using a small number of actual columns of $A$?
 
 CX/CUR decompositions affirmatively answer this question.
@@ -145,7 +145,7 @@ In more detail,
 CX decomposition factorizes an $m \times n$ matrix $A$ into two matrices $C$ and $X$, where $C$ is an $m\times c$ matrix that consists of $c$ actual columns
 of $A$, and $X$ is a $c \times n$ matrix such that $A\approx CX$.
 %That is, linear combinations of the columns of $C$ can recover most of the ``information'' of the matrix $A$.
-(CUR decompositions express $X=UR$, where $R$ is a small number of actual rows of $A$ and $U$ is a low-dimensional encoding matrix~\cite{DMM08,CUR_PNAS}.)
+(CUR decompositions choose $X=UR$, where $R$ is a small number of actual rows of $A$, and $U$ is a low-dimensional encoding matrix~\cite{DMM08,CUR_PNAS}.)
 For CX, using the same optimality criterion defined in~\eqref{eqn:obj}, we seek matrices $C$ and $X$ such that the residual error $\|A-CX\|_F$ is small.
 
 The quality of approximation provided by CX/CUR depends on how the columns are chosen.
@@ -166,11 +166,12 @@ The major steps of this \textsc{CXdecomposition}, which uses approximate leverag
     
     %\Function{ColSelect}{$A,k,r$}
 
-    \State Using algorithm of\cite{DMMW12_JMLR}, compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using \textsc{RandomizedSVD} with $q$ power iterations.
+    %\State Using algorithm of\cite{DMMW12_JMLR}, compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using \textsc{RandomizedSVD} with $q$ power iterations.
+    \State Compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using \textsc{RandomizedSVD} with $q$ power iterations.
     
     \State Let $\ell_i = \sum_{j=1}^k \tilde \v_{ij}^2$, where $\tilde \v_{ij}^2$ is the $(i,j)$-th element of $\tilde V_k$, for $i = 1, \ldots, n$. 
     
-    \State Define $p_i = \ell_i / \sum_{j=1}^d \ell_{ij}$ for $i=1,\ldots,n$.
+    \State Define $p_i = \ell_i / \sum_{j=1}^d \ell_j$ for $i=1,\ldots,n$.
     
     \State Randomly sample $c$ columns from $A$ in i.i.d. trials, using the importance sampling distribution $\{p_i\}_{i=1}^n$ .
 
@@ -182,7 +183,7 @@ The major steps of this \textsc{CXdecomposition}, which uses approximate leverag
 \end{algorithm}
 
 
-Central to the CX decomposition is the underlying sampling distribution, i.e.,the  leverage scores; and, thus, we now provide some intuition for our choice.
+Central to the CX decomposition is the underlying sampling distribution, i.e., the leverage scores; and, thus, we now provide some intuition for our choice.
 Let $A=U\Sigma V^T$ be the SVD of $A$.
 Given a target rank parameter $k$, for $j=1,\ldots,n$, the $j$-th leverage score can be defined as
 \begin{equation}
