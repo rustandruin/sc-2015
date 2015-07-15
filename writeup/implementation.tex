@@ -14,8 +14,8 @@ RDDs are immutable lazily materialized collections supporting functional
 programming operations such as \ttt{map}, \ttt{filter}, and \ttt{reduce},
 each of which returns a new RDD.
 RDDs may be loaded from a distributed file system, computed from other RDDs,
-or created by parallelizing a collection within the user's application.
-RDDs of key-value pairs may also be treated as associative arrays, with
+or created by parallelizing a collection created within the user's application.
+RDDs of key-value pairs may also be treated as associative arrays, supporting
 operations such as \ttt{reduceByKey}, \ttt{join}, and \ttt{cogroup}.
 For example, to compute word frequencies of a text dataset in HDFS:
 \begin{verbatim}
@@ -32,20 +32,17 @@ val countsMap: Map[String, Int] =
       counts.collectAsMap
 \end{verbatim}
 
-%%% this para is very incomplete
 Spark employs a lazy evaluation strategy for efficiency.
-All Spark operations without any immediate side-effects other than returning an RDD are deferred
+All Spark operations that have no immediate side-effects other than returning an RDD are deferred
 if possible.
-Instead, most operations simply create an entry in the program DAG, recording the input
+Instead, deferrable operations simply create an entry in the program's DAG, recording the input
 dependencies and capturing any closures and values needed.
 This approach allows Spark to defer computations as much as possible, and when the evaluation
-is unavoidable the entire Spark job can be examined by the Scheduler.
+is unavoidable the entire Spark job can be examined by Spark's scheduler.
 This allows the Spark execution engine to batch together related operations, optimize data locality,
-and perform more sophisticated scheduling.
+and perform better scheduling.
 A major benefit of Spark over MapReduce is the use of in-memory caching and storage so that data structures
 may be reused rather than being recomputed.
-
-
 
 \subsection{CX and PCA on Spark}
 \label{sec:cx_spark}

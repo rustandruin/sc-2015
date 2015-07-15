@@ -215,7 +215,7 @@ Observe that the running time for \textsc{CXdecomposition} is the computation of
 To compute the leverage scores based on \eqref{eqn:lev}, i.e., exactly, one needs to compute the top $k$ right-singular vectors $V_k$. 
 As pointed out above, this is prohibitive data with massive size.
 However, just as with our PCA computation, here we can use \textsc{RandomizedSVD} to compute {\it approximate} leverage scores.
-This approach, originally proposed by Drineas et al.~\cite{DMMW12_JMLR}, runs in ``random projection time,'' i.e., it requires fewer FLOPS and fewer passes over the data matrix than the traditional deterministic algorithms that computes the leverage scores~exactly.
+This approach, originally proposed by Drineas et al.~\cite{DMMW12_JMLR}, runs in ``random projection time,'' i.e., it requires fewer FLOPS and fewer passes over the data matrix than the traditional deterministic algorithms that compute the leverage scores~exactly.
 
 
 %Finally, we want to point out that,
