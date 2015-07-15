@@ -57,12 +57,6 @@ Particularly, the $j$-th principal component of the $i$-th row of $A$ is given b
   t_{ij} = \a^i \v_j = \sigma_j \u_{ij}.
 \end{equation}
 
-As discussed above, SVD is fundamental in PCA. However, in general, to compute the truncated SVD with rank $k$, the required complexity is $\bigO(mnk)$ and it needs $\bigO(k)$ passes over the dataset, which becomes inapplicable when dealing with datasets of even moderately-large size, e.g., $m = 10^6$, $n = 10^4$ and $k = 20$. Recently, Halko et al.~\cite{HMT09_SIREV} propose to use randomized algorithms to construct a rank-$k$ approximation to $A$ which approximates $A$ nearly as well as $A_k$ does.
-The basis of the approximation is computed based on a smaller matrix after applying a random projection on $A$ that with high probability the range space of $A_k$ is preserved. We refer the readers to \cite{HMT09_SIREV,Mah-mat-rev_BOOK} for more details.
-Importantly, it runs in $\bigO(mn \log k)$ time and needs only a constant number of passes over the data matrix. These properties becomes extremely desirable in many large-scale data analytics. We call this approach as {\it randomized SVD} and its major steps are summarized in Algorithm~\ref{alg:rsvd}.
- As can be seen, the cost is dominated by the matrix-matrix multiplication appeared in step 3\&6 in Algorithm~\ref{alg:rsvd}, which involve making pass over the entire data matrix.
-However, they can be parallelized and hence randomized SVD is well amenable to distributed computing.~\footnote{It is worth mentioning that, step 3 in Algorithm~\ref{alg:rsvd} involves with dense matrix multiplication which incurs more flops but is more suitable for distributed environments whereas in \cite{HMT09_SIREV} they propose to use an FFT-based transform in order to get a faster asymptotic rate.}
-
 \subsection{CX}
 As can be seen above, principal components are linear combinations of the original variables, which are less interpretable. A natural question arises: can we reconstruct the matrix using a few actual columns of $A$?
 
@@ -110,9 +104,9 @@ That is, in this work, we compute the {\it approximate} leverage scores, which a
 This approach requires less flops and less number of passes over the data matrix to obtain $\{\ell_i\}_{i=1}^n$, and it is originally proposed by Drineas et al.~\cite{DMMW12_JMLR}.
 We summarize the major steps of CX decomposition using approximate leverage scores in Algorithm~\ref{alg:cx}.
 
-Finally, we want to point out that,
-although delivering different low-rank factorizations, both PAC and CX suffer from the fact that they need to truncated SVD.
-To make the algorithms practical on large-scale dataset, one can alleviate the demanding complexity by using randomized SVD. 
+%Finally, we want to point out that,
+%although delivering different low-rank factorizations, both PAC and CX suffer from the fact that they need to truncated SVD.
+%To make the algorithms practical on large-scale dataset, one can alleviate the demanding complexity by using randomized SVD. 
 
 %These algorithms compute high-quality approximations to the normalized leverage scores of the input matrix, and the running time of these algorithms depends on the time to apply a random projection to the input matrix, which is much faster than computing the full (or even a truncated) SVD.
 
@@ -126,11 +120,11 @@ To make the algorithms practical on large-scale dataset, one can alleviate the d
     
     %\Function{ColSelect}{$A,k,r$}
 
-    \State Compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using randomized SVD described in~\cite{HMT09_SIREV} with $q$ power iterations.
+    \State Compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using \textsc{RandomizedSVD} with $q$ power iterations.
     
     \State Let $\ell_i = \sum_{j=1}^k \tilde \v_{ij}^2$, where $\tilde \v_{ij}^2$ is the $(i,j)$-th element of $\tilde V_k$, for $i = 1, \ldots, n$. 
     
-    \State Define $p_i = \ell_i / \sum_{j=1}^d \ell_j$ for $i=1,\ldots,n$.
+    \State Define $p_i = \ell_i / \sum_{j=1}^d \ell_{ij}$ for $i=1,\ldots,n$.
     
     \State Sample $c$ columns based on $\{p_i\}_{i=1}^n$.
 
@@ -141,5 +135,56 @@ To make the algorithms practical on large-scale dataset, one can alleviate the d
     \end{algorithmic}
 \end{algorithm}
 
+\subsection{Randomized SVD}
+As discussed above, SVD is fundamental to both PCA and CX. However, in general, to compute the truncated SVD with rank $k$, the required complexity is $\bigO(mnk)$ and it needs $\bigO(k)$ passes over the dataset, which becomes prohibitively expensive when dealing with datasets of even moderately-large size, e.g., $m = 10^6$, $n = 10^4$ and $k = 20$. Recently, Halko et al.~\cite{HMT09_SIREV} propose to use randomized algorithms to construct a rank-$k$ approximation to $A$ which approximates $A$ nearly as well as $A_k$ does.
+The basis of the approximation is computed based on a smaller matrix after applying a random projection on $A$ that with high probability the range space of $A_k$ is preserved. We refer the readers to \cite{HMT09_SIREV,Mah-mat-rev_BOOK} for more details.
+Importantly, it runs in $\bigO(mn \log k)$ time and needs only a constant number of passes over the data matrix. These properties becomes extremely desirable in many large-scale data analytics. We call this approach as {\it randomized SVD} and its major steps are summarized in Algorithm~\ref{alg:rsvd}.
+ As can be seen, the cost is dominated by the matrix-matrix multiplication appeared in step 3\&6 in Algorithm~\ref{alg:rsvd}, which involve making pass over the entire data matrix.
+However, they can be parallelized and hence randomized SVD is well amenable to distributed computing.~\footnote{It is worth mentioning that, step 3 in Algorithm~\ref{alg:rsvd} involves with dense matrix multiplication which incurs more flops but is more suitable for distributed environments whereas in \cite{HMT09_SIREV} they propose to use an FFT-based transform in order to get a faster asymptotic rate.}
+
+
+\begin{algorithm}[tb]
+ \caption{{\sc RandomizedSVD} Algorithm}
+  \label{alg:rsvd}
+  \begin{algorithmic}[1]
+    \Require $A \in \reals^{m\times n}$, \
+      number of power iterations $q \ge 1$, \
+      and rank $r > 0$, slack $\ell \ge 0$ such that $k=r+\ell \leq \operatorname{rank}(A)$.
+
+    % TODO: domain of each result
+    \Ensure $U \Sigma V^T \approx \Call{ThinSVD}{A, r}$.
+
+    \State Initialize $B \in \reals^{n\times k}$ by sampling $B_{ij} \sim \mathcal{N}(0, 1)$.
+
+    \For{$q$ times}
+        \State $B \gets \Call{MultiplyGramian}{A, B}$
+        \State $(B, \_) \gets \Call{ThinQR}{B}$
+    \EndFor
+
+    \State Let $Q$ be the first $r$ columns of $B$.
+
+    \State Let $C = \Call{Multiply}{A, Q}$.
+
+    \State Compute $(U, \Sigma, \tilde V^T) = \Call{ThinSVD}{C}$.
+
+    \State Let $V = Q \tilde V$.
+    % alternative that doesn't require knowing the distributivity of transpose but looks silly:
+    %\State Let $V^T = \tilde V^T Q^T$.
+
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[tb]
+  \caption{{\sc MultiplyGramian} Algorithm}
+  \label{alg:gram}
+  \begin{algorithmic}[1]
+    \Require $A \in \reals^{m\times n}$, $B \in \reals^{n\times k}$.
+    \Ensure $X = A^T A B$.
+    \State Initialize $X = 0$.
+    \For{each row $a$ in $A$}
+        \State $X \gets X + a a^T B$.
+    \EndFor
+  \end{algorithmic}
+\end{algorithm}
 
 

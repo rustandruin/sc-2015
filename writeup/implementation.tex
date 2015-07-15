@@ -98,63 +98,6 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
 
 
 
-\begin{algorithm}[tb]
- \caption{{\sc RandomizedSVD} Algorithm}
-  \label{alg:rsvd}
-  \begin{algorithmic}[1]
-    \Require $A \in \reals^{m\times n}$, \
-      number of power iterations $q \ge 1$, \
-      and rank $r > 0$, slack $\ell \ge 0$ such that $k=r+\ell \leq \operatorname{rank}(A)$.
-
-    % TODO: domain of each result
-    \Ensure $U \Sigma V^T \approx \Call{ThinSVD}{A, r}$.
-
-    \State Initialize $B \in \reals^{n\times k}$ by sampling $B_{ij} \sim \mathcal{N}(0, 1)$.
-
-    \For{$q$ times}
-        \State $B \gets \Call{MultiplyGramian}{A, B}$
-        \State $(B, \_) \gets \Call{ThinQR}{B}$
-    \EndFor
-
-    \State Let $Q$ be the first $r$ columns of $B$.
-
-    \State Let $C = \Call{Multiply}{A, Q}$.
-
-    \State Compute $(U, \Sigma, \tilde V^T) = \Call{ThinSVD}{C}$.
-
-    \State Let $V = Q \tilde V$.
-    % alternative that doesn't require knowing the distributivity of transpose but looks silly:
-    %\State Let $V^T = \tilde V^T Q^T$.
-
-    \end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[tb]
-  \caption{{\sc MultiplyGramian} Algorithm}
-  \label{alg:gram}
-  \begin{algorithmic}[1]
-    \Require $A \in \reals^{m\times n}$, $B \in \reals^{n\times k}$.
-    \Ensure $X = A^T A B$.
-    \State Initialize $X = 0$.
-    \For{each row $a$ in $A$}
-        \State $X \gets X + a a^T B$.
-    \EndFor
-  \end{algorithmic}
-\end{algorithm}
-
-%%%%%%%\begin{itemize}
-\textcolor{red}{
-\subsection {Platform Used (SPARK) (explain it) }
-    \Comment{Jatin}{Jey to explain the SPARK compute node, with some
-    details on cache size, cores, SIMD width, etc.}
-}
-
-     \begin{figure*}[htp]
-         \includegraphics[scale=0.254]{images/jatin_a}
-         \includegraphics[scale=0.254]{images/jatin_b}
-         \caption{ Data access pattern for computing ${C}_{\it{i}}$ (left) and {\it{Res}}$_{\it{j}}$ (right) respectively.}
-         \label{fig:access_pattern}
-           \end{figure*}
 
 \subsection {Single Node Implementation/Optimizations}
 \label{sxn:single_node_opt}
