@@ -1,4 +1,5 @@
 package org.apache.spark.mllib.linalg.distributed
+
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
@@ -20,6 +21,18 @@ import java.util.Arrays
 import java.io.{DataOutputStream, BufferedOutputStream, FileOutputStream, File}
 import java.util.Calendar
 import java.text.SimpleDateFormat
+
+import org.apache.spark.AccumulatorParam
+
+object BDMAccumulatorParam extends AccumulatorParam[BDM[Double]] {
+  def zero(initialValue: BDM[Double]): BDM[Double] = {
+    BDM.zeros[Double](initialValue.rows, initialValue.cols) 
+  }
+
+  def addInPlace(m1: BDM[Double], m2: BDM[Double]) : BDM[Double] = {
+    m1 += m2
+  }
+}
 
 object SVDVariants {
   def fromBreeze(mat: BDM[Double]): DenseMatrix = {
@@ -112,35 +125,49 @@ object SVDVariants {
     fromBreeze(1/mat.numRows.toDouble * result - avg * tmp.t)
   }
 
-  // computes BA where B is a local matrix and A is distributed: let b_i denote the
-  // ith col of B and a_i denote the ith row of A, then BA = sum(b_i a_i)
-  def leftMultiplyCenteredMatrixBy(mat: IndexedRowMatrix, lhs: DenseMatrix, avg: BDV[Double]) : DenseMatrix = {
-   val lhsFactor = mat.rows.context.broadcast(lhs.toBreeze.asInstanceOf[BDM[Double]])
-  
-   val result = mat.rows.map(row => {
-       val lhs = lhsFactor.value
-       lhs(::, row.index.toInt) * (row.vector.toBreeze.asInstanceOf[BSV[Double]] - avg).t
-     }).reduce(_ + _)
-
-   fromBreeze(result)
-  }
-
   /*
   // computes BA where B is a local matrix and A is distributed: let b_i denote the
   // ith col of B and a_i denote the ith row of A, then BA = sum(b_i a_i)
   def leftMultiplyCenteredMatrixBy(mat: IndexedRowMatrix, lhs: DenseMatrix, avg: BDV[Double]) : DenseMatrix = {
+     val lhsFactor = mat.rows.context.broadcast(lhs.toBreeze.asInstanceOf[BDM[Double]])
+
+     val result = mat.rows.map(row => {
+         val lhs = lhsFactor.value
+         lhs(::, row.index.toInt) * (row.vector.toBreeze.asInstanceOf[BSV[Double]] - avg).t
+       }).reduce(_ + _)
+
+     fromBreeze(result)
+    }
+
+  def leftMultiplyCenteredMatrixBy(mat: IndexedRowMatrix, lhs: DenseMatrix, avg: BDV[Double]) : DenseMatrix = {
+  
+   //report("lhsfactor size: " + lhs.numRows.toInt + "x" + lhs.numCols.toInt, true)
+
    val lhsBrz = lhs.toBreeze.asInstanceOf[BDM[Double]]
+   val lhsList = List.tabulate(lhs.numCols.toInt)(i => lhsBrz(::, i))
+   val accum = mat.rows.context.accumulator(BDM.zeros[Double](lhs.numRows.toInt, mat.numCols.toInt))(BDMAccumulatorParam)
+
+   mat.rows.foreach(row => accum += lhsList(row.index.toInt) * (row.vector.toBreeze.asInstanceOf[BSV[Double]] - avg).t)
+
+   fromBreeze(accum.value)
+  }
+  */
+
+  // computes BA where B is a local matrix and A is distributed: let b_i denote the
+  // ith col of B and a_i denote the ith row of A, then BA = sum(b_i a_i)
+  def leftMultiplyCenteredMatrixBy(mat: IndexedRowMatrix, lhs: DenseMatrix, avg: BDV[Double]) : DenseMatrix = {
+   val lhsFactor = mat.rows.context.broadcast(lhs.toBreeze.asInstanceOf[BDM[Double]])
+
    val result = 
      mat.rows.treeAggregate(BDM.zeros[Double](lhs.numRows.toInt, mat.numCols.toInt))(
        seqOp = (U: BDM[Double], row: IndexedRow) => {
          val rowBrz = row.vector.toBreeze.asInstanceOf[BSV[Double]] - avg
-         U += lhsBrz(::, row.index.toInt) * rowBrz.t
+         U += (lhsFactor.value)(::, row.index.toInt) * rowBrz.t
        },
-       combOp = (U1, U2) => U1 += U2
+       combOp = (U1, U2) => U1 += U2, depth = 8
      )
    fromBreeze(result)
   }
-  */
 
   def main(args: Array[String]) = {
     val conf = new SparkConf().setAppName("SVDVariants")
@@ -336,7 +363,7 @@ object SVDVariants {
 
     // compute the truncated SVD by using PCA to get the right singular vectors
     // todo: port PROPACK here
-    val tol = 1e-10
+    val tol = 1e-11
     val maxIter = 100
     val covOperator = (v : BDV[Double]) => multiplyCovarianceBy(mat, fromBreeze(v.toDenseMatrix).transpose, mean).toBreeze.asInstanceOf[BDM[Double]].toDenseVector
     report("Done with centered RSVD and centered CX, now computing truncated centered SVD", true)
@@ -422,7 +449,6 @@ object SVDVariants {
     report("Finished computing Frobenius norm", true)
     math.sqrt(res)
   }
-  */
 
   def calcCenteredFrobNormErr(mat: IndexedRowMatrix, lhsTall: BDM[Double], rhsFat: BDM[Double], mean: BDV[Double]) : Double = {
     val sc = mat.rows.context
@@ -435,8 +461,8 @@ object SVDVariants {
         math.pow(norm( row.vector.toBreeze.toDenseVector - mean - (lhs(row.index.toInt, ::) * rhs).t.toDenseVector ), 2)
       }).reduce(_ + _))
   }
+*/
 
-  /*
   def calcCenteredFrobNormErr(mat: IndexedRowMatrix, lhsTall: BDM[Double], rhsFat: BDM[Double], mean: BDV[Double]) : Double = {
     val sse = 
       mat.rows.treeAggregate(BDV.zeros[Double](1))(
@@ -445,11 +471,11 @@ object SVDVariants {
           partial(0) += math.pow(norm(row.vector.toBreeze.asInstanceOf[BSV[Double]] - mean - reconstructed), 2)
           partial
         },
-        combOp = (partial1, partial2) => partial1 += partial2
+        combOp = (partial1, partial2) => partial1 += partial2,
+        depth = 7
       )
     math.sqrt(sse(0))
   }
-  */
 
   def dump(outf: DataOutputStream, v: BDV[Double]) = {
     outf.writeInt(v.length)

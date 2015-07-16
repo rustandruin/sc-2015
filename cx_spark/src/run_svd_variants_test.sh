@@ -5,7 +5,7 @@
 export DATADIR="$(cd "`dirname "$0"`"/..; pwd)"/data
 export SPARKJAR=$SPARKHOME/lib/spark-assembly-1.5.0-SNAPSHOT-hadoop2.4.0.jar
 
-$DATADIR/genrandomlowrank.py 200 55 10 $DATADIR/input.csv /dev/null --csv
-spark-submit --master local[2] --verbose --class org.apache.spark.mllib.linalg.distributed.SVDVariants $1 csv file://$DATADIR/input.csv 55 200 $DATADIR/output.bin 10 2 5
+$DATADIR/genrandomlowrank.py 20000 55 10 $DATADIR/input.csv /dev/null --csv
+spark-submit --master local[2] --verbose --class org.apache.spark.mllib.linalg.distributed.SVDVariants $1 csv file://$DATADIR/input.csv 55 20000 $DATADIR/output.bin 10 2 5
 #scala -cp $1:$SPARKJAR org.apache.spark.mllib.linalg.distributed.ConvertDump $DATADIR/output.bin $DATADIR
 
