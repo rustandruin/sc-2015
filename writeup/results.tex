@@ -132,7 +132,7 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
   In Figures~\ref{fig:timing-accuracy-8} and~\ref{fig:timing-accuracy-16}, we observe the timing vs accuracy tradeoffs of the RSVD and CX algorithms
   as applied to the 100G MSI dataset for two settings of the rank parameter, $k=8$ and $k=16.$ The exact SVD was computed in this case using the
   Spark bindings of the popular ARPACK eigenproblem library~\cite{ArpackUserGuide}. The RSVD algorithm used two power iterations, and we used the output of the RSVD algorithm to generate
-  both the column CX decomposition defined in Algorithm~\ref{alg:cx} and a related 'row CX' decomposition that comes from applying Algorithm~\ref{alg:cx}
+  both the column CX decomposition defined in Algorithm~\ref{alg:cx} and a related `row CX' decomposition that comes from applying Algorithm~\ref{alg:cx}
   to $A^T.$ As explained in more detail in the next section, both of these CX decompositions are of interest, as they identify important pixels and ions.
 
   For both rank parameters, we observe the behavior predicted by the theory for the RSVD decomposition: the approximation error is only slightly greater than that of the 
