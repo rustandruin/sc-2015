@@ -22,7 +22,7 @@ We undertake two classes of high performance implementations for the CX method. 
     We began by profiling our initial %%unoptimized 
     scalar serial CX
     code and optimizing the steps in the order of execution times.
-    The max. time is spent in computing sparse-sparse-dense matrix
+    The most time is spent in computing sparse-sparse-dense matrix
     multiplication ($A^TAB$, Step 3, 91.2\%), followed by  sparse-dense matrix
     multiplication ($AQ$, Step 7, 8.6\%) and finally, QR
     decomposition (Step 4, 0.2\%)
@@ -87,7 +87,7 @@ We undertake two classes of high performance implementations for the CX method. 
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      \vspace*{0.1in}
-     {\it{1. Exploiting SIMD}}: Refer to Fig.~\ref{fig:access_pattern}. 
+     {\it{1. Exploiting SIMD}}: Refer to Figure~\ref{fig:access_pattern}. 
      Consider element $A_{{\it{i}},{\it{j}}}$. To compute
      $C_{\it{i}}$, we need to scale each element of
      $B_{{\it{j}}}$ by  $A_{{\it{i}},{\it{j}}}$ and add it to
@@ -99,7 +99,7 @@ We undertake two classes of high performance implementations for the CX method. 
      On modern computing platforms, SIMD width (number of simultaneous
      operations that can be performed) is
      growing~\cite{intel1,intel2}. SSE can perform 4
-     single-precision floating point operations in a single op., while
+     single-precision floating point operations in a single operation, while
      AVX (our SPARK platform) performs 8 ops. Let $\mathcal{S}$ denote the SIMD width
      (defined as number of double-precision floating point ops. per op
      -- which is half of single-precision ops).
@@ -230,7 +230,7 @@ We undertake two classes of high performance implementations for the CX method. 
      maintaining a shared copy of the $Res$ matrix reduces it to
      8{\it{kn}} bytes, around 128 MB for this example. Note that the
      total size is indepent of the number of cores, and thus future
-     proofs our implementation w.r.t. increasing number of cores on a
+     proofs our implementation with respect to increasing number of cores on a
      single node. However, it is still dependent on {\it{n}}, the
      number of columns in the input matrix $A$, and thus we devise the
      following scheme to reduce it further to a given cache size of
@@ -248,7 +248,7 @@ We undertake two classes of high performance implementations for the CX method. 
      1)$\lceil\frac{\it{n}}{\it{n}'}\rceil$]
      in round {\it{r}}).
      Recall from the previous subsection that the number of flops
-     executed per {\it{nnz}} element in $A$ is
+     executed per nonzero element in $A$ is
      $\lceil\frac{4{\it{k}}}{\mathcal{S}}\rceil$.
      Since the non zeros elements of $A$ are stored consecutively, 
      this may require loading each element
