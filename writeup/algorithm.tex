@@ -3,7 +3,7 @@
 %% \textit{Owners: Jiyan, Michael Mahoney (1 page)}
 
 Given an $m \times n$ data matrix $A$, low-rank matrix factorization methods aim find two or more smaller matrices such that their product is a good approximation to $A$.
-That is, they aim to find matrices $X$ and $Y$ such that
+That is, they aim to find matrices $Y$ and $Z$ such that
 \begin{equation}
  \label{eqn:apprx}
     \underset{m\times n}{A} \approx \underset{m\times k}{Y} \times \underset{k\times n}{Z} , 
@@ -23,16 +23,16 @@ In many modern applications, datasets containing a massive number of rows or col
 \end{compactitem}
 
 Depending on the application, various low-rank factorization techniques are of interest. 
-Popular choices include the singular value decomposition~\cite{GVL96}, principal component analysis~\cite{pcaBook}, rank-revealing QR factorization~\cite{GE96}, nonnegative matrix factorization~\cite{NMFalg}, and CUR/CX decomposition~\cite{CUR_PNAS}.
+Popular choices include the singular value decomposition~\cite{GVL96}, principal component analysis~\cite{pcaBook}, rank-revealing QR factorization~\cite{GE96}, nonnegative matrix factorization~\cite{NMFalg}, and CUR/CX decompositions~\cite{CUR_PNAS}.
 In this work, we consider using PCA and CX decomposition for our scalable and interpretable data analysis; and, in the remainder of the section, we briefly describe these decompositions.
-For an arbitrary matrix $A$, denote by $\a_i$ its $i$-th column, $\a^j$ its $j$-th row and $\a_{ij}$ its $(i,j)$-th element. 
-Hereby, we assume the data matrix $A$ has size $m$ by $n$ and rank $r$.
+For an arbitrary matrix $A$, denote by $\a_i$ its $i$-th row, $\a^j$ its $j$-th column and $\a_{ij}$ its $(i,j)$-th element. 
+Hereby, we assume the data matrix $A$ has size $m \times n$ and rank $r$.
 
 
 \subsection{SVD and PCA}
 
-The singular value decomposition (SVD) is the factorization of matrix $A \in \reals^{m\times n}$ into the product of three matrices $U\Sigma V^T$ where $U \in \reals^{m\times r}$ and $V\in \reals^{r\times n}$ have orthonormal columns and $D\in \reals^{r\times r}$ is a diagonal matrix with positive real entries. 
-The columns of $U$ and $V$ are called left and right singular vectors and the diagonal entries of $D$ are called singular values. 
+The singular value decomposition (SVD) is the factorization of matrix $A \in \reals^{m\times n}$ into the product of three matrices $U\Sigma V^T$ where $U \in \reals^{m\times r}$ and $V\in \reals^{n\times r}$ have orthonormal columns and $\Sigma\in \reals^{r\times r}$ is a diagonal matrix with positive real entries. 
+The columns of $U$ and $V$ are called left and right singular vectors and the diagonal entries of $\Sigma$ are called singular values. 
 For notation convenience, we assume the singular values are sorted such that $\sigma_1\geq \cdots \geq \sigma_r\geq 0$, and this means that the columns of $U$ and $V$ are sorted by the order given by the singular values.  
 
 %if optimality criterion to choose is the square loss ($\ell_2$ loss)
@@ -44,7 +44,7 @@ A typical choice of $L$ is the squared loss, in which case, we seek to find
  \label{eqn:obj}
   \min_{\text{rank}(\tilde A) = k} \| A - \tilde A \|_F,
 \end{equation}
-where the Frobenius norm $\| \cdot \|_F$ is defined as $\|X\|_F^2 = \sum_{i=1}^m \sum_{j=1}^n X_{ij} $.
+where the Frobenius norm $\| \cdot \|_F$ is defined as $\|X\|_F^2 = \sum_{i=1}^m \sum_{j=1}^n X_{ij}^2 $.
 For any target rank $k\leq r$, the solution to \eqref{eqn:obj} is given by the truncated SVD, i.e., $A_k = U_k \Sigma_k V_k^T$, where $U_k \in \reals^{m\times k}$ and $V_k\in \reals^{n\times k}$ contain the top $k$ singular vectors, i.e., the first $k$ columns of $U$ and $V$, respectively, and $\Sigma_k\in \reals^{k\times k}$ is a diagonal matrix containing the top-$k$ singular values.
 
 Principal component analysis (PCA) and SVD are closely related.
@@ -80,8 +80,8 @@ The basis of the approximation is computed based on a smaller matrix after apply
 Importantly, the algorithm runs in $\bigO(mn \log k)$ time, and the algorithm needs only a constant number of passes over the data matrix. 
 These properties becomes extremely desirable in many large-scale data analytics. 
 This algorithm, which we refer to as \textsc{RandomizedSVD}, is summarized in Algorithm~\ref{alg:rsvd}.
-(Algorithm~\ref{alg:rsvd} calls \textsc{MultiplyGramian}, which is summarized in Algorithm~\ref{alg:gram}, as well as two algorithms, \textsc{Multiply} and \textsc{ThinSVD}, which are standard in numerical linear algebra~\cite{GVL96}.) 
-The running time cost for \textsc{RandomizedSVD} is dominated by the matrix-matrix multiplication, which involve making pass over the entire data matrix, appearing in Step 3 and Step 6 of Algorithm~\ref{alg:rsvd}.
+(Algorithm~\ref{alg:rsvd} calls \textsc{MultiplyGramian}, which is summarized in Algorithm~\ref{alg:gram}, as well as three algorithms, \textsc{Multiply}, \textsc{ThinQR}, and \textsc{ThinSVD}, which are standard in numerical linear algebra~\cite{GVL96}.) 
+The running time cost for \textsc{RandomizedSVD} is dominated by the matrix-matrix multiplication, which involve making pass over the entire data matrix, appearing in Step 3 and Step 7 of Algorithm~\ref{alg:rsvd}.
 However, these steps can be parallelized, and hence \textsc{RandomizedSVD} is well amenable to distributed computing.%
 \footnote{We should mention that Step 3 of Algorithm~\ref{alg:rsvd} involves a dense matrix-matrix multiplication, whereas most RLA algorithms, including the variant of \textsc{RandomizedSVD} in~\cite{HMT09_SIREV} uses an FFT-based random projection in order to obtain a faster asymptotic running time.  While our version incurs more FLOPS, it is more parallelizable and thus more suitable for distributed computational environments.}
 
