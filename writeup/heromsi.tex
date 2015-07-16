@@ -10,8 +10,8 @@
 \usepackage{epstopdf}
 \usepackage{listings}
 \usepackage{booktabs}
+\usepackage{textcomp}
 
-\newcommand{\ttt}[1]{\texttt{#1}}
 \DeclareMathOperator{\bigO}{\mathcal{O}}
 \def\reals{\mathbb{R}}
 
@@ -58,85 +58,90 @@
 % above comment to compress layout of the authors list and save space.
 \numberofauthors{6}
 
-\author{
-\alignauthor
-Jey Kottalam\\
-%%LONG%% \affaddr{Berkeley Institute for Data Science and EECS Department, University of California, Berkeley}\\
-\affaddr{BIDS and EECS, UC Berkeley}\\
-\email{jey@berkeley.edu}
-\alignauthor
-Jiyan Yang\\
-%%LONG%% \affaddr{Institute for Computational and Mathematical Engineering, Stanford University}\\
-\affaddr{ICME, Stanford University}\\
-\email{jiyan@stanford.edu}
-\alignauthor
-Michael F. Ringenberg\\
-%%LONG%% \affaddr{Cray Inc}\\
-\affaddr{Cray Inc}\\
-\email{mikeri@cray.com}
-\and
-\alignauthor
-Jatin Chhugani\\
-\email{jatinch@gmail.com}
-\alignauthor
-Evan Racah\\
-%%LONG%% \affaddr{National Energy Research Scientific Computing Division, Lawrence Berkeley National Laboratory}\\
-\affaddr{NERSC, LBNL}\\
-\email{eracah@lbl.gov}
-\alignauthor
-Alex Gittens\\
-%%LONG%% \affaddr{International Computer Science Institute and Department of Statistics, University of California, Berkeley}\\
-\affaddr{ICSI \& Statistics, UC Berkeley}\\
-\email{gittens@icsi.berkeley.edu}
-\and
-\alignauthor
-Mohitdeep Singh\\
-%%LONG%% \affaddr{Georgia Institute of Technology}\\
-\affaddr{Georgia Inst. of Technology}\\
-\email{msingh74@gatech.edu}
-\alignauthor
-Monte LaBute\\
-%%LONG%% \affaddr{Cray Inc}\\
-\affaddr{Cray Inc}\\
-\email{mlabute@cray.com}
-\alignauthor
-Yushu Yao\\
-%%LONG%% \affaddr{National Energy Research Scientific Computing Division, Lawrence Berkeley National Laboratory}\\
-\affaddr{NERSC, LBNL}\\
-\email{yyao@lbl.gov}
-\and
-\alignauthor
-Curt R. Fischer\\
-%%LONG%% \affaddr{Life Sciences Division, Lawrence Berkeley National Laboratory}\\
-\affaddr{LSD, LBNL}\\
-\email{crfischer@lbl.gov}
-\alignauthor
-Oliver Ruebel\\
+%\author{
+%\alignauthor
+%Jey Kottalam\\
+%%%LONG%% \affaddr{Berkeley Institute for Data Science and EECS Department, University of California, Berkeley}\\
+%\affaddr{BIDS and EECS, UC Berkeley}\\
+%\email{jey@berkeley.edu}
+%\alignauthor
+%Jiyan Yang\\
+%%%LONG%% \affaddr{Institute for Computational and Mathematical Engineering, Stanford University}\\
+%\affaddr{ICME, Stanford University}\\
+%\email{jiyan@stanford.edu}
+%\alignauthor
+%Michael F. Ringenberg\\
+%%%LONG%% \affaddr{Cray Inc}\\
+%\affaddr{Cray Inc}\\
+%\email{mikeri@cray.com}
+%\and
+%\alignauthor
+%Jatin Chhugani\\
+%\email{jatinch@gmail.com}
+%\alignauthor
+%Evan Racah\\
+%%%LONG%% \affaddr{National Energy Research Scientific Computing Division, Lawrence Berkeley National Laboratory}\\
+%\affaddr{NERSC, LBNL}\\
+%\email{eracah@lbl.gov}
+%\alignauthor
+%Alex Gittens\\
+%%%LONG%% \affaddr{International Computer Science Institute and Department of Statistics, University of California, Berkeley}\\
+%\affaddr{ICSI \& Statistics, UC Berkeley}\\
+%\email{gittens@icsi.berkeley.edu}
+%\and
+%\alignauthor
+%Mohitdeep Singh\\
+%%%LONG%% \affaddr{Georgia Institute of Technology}\\
+%\affaddr{Georgia Inst. of Technology}\\
+%\email{msingh74@gatech.edu}
+%\alignauthor
+%Monte LaBute\\
+%%%LONG%% \affaddr{Cray Inc}\\
+%\affaddr{Cray Inc}\\
+%\email{mlabute@cray.com}
+%\alignauthor
+%Yushu Yao\\
+%%%LONG%% \affaddr{National Energy Research Scientific Computing Division, Lawrence Berkeley National Laboratory}\\
+%\affaddr{NERSC, LBNL}\\
+%\email{yyao@lbl.gov}
+%\and
+%\alignauthor
+%Curt R. Fischer\\
+%%%LONG%% \affaddr{Life Sciences Division, Lawrence Berkeley National Laboratory}\\
+%\affaddr{LSD, LBNL}\\
+%\email{crfischer@lbl.gov}
+%\alignauthor
+%Oliver Ruebel\\
 %%LONG%% \affaddr{Computational Research Division, Lawrence Berkeley National Laboratory}\\
-\affaddr{CRD, LBNL}\\
-\email{oruebel@lbl.gov}
-\alignauthor
-Benjamin P. Bowen\\
-%%LONG%% \affaddr{Life Sciences Division, Lawrence Berkeley National Laboratory}\\
-\affaddr{LSD, LBNL}\\
-\email{bpbowen@lbl.gov}
-\and
-\alignauthor
-Michael W. Mahoney\\
-%%LONG%% \affaddr{International Computer Science Institute and Department of Statistics, University of California, Berkeley}\\
-\affaddr{ICSI \& Statistics, UC Berkeley}\\
-\email{mmahoney@stat.berkeley.edu}
-\alignauthor
-Venkat Krishnamurthy\\
-%%LONG%% \affaddr{Cray Inc}\\
-\affaddr{Cray Inc}\\
-\email{venkat@cray.com}
-\alignauthor
-Prabhat\\
-%%LONG%% \affaddr{National Energy Research Scientific Computing Division, Lawrence Berkeley National Laboratory}\\
-\affaddr{NERSC, LBNL}\\
-\email{prabhat@lbl.gov}
-}
+%\affaddr{CRD, LBNL}\\
+%\email{oruebel@lbl.gov}
+%\alignauthor
+%Benjamin P. Bowen\\
+%%%LONG%% \affaddr{Life Sciences Division, Lawrence Berkeley National Laboratory}\\
+%\affaddr{LSD, LBNL}\\
+%\email{bpbowen@lbl.gov}
+%\and
+%\alignathor
+%Norman Lewis\\
+%\affaddr{Washington State University}
+%\email{lewisn@wsu.edu}
+%\end
+%\alignauthor
+%Michael W. Mahoney\\
+%%%LONG%% \affaddr{International Computer Science Institute and Department of Statistics, University of California, Berkeley}\\
+%\affaddr{ICSI \& Statistics, UC Berkeley}\\
+%\email{mmahoney@stat.berkeley.edu}
+%\alignauthor
+%Venkat Krishnamurthy\\
+%%%LONG%% \affaddr{Cray Inc}\\
+%\affaddr{Cray Inc}\\
+%\email{venkat@cray.com}
+%\alignauthor
+%Prabhat\\
+%%%LONG%% \affaddr{National Energy Research Scientific Computing Division, Lawrence Berkeley National Laboratory}\\
+%\affaddr{NERSC, LBNL}\\
+%\email{prabhat@lbl.gov}
+%}
 
 \maketitle
 \begin{abstract}
@@ -145,12 +150,12 @@ Prabhat\\
 
 % A category with the (minimum) three required fields
 %% TODO FIXME: No idea if this is correct. -JK
-\textcolor{blue}{\category{H.2.8}{Database Management}{Database Applications}}
+\category{H.2.8}{Database Management}{Database Applications}
 %\category{C.4}{ PERFORMANCE OF SYSTEMS }{}
 %\category{G.4}{ MATHEMATICAL SOFTWARE }{}
 
 %% TODO: what keywords should we use? -JK
-\textcolor{blue}{\keywords{ACM proceedings, \LaTeX, text tagging}} % NOT required for Proceedings
+\keywords{Matrix Factorization, Data Analytics, High Performance Computing} % NOT required for Proceedings
 
 \input{intro.tex}
 \input{algorithm.tex}
