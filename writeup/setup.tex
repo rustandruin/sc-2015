@@ -58,7 +58,7 @@ has made complex analytics intractable. This paper presents first-time science r
     \toprule
     \textbf{Platform} & \textbf{Total Cores} & \textbf{Core Frequency} & \textbf{Interconnect} & \textbf{DRAM} & \textbf{SSDs} \\
     \midrule
-    Amazon EC2 r3.8xlarge & 960 (32 per-node) & 2.5 GHz & 10 Gigabit Ethernet & 244 GiB & 2 x 320 GB \\
+    Amazon EC2 \texttt{r3.8xlarge} & 960 (32 per-node) & 2.5 GHz & 10 Gigabit Ethernet & 244 GiB & 2 x 320 GB \\
     \midrule
     Cray XC40 & 960 (32 per-node) & 2.3 GHz & Cray Aries~\cite{alverson2012cray,craycascadesc12} & 252 GiB & None \\
     \midrule
@@ -75,7 +75,7 @@ has made complex analytics intractable. This paper presents first-time science r
  \item a Cray\textregistered~XC40\textsuperscript{\tiny\texttrademark}
  system~\cite{alverson2012cray,craycascadesc12},
  \item an experimental Cray cluster, and
- \item an Amazon EC2 r3.8xlarge instance.
+ \item an Amazon EC2 \texttt{r3.8xlarge} cluster.
  \end{itemize}
  For all platforms, we sized the Spark job to use 960 executors cores (except as otherwise mentioned).  Table~\ref{tab:hwspecs} shows the full specifications of the three platforms. Note that these are state of the art configurations in datacenters and high performance computing centers. 
 
