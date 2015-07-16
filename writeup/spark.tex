@@ -33,7 +33,7 @@ val countsMap: Map[String, Int] =
 Spark employs a lazy evaluation strategy for efficiency.
 All Spark operations that have no immediate side-effects other than returning an RDD are deferred
 if possible.
-Instead, deferrable operations simply create an entry in the program's DAG, recording the input
+Instead, deferrable operations simply create an entry in the program's directed acyclic graph (DAG) of RDDs, recording the input
 dependencies and capturing any closures and values needed.
 This approach allows Spark to defer computations as much as possible, and when the evaluation
 is unavoidable the entire Spark job can be examined by Spark's scheduler.
