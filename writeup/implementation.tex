@@ -420,10 +420,10 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
     in the previous subsection (optimizing $A^TAB$) apply here, since
     there we explicitly  compute $C$ = $AB$. As far as cache blocking is
     concerned, since $C$ does not have to be memory resident, we now have
-    to ensure that $B$ is completely cache resident (i.e. 8{\it{nk}}$\le$
-    $\mathcal{C}$). With increasing {\it{n}}, we again peform the
+    to ensure that $B$ is completely cache resident (i.e. $8nk\le
+    \mathcal{C}$). With increasing {\it{n}}, we again peform the
     computation in multiple rounds, with each round operating on 
-    {\it{ {\it{n}}$'$}} (=$\frac{\mathcal{C}}{8\it{k}}$) rows of $B$.
+    $n'=\frac{\mathcal{C}}{8k}$ rows of $B$.
 %%
 %%
 %%%, and compute {\it{n}}$'$ (the number of columns of  accordingly. 
