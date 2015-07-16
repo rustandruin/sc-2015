@@ -115,23 +115,33 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
   
   \subsection{Timing and Accuracy comparison of RSVD, CX, and truncated SVD}
 
-  The golden standard for low-rank matrix approximation is the truncated SVD, which requires a number of matrix-vector multiplies 
-  that varies depending on the properties of the input matrix and the specified convergence criterion. Because the RSVD allows us to
-  explicitly control the number of matrix-vector products, the accuracy of the low-rank approximation obtained from the RSVD algorithm
-  is expected to be somewhat lower than that of truncated SVD approximation. Similarly, CX decompositions have the advantage of interpretability,
-  but come at the cost of an increased number of operations on top of the RSVD and an additional loss in approximation accuracy. However, theory
-  guarantees that in a wide range of settings, the approximation accuracy of the RSVD and CX decompositions as measured in the Frobenius norm
-  are within a $1 + \delta$ factor of that of the truncated SVD approximation. 
+ Because the RSVD allows us to explicitly control the number of matrix-vector
+ products, the accuracy of the low-rank approximation obtained from the RSVD
+ algorithm is expected to be somewhat lower than that of truncated SVD
+ approximation. Similarly, CX decompositions have the advantage of
+ interpretability, but come at the cost of an increased number of operations on
+ top of the RSVD and an additional loss in approximation accuracy. 
 
   In Figures~\ref{fig:timing-accuracy-8} and~\ref{fig:timing-accuracy-16}, we observe the timing vs accuracy tradeoffs of the RSVD and CX algorithms
-  as applied to the 100G OpenMSI dataset. 
+  as applied to the 100G MSI dataset for two settings of the rank parameter, $k=8$ and $k=16.$ The exact SVD was computed in this case using the
+  Spark bindings of the popular ARPACK eigenproblem library~\cite{ArpackUserGuide}. The RSVD algorithm used two power iterations, and we used the output of the RSVD algorithm to generate
+  both the column CX decomposition defined in Algorithm~\ref{alg:cx} and a related 'row CX' decomposition that comes from applying Algorithm~\ref{alg:cx}
+  to $A^T.$ As explained in more detail in the next section, both of these CX decompositions are of interest, as they identify important pixels and ions.
+
+  For both rank parameters, we observe the behavior predicted by the theory for the RSVD decomposition: the approximation error is only slightly greater than that of the 
+  truncated SVD approximation. We also observe that there is only a slight speed advantage to using the RSVD; this is likely attributable to the fact that the input matrix
+  is truly low-rank (more than 70\% of the Frobenius norm of the matrix is already captured by the rank-8 decomposition), so the iterative ARPACK SVD algorithm converges 
+  quite fast.
+
+  The CX decompositions require significantly more time to compute than the truncated SVD and RSVD decompositions. This is due to the need to compute the projection of $A$ onto
+  the columns $C$ after $C$ is constructed according to Algorithm~\ref{alg:cx}. We also note that for the MSI dataset, row-based CX decompositions are more 
+  accurate and less expensive to construct than column-based CX decompositions. 
 
   \begin{figure}[h!btp]
     \begin{centering}
       \includegraphics[scale=0.4]{images/timing-accuracy-8}
       \end{centering}
-      \caption{The Frobenius norm error of the RSVD and CX algorithms versus the runtimes of the algorithms relative to that of the truncated SVD
-        for a target rank of $k=8$ on the 100G dataser}
+      \caption{The Frobenius norm approximation errors and timings for three runs of the RSVD and CX approximations relative to those of the truncated SVD for a target rank of $k=8$ on the 100G MSI dataset.}
     \label{fig:timing-accuracy-8}
   \end{figure}
 
@@ -139,8 +149,7 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
     \begin{centering}
       \includegraphics[scale=0.4]{images/timing-accuracy-16}
       \end{centering}
-      \caption{The Frobenius norm error of the RSVD and CX algorithms versus the runtimes of the algorithms relative to that of the truncated SVD
-        for a target rank of $k=16$ on the 100G dataser}
+      \caption{The Frobenius norm approximation errors and timings for three runs of the RSVD and CX approximations relative to those of the truncated SVD for a target rank of $k=16$ on the 100G MSI dataset.}
     \label{fig:timing-accuracy-16}
   \end{figure}
 
