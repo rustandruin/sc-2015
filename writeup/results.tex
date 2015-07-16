@@ -66,18 +66,23 @@
 
   \subsection{Scaling across Multiple Nodes}
   \textcolor{red}{Mike R, Jatin: we need a narrative here}
-    \begin{itemize}
-      \item discuss and name phases
-    \end{itemize}
 
   \subsubsection{CX Spark Phases}
-    \textcolor{blue}{Jey, Jatin: I'm not sure if this is the right place for this text}
-    \begin{enumerate}
-        \item Load Matrix Metadata
-        \item Load Matrix
-        \item Iterations
-        \item Postprocessing/Collect
-    \end{enumerate}
+  Our implementations of CX and PCA share the \textsc{RandomizedSVD} subroutine, which accounts for the bulk of the runtime and all of the distributed computations.
+  The execution of \textsc{RandomizedSVD} proceeds in four distributed phases listed below, along with a small amount of additional local computation.
+  \begin{enumerate}
+      \item \textbf{Load Matrix Metadata}
+         The dimensions of the matrix are read from the distributed filesystem to the driver.
+      \item \textbf{Load Matrix}
+         A distributed read is performed to load the matrix entries into an in-memory cached
+         RDD containing one entry per row of the matrix.
+      \item \textbf{Power Iterations}
+         The \textsc{MultiplyGramian} loop on lines 2-5 of
+         \textsc{RandomizedSVD} is run to compute an approximation $Q$
+         of the dominant right singular subspace.
+       \item \textbf{Finalization (Post-Processing)}
+         Right multiplication by $Q$ on line 7 of \textsc{RandomizedSVD} to compute $C$.
+  \end{enumerate}
 
   \subsubsection{Empirical Results}
 
