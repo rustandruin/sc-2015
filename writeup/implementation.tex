@@ -11,12 +11,12 @@ abstraction called a \textit{resilient distributed dataset (RDD)}.
 Each RDD may be thought of as a distributed collection of objects that is
 partitioned and stored across the Spark cluster.
 RDDs are immutable lazily materialized collections supporting functional
-programming operations such as \ttt{map}, \ttt{filter}, and \ttt{reduce},
+programming operations such as \texttt{map}, \texttt{filter}, and \texttt{reduce},
 each of which returns a new RDD.
 RDDs may be loaded from a distributed file system, computed from other RDDs,
-or created by parallelizing a collection within the user's application.
-RDDs of key-value pairs may also be treated as associative arrays, with
-operations such as \ttt{reduceByKey}, \ttt{join}, and \ttt{cogroup}.
+or created by parallelizing a collection created within the user's application.
+RDDs of key-value pairs may also be treated as associative arrays, supporting
+operations such as \texttt{reduceByKey}, \texttt{join}, and \texttt{cogroup}.
 For example, to compute word frequencies of a text dataset in HDFS:
 \begin{verbatim}
 val dataset: RDD[String] =
@@ -32,61 +32,58 @@ val countsMap: Map[String, Int] =
       counts.collectAsMap
 \end{verbatim}
 
-%%% this para is very incomplete
 Spark employs a lazy evaluation strategy for efficiency.
-All Spark operations without any immediate side-effects other than returning an RDD are deferred
+All Spark operations that have no immediate side-effects other than returning an RDD are deferred
 if possible.
-Instead, most operations simply create an entry in the program DAG, recording the input
+Instead, deferrable operations simply create an entry in the program's DAG, recording the input
 dependencies and capturing any closures and values needed.
 This approach allows Spark to defer computations as much as possible, and when the evaluation
-is unavoidable the entire Spark job can be examined by the Scheduler.
+is unavoidable the entire Spark job can be examined by Spark's scheduler.
 This allows the Spark execution engine to batch together related operations, optimize data locality,
-and perform more sophisticated scheduling.
+and perform better scheduling.
 A major benefit of Spark over MapReduce is the use of in-memory caching and storage so that data structures
 may be reused rather than being recomputed.
-
-
 
 \subsection{CX and PCA on Spark}
 \label{sec:cx_spark}
 The main consideration when implementing CX and PCA in a parallel setting are
 efficient implementations of operations involving the data matrix $A$.
 All access of $A$ by the CX and PCA algorithms occurs through the
-\ttt{RandomizedSVD} routine shared in common.
-\ttt{RandomizedSVD} in turn accesses $A$ only through the \ttt{MultiplyGramian} and
-\ttt{Multiply} routines, with repeated invocations of \ttt{MultiplyGramian}
+\textsc{RandomizedSVD} routine shared in common.
+\textsc{RandomizedSVD} in turn accesses $A$ only through the \textsc{MultiplyGramian} and
+\textsc{Multiply} routines, with repeated invocations of \textsc{MultiplyGramian}
 accounting for the majority of the algorithm's execution time.
 
-The matrix $A$ is stored as an RDD containing one \ttt{IndexedRow} per row of the input matrix,
-where each \ttt{IndexedRow} consists of the row's index and corresponding data vector.
+The matrix $A$ is stored as an RDD containing one \texttt{IndexedRow} per row of the input matrix,
+where each \texttt{IndexedRow} consists of the row's index and corresponding data vector.
 This is a natural storage format for many datasets stored on a distributed or shared file
 system, where each row of the matrix is formed from one record of the
 input dataset, thereby preserving locality by not requiring data shuffling
 during construction of $A$.
 
-We then express \ttt{MultiplyGramian} in a form amenable to efficient distributed implementation
+We then express \textsc{MultiplyGramian} in a form amenable to efficient distributed implementation
 by exploiting the fact that the matrix product $A^TAB$ can be written as a sum of outer products,
-as shown in \ref{alg:gram}. This allows for full parallelism across the rows of the matrix with
+as shown in Algorithm \ref{alg:gram}. This allows for full parallelism across the rows of the matrix with
 each row's contribution computed independently, followed by a summation step to accumulate the result.
-This approach may be implemented in Spark as a \ttt{map} forming the outer products followed by a \ttt{reduce}
+This approach may be implemented in Spark as a \texttt{map} to form the outer products followed by a \texttt{reduce}
 to accumulate the results:
 \begin{verbatim}
 def multiplyGramian(A: RowMatrix, B: LocalMatrix) =
   A.rows.map(row => row * row.t * B).reduce(_ + _)
 \end{verbatim}
-This approach forms $2m$ unnecessary temporary matrices of same dimension as the output matrix $n\times k$,
-with one per row as the result of the \ttt{map} expression, and the \ttt{reduce} is not done in-place so it
+However, this approach forms $2m$ unnecessary temporary matrices of same dimension as the output matrix $n\times k$,
+with one per row as the result of the \texttt{map} expression, and the \texttt{reduce} is not done in-place so it
 too allocates a new matrix per row.
 This results in high GC pressure and makes poor use of the CPU cache, so
-we instead remedy this by accumulating the results in-place by replacing the \ttt{map}
-and \ttt{reduce} with a single \ttt{treeAggregate}.
-The \ttt{treeAggregate} operation is a map-reduce that executes in-place to accumulate the contribution of a 
+we instead remedy this by accumulating the results in-place by replacing the \texttt{map}
+and \texttt{reduce} with a single \texttt{treeAggregate}.
+The \texttt{treeAggregate} operation is equivalent to a map-reduce that executes in-place to accumulate the contribution of a
 single worker node, followed by a
 tree-structured reduction that efficiently aggregates the results from each worker.
 The reduction is performed in multiple stages using a tree topology to avoid creating a single
 bottleneck at the driver node to accumulate the results from each worker node.
 Each worker emits a relatively large result with dimension $n\times k$, so the
-communication savings of having multiple reducer tasks is significant.
+communication latency savings of having multiple reducer tasks is significant.
 \begin{verbatim}
 def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
   A.rows.treeAggregate(LocalMatrix.zeros(n, k))(
@@ -423,10 +420,10 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) = {
     in the previous subsection (optimizing $A^TAB$) apply here, since
     there we explicitly  compute $C$ = $AB$. As far as cache blocking is
     concerned, since $C$ does not have to be memory resident, we now have
-    to ensure that $B$ is completely cache resident (i.e. 8{\it{nk}}$\le$
-    $\mathcal{C}$). With increasing {\it{n}}, we again peform the
+    to ensure that $B$ is completely cache resident (i.e. $8nk\le
+    \mathcal{C}$). With increasing {\it{n}}, we again peform the
     computation in multiple rounds, with each round operating on 
-    {\it{ {\it{n}}$'$}} (=$\frac{\mathcal{C}}{8\it{k}}$) rows of $B$.
+    $n'=\frac{\mathcal{C}}{8k}$ rows of $B$.
 %%
 %%
 %%%, and compute {\it{n}}$'$ (the number of columns of  accordingly. 
