@@ -127,7 +127,7 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
    
   In Figure~\ref{fig:cx_ions}, we present the distribution of the marginalized ion leverage scores over $\tau$. That is, each score corresponds to an ion with $m/z$ value shown in the $x$-axis. Clearly, leverage scores of ions in three narrow regions have significantly larger magnitude than the rest. This indicates that these ions are more informative and should be kept as basis for reconstruction.  {\color{red} XXX: BEN, PLEASE COMMENT ON THE EXACT IONS FOUND. JEY MIGHT HAVE SENT YOU THE LIST M/Z VALUES. }
   
-  On the other hand, we observed that the pixel leverage scores are fairly uniform (not shown here). This is not surprising since similar pixels tend to have similar and small individual scores. However, for each region that contains similar pixels, the total leverage score (sampling probability) will still be higher if such a region is more important in the reconstruction. Therefore, a random sampling will still highlight those regions as shown in Figure~\ref{fig:cx_spatial}.
+  On the other hand, we observed that the pixel leverage scores are fairly uniform (not shown here). This is not surprising since similar pixels tend to have similar and small individual scores. However, for each region that contains similar pixels, the total leverage score (sampling probability) will still be higher if such a region is more important in the reconstruction. Therefore, a random sampling is still able to capture the importance by sampling more pixels from the region as shown in Figure~\ref{fig:cx_spatial}.
   {\color{red} XXX: BEN, PLEASE COMMENT ON THESE REGIONS. }
     
     \begin{figure} [h!btp]
