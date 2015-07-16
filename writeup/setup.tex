@@ -26,7 +26,7 @@
  \item a Cray\textregistered~XC40\textsuperscript{\tiny\texttrademark} 
  system~\cite{alverson2012cray,craycascadesc12},
  \item an experimental Cray cluster, and
- \item an Amazon EC2 r3.8xlarge instance.
+ \item an Amazon EC2 \texttt{r3.8xlarge} cluster.
  \end{itemize}
  For all platforms, we sized the Spark job to use 960 executors cores (except as otherwise mentioned).  Table~\ref{tab:hwspecs} shows the full specifications of the three platforms.
   
@@ -50,6 +50,7 @@ The combination of IMS with MSI is finding increasing applications in the study 
 engineering, and microbial interactions.
 
 \paragraph{OpenMSI as a ``model'' for large-scale cloud analytics}
+\textcolor{red}{(Is this the right place for this para? -Jey)}
 OpenMSI is a tool for web-based visualization, analysis and
 management of mass spectrometry imaging (MSI) data~\cite{OpenMSI}.  MSI is being increasingly applied to image complex samples for
 applications spanning health, microbial ecology, and high throughput screening in drug research and synthetic biology.
@@ -70,3 +71,5 @@ CX is a dimensionality reduction technique that circumvents this problem by iden
 original data that reliably explain a large portion of the variation in the data.
 In MSI, this allows rapidly pinpointing important ions and locations.
 
+\subsubsection{Data Storage, Preprocessing, Etc}
+\textcolor{red}{JEY TODO}
