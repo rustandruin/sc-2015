@@ -72,7 +72,7 @@ def multiplyGramian(A: RowMatrix, B: LocalMatrix) =
 However, this approach forms $2m$ unnecessary temporary matrices of same dimension as the output matrix $n\times k$,
 with one per row as the result of the \texttt{map} expression, and the \texttt{reduce} is not done in-place so it
 too allocates a new matrix per row.
-This results in high GC pressure and makes poor use of the CPU cache, so
+This results in high Garbage Collection (GC) pressure and makes poor use of the CPU cache, so
 we instead remedy this by accumulating the results in-place by replacing the \texttt{map}
 and \texttt{reduce} with a single \texttt{treeAggregate}.
 The \texttt{treeAggregate} operation is equivalent to a map-reduce that executes in-place to accumulate the contribution of a
