@@ -92,7 +92,7 @@ However, these steps can be parallelized, and hence \textsc{RandomizedSVD} is we
   \begin{algorithmic}[1]
     \Require $A \in \reals^{m\times n}$, \
       number of power iterations $q \ge 1$, \
-      and target rank $r > 0$, slack $\ell \ge 0$ such that $k=r+\ell \leq m$.
+      target rank $r > 0$, slack $\ell \ge 0$, and let $k=r+\ell$.
 
     % TODO: domain of each result
     \Ensure $U \Sigma V^T \approx \Call{ThinSVD}{A, r}$.

@@ -17,7 +17,7 @@
       Sec.~\ref{sxn:single_node_opt} to the performance of
       \textsc{MultiplyGramian} and \textsc{Multiply} on each compute node. 
       The test matrix $\mathcal{A}$ has {\it{m}} = 1.95M, {\it{n}} = 128K,
-      {\it{s}} = 0.004, and {\it{nnz}} = 10$^9$. The rank parameter,
+      {\it{s}} = 0.004, and {\it{nnz}} = 10$^9$. The parameter
       {\it{k}} = 32. We started with a parallelized implementation,
       without any of the described optimizations, and measured the
       performance (in terms of time taken). We first implemented the
@@ -99,7 +99,7 @@
     \begin{centering}
     \includegraphics[scale=0.4]{images/CX_Strong_Scaling_Rank_32_Partitions_default.pdf}
     \end{centering}
-    \caption{ Strong scaling for the 4 phases of CX on an XC40 for 100GB dataset at rank 32 and default partitioning as concurrency is increased.} 
+    \caption{ Strong scaling for the 4 phases of CX on an XC40 for 100GB dataset at $k=32$ and default partitioning as concurrency is increased.} 
     \label{fig:xc40scaling}
     \end{figure} 
 
@@ -114,7 +114,7 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
     \begin{centering}
     \includegraphics[scale=0.4]{images/CX_Size_Scaling_Rank_16_Partitions_default.pdf}
     \end{centering}
-    \caption{ Run times for the various stages of computation for CX for two different dataset sizes for the three platforms using rank 16 and default partitioning for the given platform} 
+    \caption{ Run times for the various stages of computation for CX for two different dataset sizes for the three platforms using $k=16$ and default partitioning for the given platform} 
     \label{fig:h2hrank16} 
     \end{figure}
 
@@ -132,7 +132,7 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
  top of the RSVD and an additional loss in approximation accuracy. 
 
   In Figures~\ref{fig:timing-accuracy-8} and~\ref{fig:timing-accuracy-16}, we observe the timing vs accuracy tradeoffs of the RSVD and CX algorithms
-  as applied to the 100G MSI dataset for two settings of the rank parameter, $k=8$ and $k=16.$ The exact SVD was computed in this case using the
+  as applied to the 100G MSI dataset for two settings of the rank parameter, $k=8$ and $k=16$. The exact SVD was computed in this case using the
   Spark bindings of the popular ARPACK eigenproblem library~\cite{ArpackUserGuide}. The RSVD algorithm used two power iterations, and we used the output of the RSVD algorithm to generate
   both the column CX decomposition defined in Algorithm~\ref{alg:cx} and a related `row CX' decomposition that comes from applying Algorithm~\ref{alg:cx}
   to $A^T.$ As explained in more detail in the next section, both of these CX decompositions are of interest, as they identify important pixels and ions.
@@ -150,7 +150,7 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
     \begin{centering}
       \includegraphics[scale=0.4]{images/timing-accuracy-8}
       \end{centering}
-      \caption{The Frobenius norm approximation errors and timings for three runs of the RSVD and CX approximations relative to those of the truncated SVD for a target rank of $k=8$ on the 100G MSI dataset.}
+      \caption{The Frobenius norm approximation errors and timings for three runs of the RSVD and CX approximations relative to those of the truncated SVD for a target rank of $8$ on the 100G MSI dataset.}
     \label{fig:timing-accuracy-8}
   \end{figure}
 
@@ -158,7 +158,7 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
     \begin{centering}
       \includegraphics[scale=0.4]{images/timing-accuracy-16}
       \end{centering}
-      \caption{The Frobenius norm approximation errors and timings for three runs of the RSVD and CX approximations relative to those of the truncated SVD for a target rank of $k=16$ on the 100G MSI dataset.}
+      \caption{The Frobenius norm approximation errors and timings for three runs of the RSVD and CX approximations relative to those of the truncated SVD for a target rank of $16$ on the 100G MSI dataset.}
     \label{fig:timing-accuracy-16}
   \end{figure}
 
