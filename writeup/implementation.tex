@@ -27,14 +27,15 @@ We undertake two classes of high performance implementations for the CX method. 
     multiplication ($AQ$, Step 7, 8.6\%) and finally, QR
     decomposition (Step 4, 0.2\%)
     for a representative dataset that fits in main memory. These
-    {\it{three}} kernels account for more than 99.9\% of
+    three kernels account for more than 99.9\% of
     the execution time.
-    Recall that $A$ is a sparse matrix with dimensions ({\it{m}} X
-    {\it{n}}) and sparsity {\it{s}}, and B is a dense ({\it{n}} X {\it{k}}) matrix.
+    Recall that $A$ is a sparse matrix with dimensions
+    $m \times n$
+    and sparsity $s$, and $B$ is a dense $n \times k$ matrix.
     We first discuss the case of $A^TAB$.
 
 \vspace*{0.1in} 
-{\bf{{ {Optimizing $A^TAB$:}}}}
+\subsubsection{Optimizing $\mathrm{Res}=A^TAB$}
     Optimizing sparse matrix-matrix  multiplication continues to be an
     active area of research~\cite{ballard13,patwary15}, with focus on
     reducing communication, and the state of the art implementations
@@ -42,21 +43,19 @@ We undertake two classes of high performance implementations for the CX method. 
     underutilize the compute resources. 
     %%
     %%As far as computing $A^TAB$ is concerned, 
-    For our application, we exploit the following {\it{three}} observations:
+    For our application, we exploit the following three observations:
     (1) One of the sparse matrices is the transpose of the other,   
     (2) One of the matrices is a dense matrix,   and    %%The sparse-sparse matrix multiplication is followed by a sparse-dense matrix multiplication. 
-    (3) ({\it{n}} $\gg$  {\it{k}} and  {\it{sm}} $\gg$ {\it{k}}).
+    (3) $n \gg k$ and $sm \gg k$.
 
     Exploiting associativity of multiplication, we perform $C$ = $AB$, 
-    followed by $Res =$ $A^TC$. This reduces the run-time complexity from
+    followed by $\mathrm{Res} = A^TC$. This reduces the run-time complexity from
     O({\it{n*(nsm)}}) to O({\it{k*(nsm)}}). Furthermore, we do not
-    explicitly compute (or store) the transpose of A.  Consider the
-    ${\it{i}}^{th}$ row of A (A$_{\it{i}}$). 
-    By definition, 
-    C$_{\it{i}}$ %(1 X {\it{k}}) 
-    = A$_{\it{i}}$$\cdot$$B$.
-     The (${\it{j}},{\it{l}}$)$^{th}$ element of Res,
-    Res$_{{\it{j}},{\it{l}}}$ =
+    explicitly compute (or store) the transpose of $A$.  Consider the
+    ${\it{i}}^{th}$ row $A_i$). 
+    By definition,  $C_i = A_i \cdot B$.
+    The (${\it{j}},{\it{l}}$)$^{th}$ element of $\mathrm{Res}$,
+    $\mathrm{Res}_{{\it{j}},{\it{l}}}$ =
     $\Sigma_{\it{p}}$($A^T_{{\it{j}},{\it{p}}}$ x $C$$_{{\it{p}},{\it{l}}}$) = 
     $\Sigma_{\it{p}}$($A_{{\it{p}},{\it{j}}}$ x
     $C$$_{{\it{p}},{\it{l}}}$).
@@ -65,7 +64,7 @@ We undertake two classes of high performance implementations for the CX method. 
 %% 
 %% 
     For {\it{p}} = {\it{i}}, this reduces to incrementing
-    Res$_{{\it{j}},{\it{l}}}$ by $A_{{\it{i}},{\it{j}}}$ x
+    $\mathrm{Res}_{{\it{j}},{\it{l}}}$ by $A_{{\it{i}},{\it{j}}}$ x
     $C$$_{{\it{i}},{\it{l}}}$. 
 %% 
 %% 
@@ -73,7 +72,7 @@ We undertake two classes of high performance implementations for the CX method. 
     Thus, for each row {\it{i}}, 
     %having computed C$_{\it{i}}$, we can scale each entry by  $A_{{\it{i}},{\it{j}}}$ 
     having computed C$_{\it{i}}$, we
-    increment Res$_{{\it{j}},{\it{l}}}$ 
+    increment $\mathrm{Res}_{{\it{j}},{\it{l}}}$ 
     by $A_{{\it{i}},{\it{j}}}$ x $C$$_{{\it{i}},{\it{l}}}$
     for {\it{j}}$\in$[1..{\it{n}}] and {\it{l}}$\in$[1..{\it{k}}].
      We now describe how we parallelize this algorithm to exploit
@@ -128,11 +127,11 @@ We undertake two classes of high performance implementations for the CX method. 
      a potential speedup of $\mathcal{S}$,  
      in terms of floating point operations executed.
 
-     We now describe the vectorization for computing $Res =$ $A^TC$.
+     We now describe the vectorization for computing $X =$ $A^TC$.
      Note that $C$ is a dense matrix. As explained above, this
-     requires incrementing Res$_{{\it{j}}}$ 
+     requires incrementing X$_{{\it{j}}}$ 
      by $A_{{\it{i}},{\it{j}}}$ x $C$$_{{\it{i}}}$ 
-     (both Res$_{{\it{j}}}$ and $C$$_{{\it{i}}}$ have {\it{k}} elements each.)
+     (both X$_{{\it{j}}}$ and $C$$_{{\it{i}}}$ have {\it{k}} elements each.)
     We execute a similar code to the previous step, to perform 
     $\lceil$$\frac{2*{\it{nnz}}*{\it{k}}}{\mathcal{S}}$$\rceil$
     operations,
@@ -322,8 +321,7 @@ We undertake two classes of high performance implementations for the CX method. 
     %ballard -- Communication Optimal Parallel Multiplication of Sparse Random Matrices
     %http://www.eecs.berkeley.edu/~odedsc/papers/spaa13-sparse.pdf
 
-\vspace*{0.1in} 
-{\bf{{ {Optimizing $AB$:}}}}
+\subsubsection{Optimizing $AB$}
 
     This step refers to Step 7 in the algorithm description in
     Sec.~\ref{sec:cx_spark}. The data- and thread-level paralleization optimizations described 
