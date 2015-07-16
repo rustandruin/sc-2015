@@ -122,8 +122,8 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
   
   \subsection{Timing and Accuracy comparison of RSVD, CX, and truncated SVD}
 
- Because the RSVD allows us to explicitly control the number of matrix-vector
- products, the accuracy of the low-rank approximation obtained from the RSVD
+ Because the RSVD allows us to explicitly control its accuracy by tuning the number of iterations $q$,
+ the reconstruction error of the low-rank approximation obtained from the RSVD
  algorithm is expected to be somewhat lower than that of truncated SVD
  approximation. Similarly, CX decompositions have the advantage of
  interpretability, but come at the cost of an increased number of operations on
