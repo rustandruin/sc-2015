@@ -1,8 +1,8 @@
+\subsection{Spark}
 
 To support operating on datasets larger than can be stored and processed on a single node,
 we implement the algorithms using the Apache Spark cluster computing framework.
 
-\subsection{Spark}
 Spark provides a high-level programming model and execution engine for
 fault-tolerant parallel and distributed computing, based on a core 
 abstraction called a \textit{resilient distributed dataset (RDD)}.
@@ -42,7 +42,7 @@ and perform better scheduling.
 A major benefit of Spark over MapReduce is the use of in-memory caching and storage so that data structures
 may be reused rather than being recomputed.
 
-\subsection{CX and PCA on Spark}
+\subsection{Multi-node CX and PCA implementation on Spark}
 \label{sec:cx_spark}
 The main consideration when implementing CX and PCA in a parallel setting are
 efficient implementations of operations involving the data matrix $A$.

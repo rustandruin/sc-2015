@@ -3,9 +3,9 @@
 
 %Performance Evaluation, Results, Discussion}
 
-\textit{owners: Evan: graphs, All: interpretation (2.75 pages)}
+%\textit{owners: Evan: graphs, All: interpretation (2.75 pages)}
 
-\subsection{Scaling on Single Node}
+\subsection{CX Performance on Single Node}
   \label{sxn:results1}
 
 
@@ -64,8 +64,8 @@
 
 
 
-  \subsection{Scaling across Multiple Nodes}
-  \textcolor{red}{Mike R, Jatin: we need a narrative here}
+  \subsection{CX Performance across Multiple Nodes}
+%  \textcolor{red}{Mike R, Jatin: we need a narrative here}
 
   \subsubsection{CX Spark Phases}
   Our implementations of CX and PCA share the \textsc{RandomizedSVD} subroutine, which accounts for the bulk of the runtime and all of the distributed computations.
@@ -98,7 +98,7 @@ Figure~\ref{fig:xc40scaling} shows how the distributed Spark portion of our code
 
 When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x from doubling the cores: 233 seconds versus 146 seconds.  However, as the number of partitions per core drops below two, and the amount of computation-per-core relative to communication overhead drops, the scaling slows down (as expected).  This results in a lower speedup of approximately 1.4x (146 seconds versus 102 seconds) when we again double the core count to 960.
 
-  \subsection{Comparison across Multiple Platforms}
+  \subsection{CX Performance across Multiple Platforms}
   \label{sect:h2h}
     
     \begin{figure} [H]
@@ -114,14 +114,15 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
 
   
 
-  \subsection{Comparison of CX, PCA, RPCA quantitatively \textcolor{red}{Alex: please insert results here} }
-    \begin{itemize}
-      \item (for 100GB sized dataset on EC2)
-      \item runtime vs. accuracy?
-      \item show distinction b/w cx, pca
-    \end{itemize}
+%  \subsection{Comparison of CX, PCA, RPCA quantitatively \textcolor{red}{Alex: please insert results here} }
+%    \begin{itemize}
+%      \item (for 100GB sized dataset on EC2)
+%      \item runtime vs. accuracy?
+%      \item show distinction b/w cx, pca
+%    \end{itemize}
 
-  \subsection{Science plot for PCA, CX}
+  \subsection{Science Results}
+  \subsubsection{CX}
   Recall that CX decomposition samples actual columns from $A$ for low-rank approximation. In other words, it allows us to identify important columns based on which $A$ can be well reconstructed. Here, we examine the results of CX decomposition, i.e., columns sampled, on the MSI dataset.
  Rows and columns of our data matrix $A$ are corresponding to spacial pixels and $(\tau, m/z)$ value of ions, respectively. We apply CX decomposition on both $A$ and $A^T$ in order to identify important pixels and ions.
    
@@ -150,8 +151,7 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
     \end{figure} 
 
 
-
-  \subsection{Lessons Learned}
+  \subsection{Discussion}
   \label{sect:lessons}
   
   \input{lessons.tex}
