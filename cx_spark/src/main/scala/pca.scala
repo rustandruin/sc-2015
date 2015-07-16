@@ -62,8 +62,8 @@ object PCAvariants {
     omega
   }
 
-  // Returns `(mat.transpose * mat - avg*avg.transpose) * rhs`
-  def multiplyCenteredGramianBy(mat: IndexedRowMatrix, rhs: DenseMatrix, avg: BDV[Double]): DenseMatrix = {
+  // Returns `(1/(numrowsofmat) * mat.transpose * mat - avg*avg.transpose) * rhs`
+  def multiplyCovarianceBy(mat: IndexedRowMatrix, rhs: DenseMatrix, avg: BDV[Double]): DenseMatrix = {
     val rhsBrz = rhs.toBreeze.asInstanceOf[BDM[Double]]
     val result =
       mat.rows.treeAggregate(BDM.zeros[Double](mat.numCols.toInt, rhs.numCols))(
@@ -95,11 +95,13 @@ object PCAvariants {
     val rng = new java.util.Random
     val k = rank + slack
     var Y = DenseMatrix.randn(mat.numCols.toInt, k, rng).toBreeze.asInstanceOf[BDM[Double]]
+    report("Computing mean of observations", verbose)
     val rowavg = getRowMean(mat)
+    report("Done computing mean of observations", verbose)
 
     report("performing iterations", verbose)
     for(i <- 0 until numIters) {
-      Y = multiplyCenteredGramianBy(mat, fromBreeze(Y), rowavg).toBreeze.asInstanceOf[BDM[Double]]
+      Y = multiplyCovarianceBy(mat, fromBreeze(Y), rowavg).toBreeze.asInstanceOf[BDM[Double]]
       Y = qr.reduced.justQ(Y)
     }
     report("done iterations", verbose)
@@ -115,7 +117,7 @@ object PCAvariants {
     report("performing EVD", verbose)
     // manual resymmetrization should not be necessary with the next release of Breeze:
     // the current one is too sensitive, so you have to do this
-    var B = 0.5 * Q.t * multiplyCenteredGramianBy(mat, fromBreeze(Q), rowavg).toBreeze.asInstanceOf[BDM[Double]] 
+    var B = 0.5 * Q.t * multiplyCovarianceBy(mat, fromBreeze(Q), rowavg).toBreeze.asInstanceOf[BDM[Double]] 
     B += B.t
     // NB: eigSym(B) gives U and d such that U*diag(d)*U^T = B, and the entries of d are in order of smallest to largest
     // so d is in the reverse of the usual mathematical order
@@ -232,20 +234,20 @@ object PCAvariants {
     val sampleMat = sampledIdentityColumns(mat.numCols.toInt, rank, levProbs)
     report("Done sampling", true)
     report("Sampling the covariance matrix columns", true)
-    val colsMat = multiplyCenteredGramianBy(mat, fromBreeze(sampleMat), mean).toBreeze.asInstanceOf[BDM[Double]]
+    val colsMat = multiplyCovarianceBy(mat, fromBreeze(sampleMat), mean).toBreeze.asInstanceOf[BDM[Double]]
     report("Done sampling columns", true)
     report("Taking the QR of the columns", true)
     val qr.QR(q, r) = qr.reduced(colsMat)
     report("Done with QR", true)
     val cxQ = q
     report("Getting X in CX decomposition", true)
-    val xMat = r \ multiplyCenteredGramianBy(mat, fromBreeze(cxQ), mean).toBreeze.asInstanceOf[BDM[Double]].t 
+    val xMat = r \ multiplyCovarianceBy(mat, fromBreeze(cxQ), mean).toBreeze.asInstanceOf[BDM[Double]].t 
     report("Done forming X", true)
 
     //do the PCA
     val tol = 1e-10 // using same value as in MLLib
     val maxIter = 30 // was 300, but it actually used this many iterations, too much time
-    val covOperator = ( v: BDV[Double] ) =>  multiplyCenteredGramianBy(mat, fromBreeze(v.toDenseMatrix).transpose, mean).toBreeze.asInstanceOf[BDM[Double]].toDenseVector
+    val covOperator = ( v: BDV[Double] ) =>  multiplyCovarianceBy(mat, fromBreeze(v.toDenseMatrix).transpose, mean).toBreeze.asInstanceOf[BDM[Double]].toDenseVector
     report("Using ARPACK to form the EVD of the covariance operator", true)
     val (lambda2, u2) = EigenValueDecomposition.symmetricEigs(covOperator, mat.numCols.toInt, rank, tol, maxIter)
     report("Done with EVD of covariance operator", true)
@@ -272,7 +274,7 @@ object PCAvariants {
       omegaPartial = DenseMatrix.randn(mat.numCols.toInt, numSamps, rng)
 
       // accumulate the Frobenius norm estimate for the covariance matrix
-      matrixProdPartial = multiplyCenteredGramianBy(mat, omegaPartial, mean).toBreeze.asInstanceOf[BDM[Double]]
+      matrixProdPartial = multiplyCovarianceBy(mat, omegaPartial, mean).toBreeze.asInstanceOf[BDM[Double]]
       estFrobNorm = estFrobNorm + 1/numSamps.toDouble * sum(matrixProdPartial :* matrixProdPartial) 
 
       // accumulate the RPCA Frobenius norm error estimate

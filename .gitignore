@@ -58,6 +58,8 @@ target/
 
 # Datasets
 cx_spark/data/*.txt
+cx_spark/data/input.csv*
+cx_spark/data/*.bin
 
 # Logs
 *.err
@@ -66,3 +68,4 @@ cx_spark/data/*.txt
 
 # vim swap files
 .*.swp
+
