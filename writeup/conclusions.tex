@@ -1,9 +1,7 @@
 \section{Conclusions}
 \label{sec:conclusion}
 
-\begin{itemize}
-\item Matrix factorizations are an important class of linear algebra problems. CX is a promising method for interpretable data analytics.
-\item We have performed an in-depth analysis of performance of CX algorithm on a single node implementation, and a distributed node implementation utilizing Spark
-\item We have performed a head-to-head study of our Spark implementation on state of the art HPC and data center platforms
-\item We have applied the software to enable first-time science results on a massive 1TB sized mass spec imaging dataset
-\end{itemize}
+Matrix factorizations are an important class of linear algebra computations. In this work, we have successfully demonstrated the development and application of a parallel version of CX for a large scale, TB-sized mass-spec imaging dataset. The resulting ion and spatial patterns obtained from the analysis are providing biologist with novel insights on complex molecular mechanisms in cells. 
+
+Spark provides a highly productive platform for expressing complex data analytics algorithms. We have successfully developed a multi-node implementation of Spark, and demonstrated scaling on up to 960 cores. We find that a Spark based implementation is slower than a highly optimized, multi-threaded C implementation by a factor of 20x; we are exploring options to introduce similar optimizations in Spark. Finally, we have run this algorithm on HPC and EC2 class hardware; perhaps unsuprisingly, we find that a faster interconnect enables these numerically intensive computations to run more efficently on HPC systems. 
+
