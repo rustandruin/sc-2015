@@ -50,6 +50,17 @@
  optimizations of maintaining single copy of the output matrix shared
  across threads, bandwidth friendly access of matrices and vector
  computation using SIMD units.
+
+ Some of these optimizations can be implemented in Spark, such as arranging the
+ order of memory accesses to make efficient use of the memory bus.
+ However, other optimizations such as sharing the output matrix between threads
+ and use of SIMD intrinsics fall outside the Spark programming model, and would
+ require piercing the abstractions provided by Spark and the JVM to more
+ directly access and manipulate the hardware.
+ We thus find that there is a tradeoff between optimizing absolute performance on
+ each machine, versus the ease of implementation and efficient global scheduling
+ available by expressing programs in the Spark programming model.
+
  
   \begin{table}
   \begin{center}
