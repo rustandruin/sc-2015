@@ -3,7 +3,7 @@
 %% \textit{Owners: Jiyan, Michael Mahoney (1 page)}
 
 Given an $m \times n$ data matrix $A$, low-rank matrix factorization methods aim find two or more smaller matrices such that their product is a good approximation to $A$.
-That is, they aim to find matrices $B$ and $C$ such that
+That is, they aim to find matrices $X$ and $Y$ such that
 \begin{equation}
  \label{eqn:apprx}
     \underset{m\times n}{A} \approx \underset{m\times k}{Y} \times \underset{k\times n}{Z} , 
@@ -185,29 +185,29 @@ The major steps of this \textsc{CXdecomposition}, which uses approximate leverag
 
 Central to the CX decomposition is the underlying sampling distribution, i.e., the leverage scores; and, thus, we now provide some intuition for our choice.
 Let $A=U\Sigma V^T$ be the SVD of $A$.
-Given a target rank parameter $k$, for $j=1,\ldots,n$, the $j$-th leverage score can be defined as
+Given a target rank parameter $k$, for $i=1,\ldots,n$, the $i$-th leverage score can be defined as
 \begin{equation}
  \label{eqn:lev}
-  \ell_j = \sum_{i=1}^k \v_{ji}^2.
+  \ell_i = \sum_{j=1}^k \v_{ij}^2.
 \end{equation}
-These scores $\{\ell_j\}_{i=1}^{n}$ can be interpreted as how much ``leverage'' or ``influence'' the $j$-th column of $A$ exerts on the best rank-$k$ approximation to $A$. 
-As mentioned above, $A_k = \sum_{i=1}^k \sigma_i u_i v_i^T$ gives the best rank-$k$ approximation to $A$.
-In fact, $A_k$ can be viewed as the projection of $A$ onto the top-$k$ \emph{left} singular space spanned by the columns of $\begin{pmatrix} u_1 & \cdots & u_k \end{pmatrix}$.
+These scores $\{\ell_i\}_{i=1}^{n}$ can be interpreted as how much ``leverage'' or ``influence'' the $i$-th column of $A$ exerts on the best rank-$k$ approximation to $A$. 
+As mentioned above, $A_k = \sum_{i=1}^k \sigma_i \u_i \v_i^T$ gives the best rank-$k$ approximation to $A$.
+In fact, $A_k$ can be viewed as the projection of $A$ onto the top-$k$ \emph{left} singular space spanned by the columns of $\begin{pmatrix} \u_1 & \cdots & \u_k \end{pmatrix}$.
 Since multiplying each column by the corresponding singular value does not alter the subspace, we can view
 $$
-\begin{pmatrix} \sigma_1 u_1 & \cdots & \sigma_k u_k \end{pmatrix}
+\begin{pmatrix} \sigma_1 \u_1 & \cdots & \sigma_k \u_k \end{pmatrix}
 $$ 
 as a basis for this space.  
 %Especially, if $A$ has been preprocessed, these vectors are its top-$k$ principal components.
 For each column of $A$, we have 
-  $$  a_j = \sum_{i=1}^{r} (\sigma_i u_i) v_{ji} \approx \sum_{i=1}^k (\sigma_i u_i) v_{ji}.  $$
-That is, the $j$-th column of $A$ can be expressed as a linear combination of the basis of the top-$k$ left singular space with $v_{ji}$ as the coefficients.
+  $$  \a_i = \sum_{j=1}^{r} (\sigma_j \u_j) \v_{ij} \approx \sum_{j=1}^k (\sigma_j \u_j) \v_{ij}.  $$
+That is, the $i$-th column of $A$ can be expressed as a linear combination of the basis of the top-$k$ left singular space with $\v_{ij}$ as the coefficients.
 %On the other hand, the scores $\{\ell_j\}_{j=1}^{n}$ equal the diagonal elements of the projection matrix onto the top-$k$ \emph{right} singular subspace spanned by $\begin{pmatrix} v_1 & \cdots & v_k \end{pmatrix}$.
 %, and thus these statistical leverage scores are a generalization of the diagonal elements of the ``hat matrix'' in regression diagnostics~\cite{MD09}.
-For $j=1,\ldots,n$, if we define the {\it normalized leverage scores} as
+For $i=1,\ldots,n$, if we define the {\it normalized leverage scores} as
 \begin{equation}
 \label{eqn:nlev}
-  p_j = \frac{\ell_j}{\sum_{i=1}^n \ell_i},
+  p_i = \frac{\ell_i}{\sum_{j=1}^n \ell_j},
 \end{equation}      
 where $\ell_i$ is defined in~\eqref{eqn:lev}, and choose columns from $A$ according to those normalized leverage scores, then (by~\cite{DMM08,CUR_PNAS}) the selected columns are able to reconstruct the matrix $A$ nearly as well as $A_k$ does.
 
