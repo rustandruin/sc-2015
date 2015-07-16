@@ -472,7 +472,7 @@ object SVDVariants {
           partial
         },
         combOp = (partial1, partial2) => partial1 += partial2,
-        depth = 7
+        depth = 8
       )
     math.sqrt(sse(0))
   }

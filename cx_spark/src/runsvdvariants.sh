@@ -19,7 +19,7 @@ NUMROWS=8258911
 NUMCOLS=131048
 
 # parameter settings taken from the google doc
-RANK=16
+RANK=8
 SLACK=0
 NITERS=2
 NPARTS="" #default, 960, 1920
