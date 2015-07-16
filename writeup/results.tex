@@ -121,11 +121,25 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
       \item show distinction b/w cx, pca
     \end{itemize}
 
-  \subsection{Science plot for PCA, CX \textcolor{red}{Jiyan, Jey, Oliver, Ben: please insert results here}}
-    \begin{itemize}
-      \item PCA plot + science interpretation from Ben Bowen
-      \item CX plot (spatial + ion dimensions) + science interpretation from Ben Bowen
-    \end{itemize}
+  \subsection{Science plot for PCA, CX}
+    \begin{figure} [H]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{images/cx_spatial.png}
+    \end{centering}
+    \caption{Plot of 10000 locations sampled by leverage score.
+      Color indicates the density of samples in each area as computed by a Gaussian kernel density estimate.}
+    \label{fig:cx_spatial}
+    \end{figure} 
+
+    \begin{figure} [H]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{images/cx_ions.png}
+    \end{centering}
+    \caption{Normalized leverage scores (sampling probabilities) for m/z marginalized over $\tau$.
+      Three narrow regions of m/z account for 59.3\% of the total probability mass.}
+    \label{fig:cx_ions}
+    \end{figure} 
+
 
   \subsection{Lessons Learned}
   \label{sect:lessons}
