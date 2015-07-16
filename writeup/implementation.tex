@@ -324,7 +324,7 @@ We undertake two classes of high performance implementations for the CX method. 
 \subsubsection{Optimizing $AB$}
 
     This step refers to Step 7 in the algorithm description in
-    Sec.~\ref{sec:cx_spark}. The data- and thread-level paralleization optimizations described 
+    Algorithm~\ref{alg:rsvd}. The data- and thread-level paralleization optimizations described 
     in the previous subsection (optimizing $A^TAB$) apply here, since
     there we explicitly  compute $C$ = $AB$. As far as cache blocking is
     concerned, since $C$ does not have to be memory resident, we now have
