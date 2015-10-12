@@ -1,4 +1,4 @@
-heromsi.aux
-heromsi.bbl
-heromsi.blg
-heromsi.pdf
+*.aux
+*.bbl
+*.blg
+*.pdf
