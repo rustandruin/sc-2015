@@ -353,5 +353,44 @@ We undertake two classes of high performance implementations for the CX method. 
 \end{itemize}
 \fi
 
+\subsection {Multi-Node Implementation}
+Consider $A^TAB$.
+Similar to the multi-core implementation, we achieve load balancing by
+dividing the rows between the computational nodes such that each node 
+operates on the same number of non zeros. 
+Since only the total number of non zeros in $A$ (and the number of
+rows) is known at the start
+of the CX computation, we perform this partitioning using a two step
+process. In the first step, we divide the number of rows equally
+between the number of nodes, and each node reads in the corresponding
+part of the matrix, and computes the number of non-zeros read. This is
+followed by a redistribution step, where each node computes 
+and distributes the relevant rows so that each node has rows whose
+count of non zero elements is similar. The amount of data transferred
+between nodes is only a small fraction of the total input size
+(measured $<$ 0.01\%), and this step is only performed once during the execution of
+the algorithm.
+%%%%%%%%%%%%%
+Each node computes the local resultant matrix $Res$, which is then
+reduced globally to compute the final matrix. Note that $Res$ consists
+of {\it{n}} X {\it{k}} elements, which occupies a few MBs even
+for our largest 1 TB datset  (recall {\it{m}} $\gg$ {\it{n}}). 
+
+As far as $QR$ decompositon is concerned, given the small size of the
+matrix ({\it{n}} X {\it{k}}), it is performed on a
+single-node, but parallelized to exploit the multiple cores~\cite{to_cite}, with the resultant matrix being broadcast
+to all other nodes at the end of the computation.
+There is an explicit barrier at the end of each of the {\it{q}}
+iterations of Algorithm 1.
+
+A similar work division scheme is used to compute $AB$ (Step 7) in a
+distributed fashion. The final two steps (ThinSVD and small matrix
+multiplication) are performed on a single-node (given the small matrix
+sizes).
+%%%
+In practice, we achieved near-linear scaling for our test systems with
+less than 50 nodes.
+
+
 \input{spark}
 

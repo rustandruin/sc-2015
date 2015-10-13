@@ -15,32 +15,9 @@ RDDs may be loaded from a distributed file system, computed from other RDDs,
 or created by parallelizing a collection created within the user's application.
 RDDs of key-value pairs may also be treated as associative arrays, supporting
 operations such as \texttt{reduceByKey}, \texttt{join}, and \texttt{cogroup}.
-For example, to compute word frequencies of a text dataset in HDFS:
-\begin{verbatim}
-val dataset: RDD[String] =
-      spark.textFile("hdfs://...")
-
-val counts: RDD[(String, Int)] =
-      dataset.
-      flatMap(line => line.split(" ")).
-      map(word => (word, 1)).
-      reduceByKey(_ + _)
-
-val countsMap: Map[String, Int] =
-      counts.collectAsMap
-\end{verbatim}
-
 Spark employs a lazy evaluation strategy for efficiency.
-All Spark operations that have no immediate side-effects other than returning an RDD are deferred
-if possible.
-Instead, deferrable operations simply create an entry in the program's directed acyclic graph (DAG) of RDDs, recording the input
-dependencies and capturing any closures and values needed.
-This approach allows Spark to defer computations as much as possible, and when the evaluation
-is unavoidable the entire Spark job can be examined by Spark's scheduler.
-This allows the Spark execution engine to batch together related operations, optimize data locality,
-and perform better scheduling.
-A major benefit of Spark over MapReduce is the use of in-memory caching and storage so that data structures
-may be reused rather than being recomputed.
+Another major benefit of Spark over MapReduce is the use of in-memory caching and storage so that data structures
+can be reused rather than being recomputed.
 
 \subsection{Multi-node CX and PCA implementation on Spark}
 \label{sec:cx_spark}
@@ -61,7 +38,7 @@ during construction of $A$.
 
 We then express \textsc{MultiplyGramian} in a form amenable to efficient distributed implementation
 by exploiting the fact that the matrix product $A^TAB$ can be written as a sum of outer products,
-as shown in Algorithm \ref{alg:gram}. This allows for full parallelism across the rows of the matrix with
+as shown in Algorithm~\ref{alg:gram}. This allows for full parallelism across the rows of the matrix with
 each row's contribution computed independently, followed by a summation step to accumulate the result.
 This approach may be implemented in Spark as a \texttt{map} to form the outer products followed by a \texttt{reduce}
 to accumulate the results:

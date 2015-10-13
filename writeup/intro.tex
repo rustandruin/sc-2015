@@ -2,20 +2,18 @@
 \label{sec:intro}
 
 Matrix algorithms are increasingly important in many large-scale data analysis applications.
-Essentially, the reason is that matrices (i.e., sets of vectors in Euclidean spaces) provide a convenient mathematical structure with which to model data arising in a broad range of applications: an $m \times n$ real-valued matrix $A$ provides a natural structure for
-encoding information about $m$ objects, each of which is described by $n$
-features; alternatively, an $n \times n$ real-values matrix $A$ can be used to describe
-the correlations between all pairs of $n$ data points, or the weighted
-edge-edge adjacency matrix structure of an $n$-node graph.%
+Essentially, the reason is that matrices (i.e., sets of vectors in Euclidean
+spaces) provide a convenient mathematical structure with which to model data
+arising in a broad range of applications
 
-In particular, the low-rank approximation to a data matrix $A$ that is provided by performing a truncated SVD (singular value decomposition)---or PCA (principal component analysis) or CX/CUR decompositions---is a very complicated object---both conceptually and computationally---compared with what is conveniently supported by traditional database operations~\cite{Skillicorn07}. Recall that PCA is a popular method that finds the mutually orthogonal eigencomponents that maximize the variance captured by the factorization, and CX/CUR provides an interpretable low-rank factorization by selecting a small number of columns/rows from the original data matrix as its factors.
-Described in more detail in Section \ref{sxn:low-rank-methods}, these low-rank approximation methods are popular in small- and medium-scale machine learning and scientific data analysis applications for exploratory and interactive data analysis and for providing compact and/or interpretable representations of complex matrix-based data, but their implementation at scale remains a challenge.
+In particular, the low-rank approximation to a data matrix $A$ that is provided by performing a truncated SVD (singular value decomposition)---or PCA (principal component analysis) or CX/CUR decompositions---is a very complicated object compared with what is conveniently supported by traditional database operations~\cite{Skillicorn07}. Recall that PCA is a popular method that finds the mutually orthogonal eigencomponents that maximize the variance captured by the factorization, and CX/CUR provides an interpretable low-rank factorization by selecting a small number of columns/rows from the original data matrix as its factors.
+Described in more detail in Section~\ref{sxn:low-rank-methods}, these low-rank approximation methods are popular in small- and medium-scale machine learning and scientific data analysis applications for exploratory and interactive data analysis and for providing compact and/or interpretable representations of complex matrix-based data, but their implementation at scale remains a challenge.
 
-In particular, these methods do not mesh well with much of the work that has been popular recently in large scale data analysis.
+These matrix-based methods do not mesh well with much of the work that has been popular recently in large scale data analysis.
 For example, MapReduce/Hadoop does a certain amount of reading and writing at every step and thus iterative algorithms are prohibitive~\cite{DG08_CACM}.
 Apache Spark solves some of these problems by maintiaing some additional state, but even there systems are not designed for nontrivial matrix algorithms~\cite{SPARK_NSDI_12}. There is an associated question of the ideal hardware platform for running Big Data Analytics. Conventional EC2 class hardware utilizes loosely coupled nodes; whereas typical HPC system are much more tightly coupled with high performance interconnects. Frameworks such as Hadoop and Spark have been developed for EC2 class hardware, and their performance on HPC hardware, especially for complex analytics problems (such as linear algebra and matrix decompositions) is largely unexplored. 
 
-In this paper, we set out to explore the following research questions:
+In this paper, we address the following research questions:
 \begin{itemize}
 \item Can we successfully apply low rank matrix factorization methods (such as CX) to a large scale scientific dataset?
 
