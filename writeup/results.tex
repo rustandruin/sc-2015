@@ -176,22 +176,13 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
   \subsection{Science Results}
   \subsubsection{CX}
   
-  \begin{figure*}[h!bt]
+  \begin{figure}[h!bt]
     \centering
-    \begin{subfigure}[t]{.9\columnwidth}
-      \includegraphics[height=5cm]{images/cx_ions.pdf}
+    \includegraphics[width=.9\columnwidth]{images/cx_ions.pdf}
       \caption{Normalized leverage scores (sampling probabilities) for $m/z$ marginalized over $\tau$.
         Three narrow regions of $m/z$ account for $59.3\%$ of the total probability mass.}
       \label{fig:cx_ions}
-    \end{subfigure}\hfill%
-    \begin{subfigure}[t]{.9\columnwidth}
-      \includegraphics[height=5cm]{images/cx_spatial.pdf}
-    \caption{Plot of 10000 points sampled by leverage score. Color and
-      luminance of each point indicates density of points at that location as
-      determined by a Gaussian kernel density estimate.}
-    \label{fig:cx_spatial}
-    \end{subfigure}
-  \end{figure*} 
+  \end{figure} 
 
   Here, we examine the results of the CX decomposition of the MSI dataset.
   The rows and columns of our data matrix $A$ correspond to pixels and $(\tau, m/z)$ values of ions, respectively. 
@@ -223,7 +214,7 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
   still be higher if such a region is more important in the reconstruction.
   Therefore, a random sample is still able to capture which larger-scale
   regions contain higher densities of important pixels, by sampling more pixels
-  from the region as shown in Figure~\ref{fig:cx_spatial}.
+  from the region.
   \subsection{Improving Spark on HPC Systems}
   \label{sect:lessons}
   

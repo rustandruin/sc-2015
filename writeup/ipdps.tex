@@ -26,6 +26,12 @@
 \renewcommand{\verbatim@font}{\ttfamily\tiny}
 \makeatother
 
+\renewcommand{\IEEEbibitemsep}{0pt plus 2pt}
+\makeatletter
+\IEEEtriggercmd{\reset@font\normalfont\footnotesize}
+\makeatother
+\IEEEtriggeratref{1}
+
 \begin{document}
 
 \title{A multi-platform evaluation of low-rank matrix factorizations in Spark}
