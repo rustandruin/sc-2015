@@ -5,60 +5,69 @@
 
 %\textit{owners: Evan: graphs, All: interpretation (2.75 pages)}
 
-\subsection{CX Performance on Single Node}
+\subsection{CX Performance using C and MPI} %%on Single Node}
   \label{sxn:results1}
 
 
    
-  \vspace*{0.1in}
+%%  \vspace*{0.1in}
 
       In Table~\ref{tab:single_node}, we show the benefits of various
       optimizations described in
-      Sec.~\ref{sxn:single_node_opt} to the performance of
-      \textsc{MultiplyGramian} and \textsc{Multiply} on each compute node. 
+      Sec.~\ref{sxn:single_node_opt}. 
+      %%%%
+      %%%%
+      %%%%
+      %to the performance of \textsc{MultiplyGramian} and \textsc{Multiply} on each compute node. 
       The test matrix $\mathcal{A}$ has {\it{m}} = 1.95M, {\it{n}} = 128K,
       {\it{s}} = 0.004, and {\it{nnz}} = 10$^9$. The parameter
       {\it{k}} = 32. We started with a parallelized implementation,
-      without any of the described optimizations, and measured the
-      performance (in terms of time taken). We first implemented the
-      multi-core synchronization scheme, wherein a single copy of the
-      output matrix is maintained across all the threads (for the matrix multiplication).
-      This resulted in a speedup of around 6.5X, primarily due to
-      the reduction in the amount of data traffic between the
-      last-level cache and main memory (there was around 19X measured reduction
-      in traffic). We then implemented our cache blocking scheme,
-      primarily targeted towards ensuring that the output of the
-      matrix multiplication resides in the caches (since it is
-      accessed and updated frequently). This led to a further 2.4X
-     reduction in run-time, for an overall speedup of around 15.6X.
-
-     Once the memory traffic was optimized for, we implemented our
-     SIMD code by vectorizing the element-row multiplication-add
-     operations (described in detail in Sec.~\ref{sxn:single_node_opt}). 
-     The resultant code sped up by a further 2.6X, for an overall
-     speedup of 39.7X. Although the effective SIMD width
- ($\mathcal{S}$ = 4), there are overheads of address computation,
- stores, and not all computations were vectorized (QR code is still
- scalar).
+      without any of the described optimizations. %%, and measured the performance (in terms of time taken). 
+      We first implemented the multi-core synchronization scheme, wherein a single copy of the
+      output matrix is maintained, %% across all the threads (for the matrix multiplication).
+      which resulted in a speedup of around 6.5X, primarily due to
+      the reduction in the amount of data traffic between the main
+      memory and caches. 
+      %%last-level cache and main memory (there was around 19X measured reduction in traffic). 
+      We then implemented our cache blocking scheme, which led to a
+      further  2.4X speedup (overall 15.6X).
+%%      primarily targeted towards ensuring that the output of the matrix multiplication resides in the caches (since it is
+%      accessed and updated frequently). This led to a further 2.4X reduction in run-time, for an overall speedup of around 15.6X.
+      We then implemented our SIMD code that sped it up by a further
+      2.6X, for an overall speedup of 39.7X. Although the effective SIMD width
+        ($\mathcal{S}$ = 4), there are overheads of address
+        computation, stores, and not all computations (e.g. QR) were
+        vectorized.
+        %%(QR code is still scalar).
 
 
 
- We did a head-to-head comparison of C code with the Scala node
- implementation on a single node, and measured a performance gap of around
- 20X.
+%%     Once the memory traffic was optimized for, we implemented our
+%%     SIMD code by vectorizing the element-row multiplication-add
+%%     operations (described in detail in Sec.~\ref{sxn:single_node_opt}). 
+%%     The resultant code sped up by a further 2.6X, for an overall
+%%     speedup of 39.7X. Although the effective SIMD width
+%% ($\mathcal{S}$ = 4), there are overheads of address computation,
+%% stores, and not all computations were vectorized (QR code is still %% scalar).
+
+
+
+ We did a head-to-head comparison of C code with the Scala node, 
+ %%%%implementation on a single node, 
+ and measured a performance gap of around 21X.
  This performance gap can be attributed to the careful cache
  optimizations of maintaining single copy of the output matrix shared
  across threads, bandwidth friendly access of matrices and vector
  computation using SIMD units.
 
  Some of these optimizations can be implemented in Spark, such as arranging the
- order of memory accesses to make efficient use of the memory bus.
+ order of memory accesses to make efficient use of memory. %%of the memory bus.
  However, other optimizations such as sharing the output matrix between threads
  and use of SIMD intrinsics fall outside the Spark programming model, and would
- require piercing the abstractions provided by Spark and the JVM to more
- directly access and manipulate the hardware.
- We thus find that there is a tradeoff between optimizing absolute performance on
- each machine, versus the ease of implementation and efficient global scheduling
+ require piercing the abstractions provided by Spark and JVM.
+ %to more directly access and manipulate the hardware.
+ Thus there is a tradeoff between optimizing performance 
+ and ease of implementation, %% and efficient global scheduling, 
  available by expressing programs in the Spark programming model.
 
  
@@ -76,15 +85,15 @@
 
   \end{tabular}
   \end{center}
-  \caption{Single node optimizations to the CX C implementation and
-  the subsequent speedup  each additional optimization provides.}
+  \caption{Single node opt. to CX C implementation and
+  subsequent speedup  each additional optimization provides.}
   \label{tab:single_node}
   \end{table}
  
 
 
 
-  \subsection{CX Performance across Multiple Nodes}
+  \subsection{CX Spark Performance} %% on Spark} across Multiple Nodes}
 %  \textcolor{red}{Mike R, Jatin: we need a narrative here}
 
   \subsubsection{CX Spark Phases}
@@ -114,7 +123,10 @@
     \label{fig:xc40scaling}
     \end{figure} 
 
-Figure~\ref{fig:xc40scaling} shows how the distributed Spark portion of our code scales as we add additional processors.  We considered 240, 480, and 960 cores.  An additional doubling (to 1920 cores) would be ineffective as there are only 1654 partitions, so many cores would remain unused.  In addition, with fewer partitions per core there are fewer opportunities for load balancing and speculative reexecution of slow tasks.
+Fig.~\ref{fig:xc40scaling} shows how the distributed Spark portion of our code scales. %% as we add additional processors.  
+We considered 240, 480, and 960 cores.  An additional doubling (to 1920 cores) would be ineffective as there are only 1654 partitions, 
+so many cores would remain unused.  
+%%%In addition, with fewer partitions per core there are fewer opportunities for load balancing and speculative reexecution of slow tasks.
 
 When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x from doubling the cores: 233 seconds versus 146 seconds.  However, as the number of partitions per core drops below two, and the amount of computation-per-core relative to communication overhead drops, the scaling slows down (as expected).  This results in a lower speedup of approximately 1.4x (146 seconds versus 102 seconds) when we again double the core count to 960.
 
@@ -204,6 +216,7 @@ When we go from 240 to 480 cores, we achieve a speedup of approximately 1.6x fro
   having significant leverage scores, are chemically related.  That fact
   indicates that these ions may share a common biological origin, despite
   having distinct spatial distributions in the plant tissue sample.
+  
 
   \subsection{Improving Spark on HPC Systems}
   \label{sect:lessons}
