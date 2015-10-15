@@ -42,13 +42,12 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
 
 \vspace*{0.05in} 
 \subsubsection{Optimizing $\mathrm{Res}=A^TAB$}
-    Optimizing sparse matrix-matrix  multiplication continues to be an
-    active area of research~\cite{ballard13,patwary15}, with focus on
-    reducing communication, and the state of the art implementations
+    Optimizing sparse matrix-matrix  multiplication is an
+    active area of research~\cite{ballard13,patwary15}; 
+    state-of-the-art implementations
     are bound by the memory bandwidth and heavily
     underutilize the compute resources. 
-    %%
-    %%As far as computing $A^TAB$ is concerned, 
+
     For our application, we exploit the following three observations:
     (1) One of the sparse matrices is the transpose of the other,   
     (2) One of the matrices is a dense matrix,   and    %%The sparse-sparse matrix multiplication is followed by a sparse-dense matrix multiplication. 

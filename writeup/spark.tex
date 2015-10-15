@@ -7,9 +7,7 @@ we implement the algorithms using the Apache Spark cluster computing framework.
 Spark provides a high-level programming model and execution engine for
 fault-tolerant parallel and distributed computing, based on a core 
 abstraction called \textit{resilient distributed dataset (RDD)}.
-Each RDD may be thought of as a distributed collection of objects that is
-partitioned and stored across the Spark cluster.
-RDDs are immutable lazily materialized collections supporting functional
+RDDs are immutable lazily materialized distributed collections supporting functional
 programming operations such as \texttt{map}, \texttt{filter}, and \texttt{reduce},
 each of which returns a new RDD.
 RDDs may be loaded from a distributed file system, computed from other RDDs,
