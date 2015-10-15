@@ -302,7 +302,7 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
      transferred between sockets to ensure optimal performance.
 
      %For our current application, %in order to reduce the inter-socket communication, 
-     We divide the allocaton of $Res$ equally between
+     We divide the allocation of $Res$ equally between
      the sockets. For e.g., for a CPU with 2 sockets, we divide the
      number of rows ({\it{n}}) by 2, and allocate the memory for each
      relevant part of the matrix on its individual socket. This

@@ -13,14 +13,14 @@ Low-rank matrix factorization methods are an important topic in linear algebra a
 
 Depending on the application, various low-rank factorization techniques are of interest. 
 Popular choices include the singular value decomposition~\cite{GVL96}, principal component analysis~\cite{pcaBook}, rank-revealing QR factorization~\cite{GE96}, nonnegative matrix factorization~\cite{NMFalg}, and CUR/CX decompositions~\cite{CUR_PNAS}.
-In this work, we consider using the SVD and CX decompositions for our scalable and interpretable data analysis; and, in the remainder of the section, we briefly describe these decompositions.
+In this work, we consider using the SVD and CX decompositions for scalable and interpretable data analysis; in the remainder of this section, we briefly describe these decompositions.
 For an arbitrary matrix $A$, denote by $\a_i$ its $i$-th row, $\a^j$ its $j$-th column and $\a_{ij}$ its $(i,j)$-th element. 
-Hereby, we assume the data matrix $A$ has size $m \times n$ and rank $r$.
+Throughout, we assume $A$ has size $m \times n$ and rank $r$.
 
 
 \subsection{SVD and PCA}
 
-The singular value decomposition (SVD) is the factorization of matrix $A \in \reals^{m\times n}$ into the product of three matrices $U\Sigma V^T$ where $U \in \reals^{m\times r}$ and $V\in \reals^{n\times r}$ have orthonormal columns and $\Sigma\in \reals^{r\times r}$ is a diagonal matrix with positive real entries. 
+The singular value decomposition (SVD) is the factorization of $A \in \reals^{m\times n}$ into the product of three matrices $U\Sigma V^T$ where $U \in \reals^{m\times r}$ and $V\in \reals^{n\times r}$ have orthonormal columns and $\Sigma\in \reals^{r\times r}$ is a diagonal matrix with positive real entries. 
 The columns of $U$ and $V$ are called left and right singular vectors and the diagonal entries of $\Sigma$ are called singular values. 
 For notation convenience, we assume the singular values are sorted such that $\sigma_1\geq \cdots \geq \sigma_r\geq 0$, and this means that the columns of $U$ and $V$ are sorted by the order given by the singular values.  
 
@@ -39,31 +39,33 @@ V_k^T$, where the columns of $U_k$ and $V_k$ are the top $k$ singular vectors,
 i.e., the first $k$ columns of $U$ and $V$, respectively, and $\Sigma_k$ is a 
 diagonal matrix containing the top-$k$ singular values.
 
-Principal component analysis (PCA) and SVD are closely related.
-PCA aims to convert the original features into a set of linearly uncorrelated variables called {\it principal components}.
-To be more specific, the first principal component is defined to be the direction along which the highest variance possible among the data points is attained, and each succeeding principal component in turn has the largest variance possible subject to the constraint that it is orthogonal to the preceding principal components.
-When low-rank methods are appropriate, the number of principal components needed to preserve most of the information in $A$ is far less than the number of original features, and thus the goal of dimension reduction is achieved.
-The PCA decomposition of $A$ is defined as the SVD of the matrix formed by centering each column of $A$ (i.e., removing the mean of each column).
+Principal component analysis (PCA) and SVD are closely related.  PCA aims to
+convert the original features into a set of orthogonal directions called {\it
+principal components} that capture most of the variance in the data points.
+The PCA decomposition of $A$ is given by the SVD of the matrix formed by
+centering each column of $A$ (i.e., removing the mean of each column).  When
+low-rank methods are appropriate, the number of principal components needed to
+preserve most of the information in $A$ is far less than the number of original
+features, and thus the goal of dimension reduction is achieved.
 
 \subsection{Randomized SVD}
 
 The computation of the SVD (and thus of PCA for a data matrix $A$) is
 expensive~\cite{GVL96}.  For example, to compute the truncated SVD with rank
 $k$ using traditional deterministic methods, the running time complexity is
-$\bigO(mnk)$, and $\bigO(k)$ passes over the dataset are needed.  This  becomes
+$\bigO(mnk)$, and $\bigO(k)$ passes over the dataset are needed.  This becomes
 prohibitively expensive when dealing with datasets of even moderately-large
 size, e.g., $m = 10^6$, $n = 10^4$ and $k = 20$.  To address these and related
 issues, recent work in Randomized Linear Algebra (RLA) has focused on using
-randomized approximation, e.g., random projection and random sampling methods,
-to perform scalable linear algebra computations for
+randomized approximation to perform scalable linear algebra computations for
 large-scale data problems.  For an overview of the RLA area,
 see~\cite{Mah-mat-rev_BOOK}; for a review of using RLA methods for low-rank
 matrix approximation, see~\cite{HMT09_SIREV}; and for a review of the theory
 underlying implementing RLA methods in parallel/distributed environments,
 see~\cite{YMM15_TR}.
 
-Here, we will use an algorithm described in Halko et al.~\cite{HMT09_SIREV}
-which uses a random projection to construct a rank-$k$ approximation to $A$
+Here, we will use an algorithm introduced in \cite{MRT06,MRT11}
+that uses a random projection to construct a rank-$k$ approximation to $A$
 which approximates $A$ nearly as well as $A_k$ does.  We refer the readers to
 \cite{HMT09_SIREV,Mah-mat-rev_BOOK} for more details.  Importantly, the
 algorithm runs in $\bigO(mn \log k)$ time, and the algorithm needs only a
@@ -77,7 +79,7 @@ well as three algorithms, \textsc{Multiply}, \textsc{ThinQR}, and
 The running time cost for \textsc{RandomizedSVD} is dominated by the
 matrix-matrix multiplication, which involve passing over the entire data
 matrix, appearing in Step 3 and Step 7 of Algorithm~\ref{alg:rsvd}.  
-These steps can be parallelized, and hence \textsc{RandomizedSVD} is well
+These steps can be parallelized, and hence \textsc{RandomizedSVD} is 
 amenable to distributed computing.
 % \footnote{We should mention that Step 3 of
 %Algorithm~\ref{alg:rsvd} involves a dense matrix-matrix multiplication, whereas
@@ -145,19 +147,15 @@ $A$?
 
 CX/CUR decompositions affirmatively answer this question.  That is, these are
 low-rank matrix decompositions that are expressed in terms of a small number of
-columns/rows, i.e, actual data elements, and not a small number of
-eigencolumns/eigenrows (which form the principal components).  As such, they
-have found applicability in scientific applications where coupling analytical
-techniques with domain knowledge is at a premium, including
-genetics~\cite{Paschou07b}, astronomy~\cite{Yip14-AJ}, and mass spectrometry
-imaging~\cite{YRPMB15}.
+actual columns/rows. As such, they have found applicability in scientific
+applications where coupling analytical techniques with domain knowledge is at a
+premium, including genetics~\cite{Paschou07b}, astronomy~\cite{Yip14-AJ}, and
+mass spectrometry imaging~\cite{YRPMB15}.
 
 In more detail, CX decomposition factorizes an $m \times n$ matrix $A$ into two
 matrices $C$ and $X$, where $C$ is an $m\times c$ matrix that consists of $c$
 actual columns of $A$, and $X$ is a $c \times n$ matrix such that $A\approx
 CX$.
-%That is, linear combinations of the columns of $C$ can recover most of the
-%``information'' of the matrix $A$.
 (CUR decompositions further choose $X=UR$, where $R$ is a small number of actual rows
 of $A$~\cite{DMM08,CUR_PNAS}.)
 For CX, using the same optimality criterion defined in~\eqref{eqn:obj}, we seek
@@ -169,8 +167,7 @@ low-rank CX matrix approximation consists of three basic steps: first, compute
 of $A$; and second, use those scores as a sampling distribution to select $c$
 columns from $A$ and form $C$; finally once the matrix $C$ is determined, the
 optimal matrix $X$ with rank-$k$ that minimizes $\|A-CX\|_F$ can be computed
-accordingly; see~\cite{DMM08} for detailed construction. In this paper we focus
-on the first two steps.  
+accordingly; see~\cite{DMM08} for detailed construction. 
 
 \begin{algorithm}[tb]
  \caption{\textsc{CXDecomposition}}
@@ -217,11 +214,16 @@ If, for $i=1,\ldots,n$, we define the {\it normalized leverage scores} as
 \end{equation}      
 where $\ell_i$ is defined in~\eqref{eqn:lev}, and choose columns from $A$ according to those normalized leverage scores, then (by~\cite{DMM08,CUR_PNAS}) the selected columns are able to reconstruct the matrix $A$ nearly as well as $A_k$ does.
 
-Observe that the running time for \textsc{CXdecomposition} is determined by the computation of the importance sampling distribution.
-To compute the leverage scores based on \eqref{eqn:lev}, i.e., exactly, one needs to compute the top $k$ right-singular vectors $V_k$. 
-As pointed out above, this is prohibitive data with massive size.
-However, just as with our SVD computation, here we can use \textsc{RandomizedSVD} to compute {\it approximate} leverage scores.
-This approach, originally proposed by Drineas et al.~\cite{DMMW12_JMLR}, runs in ``random projection time,'' i.e., it requires fewer FLOPS and fewer passes over the data matrix than the traditional deterministic algorithms that compute the leverage scores~exactly.
+The running time for \textsc{CXdecomposition} is determined by the
+computation of the importance sampling distribution.  To compute the leverage
+scores based on \eqref{eqn:lev}, one needs to compute the top
+$k$ right-singular vectors $V_k$. This can be prohibitive on
+large matrices.  However, we can once again
+use \textsc{RandomizedSVD} to compute {\it approximate} leverage scores. This
+approach, originally proposed by Drineas et al.~\cite{DMMW12_JMLR}, runs in
+``random projection time,'' so requires fewer FLOPS and fewer passes over
+the data matrix than deterministic algorithms that compute the
+leverage scores~exactly.
 
 
 %Finally, we want to point out that,
