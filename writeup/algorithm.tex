@@ -55,16 +55,7 @@ prohibitively expensive when dealing with datasets of even moderately-large
 size, e.g., $m = 10^6$, $n = 10^4$ and $k = 20$.  To address these and related
 issues, recent work in Randomized Linear Algebra (RLA) has focused on using
 randomized approximation, e.g., random projection and random sampling methods,
-to perform scalable linear algebra computations\footnote{For example, RLA
-  algorithms have led to the best worst-case algorithms for least squares and
-  least absolute deviations regression, they have been implemented to high
-  precision and have been shown to beat LAPACK's direct dense least squares
-  solver on essentially any tall dense matrix; they have been been shown to
-  lead to improved low-rank matrix approximation in scientific computing
-  applications, and they have been shown to have improved statistical
-  properties~\cite{Mah-mat-rev_BOOK}.  Thus, while our focus here is on
-  improved low-rank matrix approximation methods in Spark, we expect that
-  similar improvements can be achieved for other related problems.} for
+to perform scalable linear algebra computations for
 large-scale data problems.  For an overview of the RLA area,
 see~\cite{Mah-mat-rev_BOOK}; for a review of using RLA methods for low-rank
 matrix approximation, see~\cite{HMT09_SIREV}; and for a review of the theory
