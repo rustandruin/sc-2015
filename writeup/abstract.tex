@@ -1,22 +1,8 @@
 We investigate the performance, scalability, and applicability of low-rank matrix approximation algorithms, including randomized PCA and randomized CX/CUR low-rank matrix factorizations, on a 1 TB mass spectrometry imaging (MSI) dataset, using Apache Spark on an Amazon EC2 cluster, a 
-Cray{\textsuperscript{\tiny\textregistered}}~XC40{\textsuperscript{\tiny\texttrademark}} system, and an experimental Cray cluster.
-%% (((
-%% PCA is a popular method that finds the mutually orthogonal eigencomponents 
-%% that maximize the variance captured by the factorization, and CX/CUR provides 
-%% an interpretable low-rank factorization by selecting a small number of 
-%% columns/rows from the original data matrix as its factors.
-%% )))
+Cray~XC40 system, and an experimental Cray cluster.
 While these low-rank matrix computations are popular in small- to medium-scale machine learning and scientific data analysis, computing them provides a much more powerful ``stress test'' of linear algebra algorithms in large-scale distributed analytics frameworks than is provided by, e.g., low-precision PageRank computations.
 In addition, scientific applications such as MSI data analysis provides a very different use case 
 than is provided by typical commercial workloads.
-%% (((
-%% We have evaluated the scaling properties in both these distributed and 
-%% parallel environments for these matrix computations, and we have confirmed 
-%% that we can provide PCA-based as well as interpretable CX/CUR low-rank 
-%% approximation results to mass spectrometry scientists at much larger size 
-%% scales than previously possible.  
-%% )))
 We implemented these algorithms in Scala using the Apache Spark high-level cluster computing framework.  
 We obtained competitive performance on all three platforms; we were able to process the 1TB size dataset in under 30 minutes with 960 cores on all systems, with the fastest times obtained on the experimental Cray cluster.
 We report these results, and conclude broader implications for hardware and software issues for supporting data-centric workloads in parallel and distributed environments.  
-
