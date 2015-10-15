@@ -43,16 +43,15 @@ The Cray{\textsuperscript{\tiny\textregistered}}~XC40{\textsuperscript{\tiny\tex
 \item Second, the Cray XC40 and the experimental Cray cluster both communicate over the HPC-optimized Cray Aries 
 interconnect~\cite{alverson2012cray,craycascadesc12}, while the EC2 nodes use 10 Gigabit Ethernet.
 \end{itemize}  
+We can see the impact of differing interconnect capabilities in the Average Network Wait column in Table~\ref{tab:h2hres1TB}.   These lower average network wait times explain why the two Cray platforms outperform the EC2 instance (with the experimental cluster achieving a speedup of roughly 1.5x over EC2).  
 
-   \begin{figure} [H]
+   \begin{figure}
     \begin{centering}
     \includegraphics[scale=0.4]{images/boxplot_read_write_task_new_Rank_16_1T_default_partitions.pdf}
     \end{centering}
     \caption{A box and whisker plot of the distribution of local (write) and aggregation (read) task times on our three platforms for the 1TB dataset with $k=16$.  The boxes represent the 25th through 75th percentiles, and the lines in the middle of the boxes represent the medians.  The whiskers are set at 1.5 box widths outside the boxes, and the crosses are outliers (results outside the whiskers).  Note that each iteration has 4800 write tasks and just 68 read tasks.}
     \label{fig:rwtaskdist} 
     \end{figure}
-
-We can see the impact of differing interconnect capabilities in the Average Network Wait column in Table~\ref{tab:h2hres1TB}.   These lower average network wait times explain why the two Cray platforms outperform the EC2 instance (with the experimental cluster achieving a speedup of roughly 1.5x over EC2).  
 
 The XC40 is still slightly slower than the experimental Cray cluster, however.
 Part of this difference is due to the slower matrix load phase on the XC40.  On
