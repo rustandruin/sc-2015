@@ -26,10 +26,15 @@ All three platforms were able to successfully process the 1 TB dataset
 in under 25 minutes.  As the table and figure illustrates, most of the
 variation between the platforms occurred during the \texttt{MultiplyGramian}
 iterations.  Table~\ref{tab:hwspecs} shows the specifications of the three
-platforms. In this section, we explore how these difference relate to the
+platforms. 
+%%In this section, 
+We now explore how these difference relate to the
 performance of the matrix iterations.
 
-Spark divides each iteration into two stages.  The first \emph{local} stage computes each row's contribution, sums the local results (the rows computed by the same worker node), and records these locally-aggregated results.  The second \emph{aggregation} stage combines all of the workers' locally-aggregated results using a tree-structured reduction.  Most of the variation between platforms occurs during the aggregation phase, where data from remote worker nodes is fetched and combined.  In Spark, all inter-node data exchange occurs via \emph{shuffle operations}.  In a shuffle, workers with data to send write the data to their local scratch space.  Once all data has been written, workers with data to retrieve from remote nodes request that data from the sender's block manager, which in turns retrieves if from the senders local scratch space, and sends it over the interconnect to the receiving node.
+Spark divides each iteration into two stages.  The first \emph{local}
+stage computes each row's contribution, sums the local results (the
+rows computed by the same worker node), and records these %%locally-aggregated 
+results.  The second \emph{aggregation} stage combines all of the workers' locally-aggregated results using a tree-structured reduction.  Most of the variation between platforms occurs during the aggregation phase, where data from remote worker nodes is fetched and combined.  In Spark, all inter-node data exchange occurs via \emph{shuffle operations}.  In a shuffle, workers with data to send write the data to their local scratch space.  Once all data has been written, workers with data to retrieve from remote nodes request that data from the sender's block manager, which in turns retrieves if from the senders local scratch space, and sends it over the interconnect to the receiving node.
 
 Examining our three platforms (Table~\ref{tab:hwspecs}), we notice two key hardware differences that impact shuffle operations:
 \begin{itemize}
