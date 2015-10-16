@@ -7,6 +7,6 @@ We implemented these algorithms using close-to-metal parallelized C
 implementation and in Scala using the Apache Spark high-level cluster computing framework.  
 We obtained competitive performance on all three platforms; 
 using Spark we were able to process the 1TB size dataset in under 30 minutes with 960 cores on all systems, with the fastest times obtained on the experimental Cray cluster.
-In comparison, the C implementation was 21X faster (on an Amazon EC2 cluster run), due to careful cache optimizations,
+In comparison, the C implementation was 21X faster (on an Amazon EC2 system), due to careful cache optimizations,
 bandwidth friendly access of matrices and vector computation using SIMD units. 
 We report these results, and conclude broader implications for hardware and software issues for supporting data-centric workloads in parallel and distributed environments.  
