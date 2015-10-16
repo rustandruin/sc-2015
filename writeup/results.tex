@@ -60,10 +60,11 @@
         As far as the multi-node performance is concerned, 
  on the Amazon EC2 cluster, with 30 nodes (960-cores in total), and
  the 1 TB dataset as input, it
- took 59 seconds to perform CX computation, 
- and 92 seconds to load the data.
+ took 151 seconds to perform CX computation (including time to load
+ the data into main memory). 
+%% and 92 seconds to load the data.
  %read in data into main memory. 
- As compared to the Scala code (details in
+ As compared to the Scala code on the same platform (details in
  next sec.), we achieve a speedup of 21X.
  %%(in terms of compute time) and 6.7X (data load  + compute time.)
 %
