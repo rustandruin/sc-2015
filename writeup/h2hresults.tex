@@ -20,16 +20,12 @@
     
 Table~\ref{tab:h2hres1TB} shows the total runtime of CX for the 1 TB dataset on
 our three platforms.  The distributed Spark portion of the computation is also
-depicted visually in Figure~\ref{fig:h2hrank16} for $k=16$ (similar results
-were obtained for $k=32$, but have been omitted due to length considerations).
-All three platforms were able to successfully process the 1 TB dataset 
-in under 25 minutes.  As the table and figure illustrates, most of the
+depicted visually in Figure~\ref{fig:h2hrank16} for $k=16$ and $k=32$ on the 1
+TB dataset.  All three platforms were able to successfully process the 1 TB
+dataset in under 25 minutes.  As the table and figure illustrates, most of the
 variation between the platforms occurred during the \texttt{MultiplyGramian}
-iterations.  
-%%Table~\ref{tab:hwspecs} shows the specifications of the three platforms. 
-%%In this section, 
-We now explore how these difference relate to the
-performance of the matrix iterations.
+iterations.  We now explore how these difference relate to the performance of the matrix
+iterations.
 
 Spark divides each iteration into two stages.  The first \emph{local}
 stage computes each row's contribution, sums the local results (the
