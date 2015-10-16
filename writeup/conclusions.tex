@@ -3,11 +3,18 @@
 
 Matrix factorizations are an important class of linear algebra computations
 with broad applications in Big Data analytics. In this work, we have
-successfully developed highly optimized versions of the CX algorithm, both on a
-single node, as well as distributed multi-node implementations. We utilize
+successfully developed highly optimized distributed multi-node
+versions of the CX algorithm.
+%%, both on a single node, as well as distributed multi-node implementations. 
+We utilize
 Spark as a contemporary data analytics framework for developing and deploying
 the CX algorithm, and successfully demonstrate the implementation scaling up to
-960 cores. We evaluate our parallel implementation on HPC and EC2 class
+960 cores. 
+We also implemented a close-to-metal parallelized C version, which runs around 21X
+faster than the Spark version (on Amazon EC2 cluster), at the expense of a longer code development
+time and higher maintenance cost.
+
+Using the Spark version, we evaluate our parallel implementation on HPC and EC2 class
 hardware; we find that faster interconnects enable the numerically intensive
 computations to run more efficiently on HPC systems. Finally, this scalable
 implementation was used to analyze a large TB-sized mass-spec imaging
