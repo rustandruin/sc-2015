@@ -19,23 +19,28 @@
       %%%%
       %%%%
       %to the performance of \textsc{MultiplyGramian} and \textsc{Multiply} on each compute node. 
-      The test matrix $\mathcal{A}$ has {\it{m}} = 1.95M, {\it{n}} = 128K,
-      {\it{s}} = 0.004, and {\it{nnz}} = 10$^9$. The parameter
-      {\it{k}} = 32. We started with a parallelized implementation,
+      %%
+      %%
+      %The test matrix $\mathcal{A}$ has {\it{m}} = 1.95M, {\it{n}} = 128K,
+      %{\it{s}} = 0.004, and {\it{nnz}} = 10$^9$. The parameter
+      %{\it{k}} = 32. 
+      As far as single-node performance is concerned, we started with a parallelized implementation  
       without any of the described optimizations. %%, and measured the performance (in terms of time taken). 
       We first implemented the multi-core synchronization scheme, wherein a single copy of the
       output matrix is maintained, %% across all the threads (for the matrix multiplication).
-      which resulted in a speedup of around 6.5X, primarily due to
-      the reduction in the amount of data traffic between the main
-      memory and caches. 
+      which resulted in a speedup of 6.5X, primarily due to
+      the reduction in the amount of data traffic between 
+      main memory and caches. 
       %%last-level cache and main memory (there was around 19X measured reduction in traffic). 
       We then implemented our cache blocking scheme, which led to a
       further  2.4X speedup (overall 15.6X).
 %%      primarily targeted towards ensuring that the output of the matrix multiplication resides in the caches (since it is
 %      accessed and updated frequently). This led to a further 2.4X reduction in run-time, for an overall speedup of around 15.6X.
       We then implemented our SIMD code that sped it up by a further
-      2.6X, for an overall speedup of 39.7X. Although the effective SIMD width
-        ($\mathcal{S}$ = 4), there are overheads of address
+      2.6X, for an overall speedup of 39.7X. Although the 
+      SIMD width is 4, 
+        %%($\mathcal{S}$ = 4),
+        there are overheads of address
         computation, stores, and not all computations (e.g. QR) were
         vectorized.
         %%(QR code is still scalar).
@@ -52,9 +57,20 @@
 
 
 
- We did a head-to-head comparison of C code with the Scala node, 
+        As far as the multi-node performance is concerned, 
+ on the Amazon EC2 cluster, with 30 nodes (960-cores in total), and
+ the 1 TB dataset as input, it
+ took 151 seconds to perform CX computation (including time to load
+ the data into main memory). 
+%% and 92 seconds to load the data.
+ %read in data into main memory. 
+ As compared to the Scala code on the same platform (details in
+ next sec.), we achieve a speedup of 21X.
+ %%(in terms of compute time) and 6.7X (data load  + compute time.)
+%
+ % We did a head-to-head comparison of C code with the Scala node, 
  %%%%implementation on a single node, 
- and measured a performance gap of around 21X.
+ %and measured a performance gap of around 21X.
  This performance gap can be attributed to the careful cache
  optimizations of maintaining single copy of the output matrix shared
  across threads, bandwidth friendly access of matrices and vector
@@ -106,11 +122,11 @@
          A distributed read is performed to load the matrix entries into an in-memory cached
          RDD containing one entry per row of the matrix.
       \item \textbf{Power Iterations}
-         The \textsc{MultiplyGramian} loop on lines 2-5 of
-         \textsc{RandomizedSVD} is run to compute an approximation $Q$
+          The \textsc{MultiplyGramian} loop (lines 2-5) of
+         \textsc{RandomizedSVD} is run to compute an approx. $Q$
          of the dominant right singular subspace.
        \item \textbf{Finalization (Post-Processing)}
-         Right multiplication by $Q$ on line 7 of \textsc{RandomizedSVD} to compute $C$.
+           Right multiplication by $Q$ (line 7) of \textsc{RandomizedSVD} to compute $C$.
   \end{enumerate}
 
   \subsubsection{Empirical Results}
