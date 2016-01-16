@@ -11,6 +11,7 @@
 \usepackage{cite}
 \usepackage[cmex10]{amsmath}
 \usepackage{amssymb}
+\usepackage{balance}
 
 \DeclareMathOperator{\bigO}{\mathcal{O}}
 \def\reals{\mathbb{R}}
@@ -33,7 +34,7 @@
 
 \begin{document}
 
-\title{A multi-platform evaluation of low-rank matrix factorizations in Spark}
+\title{A multi-platform evaluation of the randomized CX low-rank matrix factorization in Spark}
 
 \author{\IEEEauthorblockN{%
 Alex Gittens\IEEEauthorrefmark{1}, %
@@ -82,6 +83,7 @@ matrix factorization; data analytics; high performance computing
 \input{results.tex}
 \input{conclusions.tex}
 
+\balance
 \bibliographystyle{IEEEtran}
 \bibliography{heromsi}
 \end{document}
