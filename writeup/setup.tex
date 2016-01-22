@@ -11,14 +11,8 @@ The addition of \textit{ion-mobility separation (IMS)} to MSI adds another dimen
 The combination of IMS with MSI is finding increasing applications in the study of disease diagnostics, plant
 engineering, and microbial interactions. Unfortunately, the scale of MSI data and complexity of analysis presents a significant challenge to
 scientists: a single 2D-image may be many gigabytes and comparison of multiple images is beyond the capabilities
-available to many scientists. The addition of IMS exacerbates these problems.
-
-Dimensionality reduction techniques can help reduce MSI datasets to more
-amenable sizes.  Typical approaches for dimensionality reduction include PCA
-and NMF, but interpretation of the results is difficult because the components
-extracted via these methods are typically combinations of many hundreds or
-thousands of features in the original data.  CX decompositions circumvent this
-problem by identifying small numbers of columns in the original data that
+available to many scientists. The addition of IMS exacerbates these problems. CX decompositions mitigate the storage problem by 
+identifying small numbers of columns in the original data that
 reliably explain a large portion of the variation in the data.  This
 facilitates rapidly pinpointing important ions and locations in MSI
 applications.
@@ -44,12 +38,13 @@ ocean on to the surface. A better understanding of the dynamics of large-scale
 modes of variability in the ocean may be extracted from full 3D EOFs including
 many layers of the ocean. 
 
-We applied our PCA implementation in Spark to the analysis of the 
-ocean temperature fields from 31 years worth of ocean temperature measurements taken 
-at 6 hours increments over a global 360-by-720-by-40 global grid, extracted from
-the Climate Forecast System Reanalysis Product~\cite{Saha:2010ji}. To the best of our knowledge, this is the
-first published work where a 3D climate field of this magnitude has been subjected to 
-EOF analysis.
+We applied our PCA implementation in Spark to the analysis of the ocean
+temperature fields from 31 years worth of ocean temperature measurements taken
+at 6 hours increments over a global 360-by-720-by-40 global grid, extracted
+from the Climate Forecast System Reanalysis Product~\cite{Saha:2010ji}.
+Unfolding each set of observations into a long vector yields a 2.2 TB matrix.
+To the best of our knowledge, this is the first published work where a 3D
+climate field of this magnitude has been subjected to EOF analysis.
 
 \subsection{Platforms}
 

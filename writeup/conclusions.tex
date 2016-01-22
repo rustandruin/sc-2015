@@ -1,23 +1,26 @@
 \section{Conclusions}
 \label{sec:conclusion}
 
-Matrix factorizations are an important class of linear algebra computations
-with broad applications in Big Data analytics. In this work, we have
-successfully developed highly optimized distributed multi-node
-versions of the CX algorithm.
-%%, both on a single node, as well as distributed multi-node implementations. 
-We utilize
-Spark as a contemporary productive data analytics framework for developing and deploying
-the CX algorithm, and successfully demonstrate the implementation scaling up to
-960 cores. 
-We also implemented a close-to-metal parallelized C version, which runs 21X
-faster than the Spark version (on Amazon EC2 system). Further examination of this performance gap; and it's attribution to various components of the Spark stack will be conducted in the near future. 
+Matrix factorizations are an important and ubiquitous class of linear algebra
+computations. In this work, we have developed a distributed
+implementation of the CX algorithm and quantified its performance relative to
+an optimized parallelized C baseline, and developed a similarly distributed
+implementation of the PCA algorithm. We used Spark, a contemporary data
+analytics framework, to develop and deploy our CX and PCA implementations, and
+demonstrated that they scale up to 960 cores. We
+evaluated our Spark CX implementation on HPC and EC2 class hardware and found
+that faster interconnects enable numerically intensive computations to run
+more efficiently on HPC systems. The CX implementation was used
+to analyze a TB-sized mass-spec imaging dataset; the resulting ion and
+spatial patterns obtained from the analysis are providing biologists with novel
+insights on complex molecular mechanisms in cells. The PCA implementation was used
+to analyze a 2 TB-sized ocean temperature dataset, and has enable climate scientists
+to see structures in the full 3D field that were obfuscated in the 2D
+projections they previously dealt with for computational convenience. Further
+examination of the performance gap of the Spark CX implementation from the
+optimized C implementation, and the attribution to various components of the
+Spark stack will be conducted in the near future. Likewise, future work
+examining the gap between our PCA implementation and more traditional HPC codes
+on the platforms considered here will be conducted in the near future.
 
-Using the Spark version, we evaluate our parallel implementation on HPC and EC2 class
-hardware; we find that faster interconnects enable the numerically intensive
-computations to run more efficiently on HPC systems. Finally, this scalable
-implementation was used to analyze a large TB-sized mass-spec imaging
-dataset; the resulting ion and spatial patterns obtained from the analysis are
-providing biologists with novel insights on complex molecular mechanisms in
-cells. 
 

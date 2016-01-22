@@ -24,8 +24,10 @@ depicted visually in Figure~\ref{fig:h2hrank16} for $k=16$ and $k=32$ on the 1
 TB dataset.  All three platforms were able to successfully process the 1 TB
 dataset in under 25 minutes.  As the table and figure illustrates, most of the
 variation between the platforms occurred during the \texttt{MultiplyGramian}
-iterations.  We now explore how these difference relate to the performance of the matrix
-iterations.
+iterations. Likewise, Figure~\ref{fig:pca_h2hranks} breaks down the distributed
+portions of the computation of the PCA on the 2.2 TB climate dataset on the EC2
+and XC40 platforms.  We now explore how these difference relate to the performance of the
+matrix iterations.
 
 Spark divides each iteration into two stages.  The first \emph{local}
 stage computes each row's contribution, sums the local results (the
@@ -71,6 +73,11 @@ alternate nodes with more available OS cache, and in some case finished
 earlier.  This eliminated many of the straggler tasks and brought our
 performance closer to the experimental Cray cluster, but still did not match it
 (the results in Figure~\ref{fig:h2hrank16} and Table~\ref{tab:h2hres1TB}
-include this configuration optimization).  We discuss future directions for
-improving the performance on Spark on HPC systems in
-Section~\ref{sect:lessons}.
+include this configuration optimization). 
+
+The surprising result in Figure~\ref{fig:pca_h2hranks} that the XC40 system is
+slower than the EC2 system is due to the fact that the matrix is too large to
+fit on 30 nodes on the XC40, so must be partially reread at each iteration, whereas it fits
+entirely in memory on the EC2 cluster, which has more memory per node.  We
+discuss future directions for improving the performance on Spark on HPC systems
+in Section~\ref{sect:lessons}.

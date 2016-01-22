@@ -146,6 +146,13 @@ results in the dataset not fitting in memory.
     \label{fig:h2hrank16} 
     \end{figure}
 
+    \begin{figure} [h!btp]
+      \begin{centering}
+        \includegraphics[scale=0.3]{images/phase_stackplot_ec2_ranks_10_and_20}
+      \end{centering}
+      \caption{Run times for the various stages of computation of PCA on the EC2 and Cori platforms using $k=10$ and $k=20$ on the 2.2 TB size dataset, using the default partitioning.}
+      \label{fig:pca_h2hranks}
+    \end{figure}
     
   \input{h2hresults.tex}
 
@@ -196,16 +203,12 @@ results in the dataset not fitting in memory.
     \label{fig:climate_spectra}
   \end{figure} 
 The rows and columns of our data matrix $A$ correspond to observation intervals
-and (lat, lon, depth) points, respectively.  We compute the EOF (PCA)
-decompositions of $A$ in order to find meaningful spatial and temporal patterns
-in the deviations from the mean temperatures.
-
-The first two modes fully capture the annual cycles, so in
+and (lat, lon, depth) points, respectively. The first two EOFs fully capture the annual cycles, so in
 Figure~\ref{fig:climate_timeseries}, we present the time series corresponding to the
 third, sixth, and seventh modes. The time series show the chaotic nature of the
 large-scale modes of variability in the ocean, as well as the dominant
-periodicities. Further, they show the abrupt changes in the due to 1983 ENSO,
-and more significantly, those during the record-breaking ENSO of 1997--98.
+periodicities. Further, they show abrupt changes due to the 1983 ENSO,
+and more significantly, the record-breaking ENSO of 1997--98.
 
 The power spectra in Figure~\ref{fig:climate_spectra} show which modes contribute to
 the low and high frequency modes of variability, and their relative dominance.
@@ -253,6 +256,7 @@ under investigation.
     \includegraphics[width=.9\linewidth]{images/EOF7_135.pdf}
   \end{subfigure}
   \caption{Left to right, the mode 3, 6, and 7 spatial EOFs of the CFSR ocean temperature field at, from top to bottom, the surface, a depth of 55 meters, and a depth of 135 meters. }
+  \label{fig:spatialEOFs}
 \end{figure*}
 
 The spatial EOF patterns in Figure~\ref{fig:spatialEOFs} show the relative
