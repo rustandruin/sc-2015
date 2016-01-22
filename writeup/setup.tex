@@ -13,18 +13,43 @@ engineering, and microbial interactions. Unfortunately, the scale of MSI data an
 scientists: a single 2D-image may be many gigabytes and comparison of multiple images is beyond the capabilities
 available to many scientists. The addition of IMS exacerbates these problems.
 
-\paragraph{Utility of CX/PCA in MSI}
-Dimensionality reduction techniques can help reduce MSI datasets to more amenable sizes.
-Typical approaches for dimensionality reduction include PCA and NMF, but interpretation of the results is difficult
-because the components extracted via these methods are typically combinations of many hundreds or thousands of features in the original data.
-CX decompositions circumvent this problem by identifying small numbers of columns in the
-original data that reliably explain a large portion of the variation in the data.
-This facilitates rapidly pinpointing important ions and locations in MSI applications.
+Dimensionality reduction techniques can help reduce MSI datasets to more
+amenable sizes.  Typical approaches for dimensionality reduction include PCA
+and NMF, but interpretation of the results is difficult because the components
+extracted via these methods are typically combinations of many hundreds or
+thousands of features in the original data.  CX decompositions circumvent this
+problem by identifying small numbers of columns in the original data that
+reliably explain a large portion of the variation in the data.  This
+facilitates rapidly pinpointing important ions and locations in MSI
+applications.
 
-In this paper, we analyze one of the largest (1TB sized) mass-spec
-imaging datasets in the field. The sheer size %and complexity 
-of this dataset
-has previously made complex analytics intractable. This paper presents first-time science results from the successful application of CX to TB-sized data.
+In this paper, we analyze one of the largest (1TB sized) mass-spec imaging
+datasets in the field. The sheer size of this dataset has previously made
+complex analytics intractable. This paper presents first-time science results
+from the successful application of CX to TB-sized data.
+
+\subsection{Empirical Orthogonal Function analysis of ocean temperatures}
+The most widely used tool for extracting important patterns from the
+measurements of atmospheric and oceanic variables is the Empirical Orthogonal
+Function (EOF) technique. EOFs are popular because of their simplicity and
+their ability to reduce the dimensionality of large nonlinear, high-dimensional
+systems into fewer dimensions while preserving the most important patterns of
+variations in the measurements. Mathematically, EOFs are exactly PCA decompositions.
+
+Traditionally, ocean data EOFs have been calculated for surface fields due to
+the complications arising from dealing with the amount of data in the full 3D fields. 
+However, the EOF modes extracted from such data only
+contain projections of complex 3D patterns involving deeper layers of the
+ocean on to the surface. A better understanding of the dynamics of large-scale
+modes of variability in the ocean may be extracted from full 3D EOFs including
+many layers of the ocean. 
+
+We applied our PCA implementation in Spark to the analysis of the 
+ocean temperature fields from 31 years worth of ocean temperature measurements taken 
+at 6 hours increments over a global 360-by-720-by-40 global grid, extracted from
+the Climate Forecast System Reanalysis Product~\cite{Saha:2010ji}. To the best of our knowledge, this is the
+first published work where a 3D climate field of this magnitude has been subjected to 
+EOF analysis.
 
 \subsection{Platforms}
 
@@ -36,7 +61,7 @@ has previously made complex analytics intractable. This paper presents first-tim
     \midrule
     Amazon EC2 \texttt{r3.8xlarge} & 960 (32 per-node) & 2.5 GHz & 10 Gigabit Ethernet & 244 GiB & 2 x 320 GB \\
     \midrule
-    Cray XC40 & 960 (32 per-node) & 2.3 GHz & Cray Aries~\cite{alverson2012cray,craycascadesc12} & 252 GiB & None \\
+    Cray XC40 & 960 (32 per-node) & 2.3 GHz & Cray Aries~\cite{alverson2012cray,craycascadesc12} & 128 GiB & None \\
     \midrule
     Experimental Cray cluster & 960 (24 per-node) & 2.5 GHz & Cray Aries~\cite{alverson2012cray,craycascadesc12} & 126 GiB & 1 x 800 GB \\
     \bottomrule
@@ -46,7 +71,7 @@ has previously made complex analytics intractable. This paper presents first-tim
     \label{tab:hwspecs}
   \end{table*}
 
- In order to assess the relative performance of CX matrix factorization on various hardware, we choose the following contemporary platforms:
+ In order to assess the relative performance of CX and PCA matrix factorization on various hardware, we choose the following contemporary platforms:
  \begin{itemize}
  \item a Cray\textregistered~XC40\textsuperscript{\tiny\texttrademark}
  system~\cite{alverson2012cray,craycascadesc12},

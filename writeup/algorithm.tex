@@ -65,24 +65,16 @@ low-rank methods are appropriate, the number of principal components needed to
 preserve most of the information in $A$ is far less than the number of original
 features, and thus the goal of dimension reduction is achieved.
 
-To compute our PCA/SVD decompositions, we use the Implicitly Restarted Arnoldi Method~\cite{ArpackUserGuide}.
-This is an iterative method that works by finding increasingly accurate approximations to the top few eigenvalues
-and eigenvectors of $A^TA$, and can be terminated when the approximations are acceptably accurate. It  
-is amenable to distributed computing as it does not require access to the entries of $A$, 
-instead it requires only the ability to compute the application of $A$ to any vector. In more detail, let
-$A = U\Sigma V^T$ be the desired SVD (or PCA if $A$ is centered), then
-$A^TA = V \Sigma U,$ so the right singular vectors of $A$ can be obtained using
-the Implicitly Restarted Arnoldi Method. Once these are known $Y = AV = U \Sigma$,  
-$A = YV^T $ so taking the QR decomposition $Y = QR$ implies that $A = YV^T = Q RV^T$. 
-
-% The algorithms for computing the SVD/PCA of $A$ can be classified as either direct 
-% or iterative. Direct methods, or transformation methods, repeatedly apply transformations to $A$ to 
-% reduce it to an equivalent matrix of a more simple form whose SVD can be determined quickly. Iterative
-% methods instead work by repeatedly refining increasingly accurate approximations to the singular values
-% and singular vectors, and can be terminated whenever the approximations are acceptably accurate. To compute
-% our PCA decompositions, we use the Implicitly Restarted Arnoldi Method, an iterative method introduced in~. The advantage
-% of this method is that it does not require access to the entries of $A$, instead it requires only the ability to 
-% compute the application of $A$ to any vector.
+The core of our PCA/SVD decompositions is the Implicitly Restarted Arnoldi Method~\cite{ArpackUserGuide}
+for finding eigendecompositions of a symmetric matrix.  This is an iterative
+method that works by finding increasingly accurate approximations to the top
+few eigenvalues and eigenvectors of $A^TA$, and can be terminated when the
+approximations are acceptably accurate. IRAM is amenable to distributed
+computing as it does not require access to the entries of $A$, instead it
+requires only the ability to compute the application of $A$ to any vector. It is 
+classical that one can obtain the truncated PCA/SVD decomposition of $A$ from that of $A^TA;$
+details are provided in Algorithm~\ref{alg:thinSVD}. In our implementation, we use a Java binding of the 
+Parallel ARPACK library to compute the IRAM primitive~\cite{maschho1996portable}.
 
 \subsection{CX/CUR decompositions}
 
@@ -104,11 +96,10 @@ mass spectrometry imaging~\cite{YRPMB15}.
 In more detail, CX decomposition factorizes an $m \times n$ matrix $A$ into two
 matrices $C$ and $X$, where $C$ is an $m\times c$ matrix that consists of $c$
 actual columns of $A$, and $X$ is a $c \times n$ matrix such that $A\approx
-CX$.
-(CUR decompositions further choose $X=UR$, where $R$ is a small number of actual rows
-of $A$~\cite{DMM08,CUR_PNAS}.)
-For CX, using the same optimality criterion defined in~\eqref{eqn:obj}, we seek
-matrices $C$ and $X$ such that the residual error $\|A-CX\|_F$ is small.
+CX$.  (CUR decompositions further choose $X=UR$, where $R$ is a small number of
+actual rows of $A$~\cite{DMM08,CUR_PNAS}.) For CX, using the same optimality
+criterion defined in~\eqref{eqn:obj}, we seek matrices $C$ and $X$ such that
+the residual error $\|A-CX\|_F$ is small.
 
 The algorithm of~\cite{DMM08} that computes a $1\pm\epsilon$ relative-error
 low-rank CX matrix approximation consists of three basic steps: first, compute
@@ -120,11 +111,11 @@ accordingly; see~\cite{DMM08} for detailed construction.
 
 \begin{algorithm}[tb]
   \caption{\textsc{ThinSVD} Algorithm}
-  \label{alg:truncatedSVD}
+  \label{alg:thinSVD}
   \begin{algorithmic}[1]
     \Require $A \in \reals^{m\times n}$, rank parameter $r \leq \textrm{rank}(A).$
     \Ensure $U \Sigma V^T = \textsc{ThinSVD}(A, r).$
-    \State Let $(\tilde{V}, \tilde{\Sigma}) = \textsc{Arpack}(\textsc{MultiplyGramian}(A, \cdot), r).$
+    \State Let $(\tilde{V}, \tilde{\Sigma}) = \textsc{IRAM}(\textsc{MultiplyGramian}(A, \cdot), r).$
     \State Let $Y = \textsc{Multiply}(A, \tilde{V}).$
     \State Compute $(Q, R) = \textsc{ThinQR}(Y).$
     \State Compute $(\tilde{U}, \Sigma, V^T) = \textsc{ThinSVD}(R \tilde{V}^T).$
@@ -167,23 +158,22 @@ Given a target rank parameter $k$, for $i=1,\ldots,n$, the $i$-th leverage score
   \ell_i = \sum_{j=1}^k \v_{ij}^2.
 \end{equation}
 These scores quantify the amount of ``leverage'' each column of $A$ exerts on the best rank-$k$ approximation to $A$. 
-%For each column of $A$, we have 
-%  $$  \a_i = \sum_{j=1}^{r} (\sigma_j \u_j) \v_{ij} \approx \sum_{j=1}^k (\sigma_j \u_j) \v_{ij}.  $$
-%  That is, the $i$-th column of $A$ can be expressed as a linear combination of the basis of the dominant $k$-dimensional left singular space with $\v_{ij}$ as the coefficients.
 If, for $i=1,\ldots,n$, we define the {\it normalized leverage scores} as
 \begin{equation}
 \label{eqn:nlev}
   p_i = \frac{\ell_i}{\sum_{j=1}^n \ell_j},
 \end{equation}      
-where $\ell_i$ is defined in~\eqref{eqn:lev}, and choose columns from $A$ according to those normalized leverage scores, then (by~\cite{DMM08,CUR_PNAS}) the selected columns are able to reconstruct the matrix $A$ nearly as well as $A_k$ does.
+where $\ell_i$ is defined in~\eqref{eqn:lev}, and choose columns from $A$
+according to those normalized leverage scores, then (by~\cite{DMM08,CUR_PNAS})
+the selected columns are able to reconstruct the matrix $A$ nearly as well as
+$A_k$ does.
 
 \subsection{Randomized SVD}
 
 The running time for \textsc{CXdecomposition} is determined by the
 computation of the importance sampling distribution.  To compute the leverage
 scores based on \eqref{eqn:lev}, one needs to compute the top
-$k$ right-singular vectors $V_k$. This can be prohibitive on
-large matrices. However, since there is already stochasticity in the 
+$k$ right-singular vectors $V_k$. Since there is already stochasticity in the 
 CX decomposition from the probabilistic selection of the columns, we 
 do not need to exactly compute $V_k$--- a high-quality approximation suffices. 
 This approach, originally proposed by Drineas et al.~\cite{DMMW12_JMLR}, runs in
@@ -191,25 +181,11 @@ This approach, originally proposed by Drineas et al.~\cite{DMMW12_JMLR}, runs in
 the data matrix than deterministic algorithms that compute the
 leverage scores~exactly.
 
-% The computation of the SVD (and thus of PCA for a data matrix $A$) is
-% expensive~\cite{GVL96}.  For example, to compute the truncated SVD with rank
-% $k$ using traditional deterministic methods, the running time complexity is
-% $\bigO(mnk)$, and $\bigO(k)$ passes over the dataset are needed.  This can be
-% expensive when dealing with datasets of even moderately-large
-% size, e.g., $m = 10^6$, $n = 10^4$ and $k = 20$.  To address these and related
-% issues, recent work in Randomized Linear Algebra (RLA) has focused on using
-% randomized approximation to perform scalable linear algebra computations for
-% large-scale data problems.  For an overview of the RLA area,
-% see~\cite{Mah-mat-rev_BOOK}; for a review of using RLA methods for low-rank
-% matrix approximation, see~\cite{HMT09_SIREV}; and for a review of the theory
-% underlying implementing RLA methods in parallel/distributed environments,
-% see~\cite{YMM15_TR}.
-
 To approximate $V_k$, we use an algorithm introduced in \cite{MRT06,MRT11}
 that uses a random projection to construct a rank-$k$ approximation to $A$
 which approximates $A$ nearly as well as $A_k$ does.  We refer the readers to
 \cite{HMT09_SIREV,Mah-mat-rev_BOOK} for more details.  Importantly, the
-algorithm runs in $\bigO(mn \log k)$ time, and the algorithm needs only a
+algorithm runs in $\bigO(mn \log k)$ time, and needs only a
 constant number of passes over the data matrix.  This algorithm, which
 we refer to as \textsc{RandomizedSVD}, is summarized in
 Algorithm~\ref{alg:rsvd}.  (Algorithm~\ref{alg:rsvd} calls

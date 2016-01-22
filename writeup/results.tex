@@ -37,13 +37,7 @@
 %%      primarily targeted towards ensuring that the output of the matrix multiplication resides in the caches (since it is
 %      accessed and updated frequently). This led to a further 2.4X reduction in run-time, for an overall speedup of around 15.6X.
       We then implemented our SIMD code that sped it up by a further
-      2.6X, for an overall speedup of 39.7X. Although the 
-      SIMD width is 4, 
-        %%($\mathcal{S}$ = 4),
-        there are overheads of address
-        computation, stores, and not all computations (e.g. QR) were
-        vectorized.
-        %%(QR code is still scalar).
+      2.6X, for an overall speedup of 39.7X. 
 
 
 
@@ -62,19 +56,8 @@
  the 1 TB dataset as input, it
  took 151 seconds to perform CX computation (including time to load
  the data into main memory). 
-%% and 92 seconds to load the data.
- %read in data into main memory. 
  As compared to the Scala code on the same platform (details in
  next sec.), we achieve a speedup of 21X.
- %%(in terms of compute time) and 6.7X (data load  + compute time.)
-%
- % We did a head-to-head comparison of C code with the Scala node, 
- %%%%implementation on a single node, 
- %and measured a performance gap of around 21X.
- This performance gap can be attributed to the careful cache
- optimizations of maintaining single copy of the output matrix shared
- across threads, bandwidth friendly access of matrices and vector
- computation using SIMD units.
 
  Some of these optimizations can be implemented in Spark, such as arranging the
  order of memory accesses to make efficient use of memory. %%of the memory bus.
@@ -109,24 +92,24 @@
 
 
 
-  \subsection{CX Performance Using Spark} %% on Spark} across Multiple Nodes}
-%  \textcolor{red}{Mike R, Jatin: we need a narrative here}
+  \subsection{CX and PCA Performance Using Spark} %% on Spark} across Multiple Nodes}
 
-  \subsubsection{CX Spark Phases}
-  Our implementations of CX and PCA share the \textsc{RandomizedSVD} subroutine, which accounts for the bulk of the runtime and all of the distributed computations.
-  The execution of \textsc{RandomizedSVD} proceeds in four distributed phases listed below, along with a small amount of additional local computation.
+  \subsubsection{Spark Phases}
+  The CX and PCA algorithms proceed in four distributed phases listed below, along with a small amount of additional local computation.
   \begin{enumerate}
       \item \textbf{Load Matrix Metadata}
          The dimensions of the matrix are read from the distributed filesystem to the driver.
       \item \textbf{Load Matrix}
          A distributed read is performed to load the matrix entries into an in-memory cached
-         RDD containing one entry per row of the matrix.
-      \item \textbf{Power Iterations}
-          The \textsc{MultiplyGramian} loop (lines 2-5) of
+         RDD containing one entry per row of the matrix. PCA uses an additional pass over the matrix to compute and remove the column means.
+       \item \textbf{Power Iterations / MultiplyGramian}
+         In the case of the CX algorithm, the \textsc{MultiplyGramian} loop (lines 2-5) of
          \textsc{RandomizedSVD} is run to compute an approx. $Q$
-         of the dominant right singular subspace.
+         of the dominant right singular subspace. For the PCA algorithm, the ARPACK routine calls the \textsc{MultiplyGramian} function
+         until the approximate eigenvectors converge to the desired top eigenspace of $AA^T.$
        \item \textbf{Finalization (Post-Processing)}
-           Right multiplication by $Q$ (line 7) of \textsc{RandomizedSVD} to compute $C$.
+         In the case of the CX algorithm, right multiplication by $Q$ (line 7) of \textsc{RandomizedSVD} to compute $C$. In the case of the PCA algorithm,
+         right multiplication by $V$ followed by some local post-processing to compute the principal components vectors.
   \end{enumerate}
 
   \subsubsection{Empirical Results}
@@ -139,20 +122,20 @@
     \label{fig:xc40scaling}
     \end{figure} 
 
-Fig.~\ref{fig:xc40scaling} shows how the distributed Spark portion of our code scales. %% as we add additional processors.  
+Fig.~\ref{fig:xc40scaling} shows how the distributed Spark portion of our CX code scales.
 We considered 240, 480, and 960 cores.  An additional doubling (to 1920 cores) would be ineffective as there are only 1654 partitions, 
 so many cores would remain unused.  
-%%%In addition, with fewer partitions per core there are fewer opportunities for load balancing and speculative reexecution of slow tasks.
-%%
-When we go from 240 to 480 cores, we achieve a speedup of 1.6x: %% from doubling the cores: 
+When we go from 240 to 480 cores, we achieve a speedup of 1.6x:
 233 seconds versus 146 seconds.  However, as the number of partitions per core drops 
 below two, and the amount of computation-per-core relative to communication overhead drops, 
 the scaling slows down (as expected).  
 This results in a lower speedup of 1.4x (146 seconds versus 102
 seconds) from 480 to 960 cores.
-%%when we double the core count to 960.
+We did not produce a similar scaling plot for the PCA experiments, as using less
+than the maximum 960 cores results in the dataset (2.2 TB of climate data)
+results in the dataset not fitting in memory.
 
-  \subsection{CX Performance across Multiple Platforms}
+\subsection{CX and PCA Performance across Multiple Platforms}
   \label{sect:h2h}
     
     \begin{figure} [h!btp]
@@ -166,48 +149,7 @@ seconds) from 480 to 960 cores.
     
   \input{h2hresults.tex}
 
-  
-%  \subsection{Timing and Accuracy comparison of RSVD, CX, and truncated SVD}
-
-% Because the RSVD allows us to explicitly control its accuracy by tuning the number of iterations $q$,
-% the reconstruction error of the low-rank approximation obtained from the RSVD
-% algorithm is expected to be somewhat lower than that of truncated SVD
-% approximation. Similarly, CX decompositions have the advantage of
-% interpretability, but come at the cost of an increased number of operations on
-% top of the RSVD and an additional loss in approximation accuracy. 
-
-%  In Figures~\ref{fig:timing-accuracy-8} and~\ref{fig:timing-accuracy-16}, we observe the timing vs accuracy tradeoffs of the RSVD and CX algorithms
-%  as applied to the 100G MSI dataset for two settings of the rank parameter, $k=8$ and $k=16$. The exact SVD was computed in this case using the
-%  Spark bindings of the popular ARPACK eigenproblem library~\cite{ArpackUserGuide}. The RSVD algorithm used two power iterations, and we used the output of the RSVD algorithm to generate
-%  both the column CX decomposition defined in Algorithm~\ref{alg:cx} and a related `row CX' decomposition that comes from applying Algorithm~\ref{alg:cx}
-%  to $A^T.$ As explained in more detail in the next section, both of these CX decompositions are of interest, as they identify important pixels and ions.
-%
-%  For both rank parameters, we observe the behavior predicted by the theory for the RSVD decomposition: the approximation error is only slightly greater than that of the 
-%  truncated SVD approximation. We also observe that there is only a slight speed advantage to using the RSVD; this is likely attributable to the fact that the input matrix
-%  is truly low-rank (more than 70\% of the Frobenius norm of the matrix is already captured by the rank-8 decomposition), so the iterative ARPACK SVD algorithm converges 
-%  quite fast.
-%
-%  The CX decompositions require significantly more time to compute than the truncated SVD and RSVD decompositions. This is due to the need to compute the projection of $A$ onto
-%  the columns $C$ after $C$ is constructed according to Algorithm~\ref{alg:cx}. We also note that for the MSI dataset, row-based CX decompositions are more 
-%  accurate and less expensive to construct than column-based CX decompositions. 
-%
-%  \begin{figure}[h!btp]
-%    \begin{centering}
-%      \includegraphics[scale=0.4]{images/timing-accuracy-8}
-%      \end{centering}
-%      \caption{The Frobenius norm approximation errors and timings for three runs of the RSVD and CX approximations relative to those of the truncated SVD for a target rank of $8$ on the 100G MSI dataset.}
-%    \label{fig:timing-accuracy-8}
-%  \end{figure}
-%
-%  \begin{figure}[h!btp]
-%    \begin{centering}
-%      \includegraphics[scale=0.4]{images/timing-accuracy-16}
-%      \end{centering}
-%      \caption{The Frobenius norm approximation errors and timings for three runs of the RSVD and CX approximations relative to those of the truncated SVD for a target rank of $16$ on the 100G MSI dataset.}
-%    \label{fig:timing-accuracy-16}
-%  \end{figure}
-
-  \subsection{Science Results}
+  \subsection{MSI Science Results}
   
   \begin{figure}[h!bt]
     \centering
@@ -238,7 +180,92 @@ seconds) from 480 to 960 cores.
   having distinct spatial distributions in the plant tissue sample.
   
 
+  \subsection{Climate Science Results}
+
+  \begin{figure}[h!bt]
+    \centering
+    \includegraphics[width=.9\columnwidth]{images/climate_timeseries.pdf}
+    \caption{In order from top to bottom, the timeseries for modes 3, 6, and 7 of the CFSR ocean temperature field.}
+        \label{fig:climate_timeseries}
+  \end{figure} 
+
+  \begin{figure}[h!bt]
+    \centering
+    \includegraphics[width=.9\columnwidth]{images/climate_spectra.pdf}
+    \caption{The power spectra of the first 20 modes of the CFSR ocean temperature field.}
+    \label{fig:climate_spectra}
+  \end{figure} 
+The rows and columns of our data matrix $A$ correspond to observation intervals
+and (lat, lon, depth) points, respectively.  We compute the EOF (PCA)
+decompositions of $A$ in order to find meaningful spatial and temporal patterns
+in the deviations from the mean temperatures.
+
+The first two modes fully capture the annual cycles, so in
+Figure~\ref{fig:climate_timeseries}, we present the time series corresponding to the
+third, sixth, and seventh modes. The time series show the chaotic nature of the
+large-scale modes of variability in the ocean, as well as the dominant
+periodicities. Further, they show the abrupt changes in the due to 1983 ENSO,
+and more significantly, those during the record-breaking ENSO of 1997--98.
+
+The power spectra in Figure~\ref{fig:climate_spectra} show which modes contribute to
+the low and high frequency modes of variability, and their relative dominance.
+Note that, as mentioned above, the first two modes fully capture the annual
+cycle, while the higher modes contain low frequency content. The intermediate
+modes contain a complex interplay of various timescales, which is currently
+under investigation.  
+
+\begin{figure*}[h!bt]
+  \centering
+  \begin{subfigure}{.3\textwidth}
+    \centering
+    \includegraphics[width=.9\linewidth]{images/EOF3_0.pdf}
+  \end{subfigure}
+  \begin{subfigure}{.3\textwidth}
+    \centering
+    \includegraphics[width=.9\linewidth]{images/EOF6_0.pdf}
+  \end{subfigure}
+  \begin{subfigure}{.3\textwidth}
+    \centering
+    \includegraphics[width=.9\linewidth]{images/EOF7_0.pdf}
+  \end{subfigure}
+  \begin{subfigure}{.3\textwidth}
+    \centering
+    \includegraphics[width=.9\linewidth]{images/EOF3_55.pdf}
+  \end{subfigure}
+  \begin{subfigure}{.3\textwidth}
+    \centering
+    \includegraphics[width=.9\linewidth]{images/EOF6_55.pdf}
+  \end{subfigure}
+  \begin{subfigure}{.3\textwidth}
+    \centering
+    \includegraphics[width=.9\linewidth]{images/EOF7_55.pdf}
+  \end{subfigure}
+  \begin{subfigure}{.3\textwidth}
+    \centering
+    \includegraphics[width=.9\linewidth]{images/EOF3_135.pdf}
+  \end{subfigure}
+  \begin{subfigure}{.3\textwidth}
+    \centering
+    \includegraphics[width=.9\linewidth]{images/EOF6_135.pdf}
+  \end{subfigure}
+  \begin{subfigure}{.3\textwidth}
+    \centering
+    \includegraphics[width=.9\linewidth]{images/EOF7_135.pdf}
+  \end{subfigure}
+  \caption{Left to right, the mode 3, 6, and 7 spatial EOFs of the CFSR ocean temperature field at, from top to bottom, the surface, a depth of 55 meters, and a depth of 135 meters. }
+\end{figure*}
+
+The spatial EOF patterns in Figure~\ref{fig:spatialEOFs} show the relative
+dominance of the Indian Ocean Dipole and the classic warm pool -- cold tongue
+patterns of ENSO at various depths below the ocean surface. Note that the
+dynamic near the thermocline is most dominant, rather than that closer to the
+surface. Further, note that there are several smaller scale features that
+have a strong influence at different depths. Work is on going to understand
+the nature of these different spatial patterns and the factors that influence
+their relative dominance.
+
   \subsection{Improving Spark on HPC Systems}
+
   \label{sect:lessons}
   
   \input{lessons.tex}
