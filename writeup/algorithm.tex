@@ -2,32 +2,49 @@
 \label{sxn:low-rank-methods}
 %% \textit{Owners: Jiyan, Michael Mahoney (1 page)}
 
-Given an $m \times n$ data matrix $A$, low-rank matrix factorization methods aim to find two smaller matrices whose product is a good approximation to $A$.
+Given an $m \times n$ data matrix $A$, low-rank matrix factorization methods
+aim to find two smaller matrices whose product is a good approximation to $A$.
 That is, they aim to find matrices $Y$ and $Z$ such that
 \begin{equation}
  \label{eqn:apprx}
     \underset{m\times n}{A} \approx \underset{m\times k}{Y} \times \underset{k\times n}{Z} , 
 \end{equation}
 where $Y \times Z$ is a rank-$k$ approximation to the original matrix $A$.
-Low-rank matrix factorization methods are an important topic in linear algebra and numerical analysis, and they find use in a variety of scientific fields and scientific computing as well as in machine learning and data analysis applications such as pattern recognition and personalized recommendation.
+Low-rank matrix factorization methods are ubiquitous in linear algebra
+and numerical analysis, and they find use in a variety of scientific fields and
+scientific computing as well as in machine learning and data analysis
+applications such as pattern recognition and personalized recommendation.
 
-Depending on the application, various low-rank factorization techniques are of interest. 
-Popular choices include the singular value decomposition~\cite{GVL96}, principal component analysis~\cite{pcaBook}, rank-revealing QR factorization~\cite{GE96}, nonnegative matrix factorization~\cite{NMFalg}, and CUR/CX decompositions~\cite{CUR_PNAS}.
-In this work, we consider using the SVD and CX decompositions for scalable and interpretable data analysis; in the remainder of this section, we briefly describe these decompositions.
-For an arbitrary matrix $A$, denote by $\a_i$ its $i$-th row, $\a^j$ its $j$-th column and $\a_{ij}$ its $(i,j)$-th element. 
+Depending on the application, various low-rank factorization techniques are of
+interest.  Popular choices include the singular value
+decomposition~\cite{GVL96}, principal component analysis~\cite{pcaBook},
+rank-revealing QR factorization~\cite{GE96}, nonnegative matrix
+factorization~\cite{NMFalg}, and CUR/CX decompositions~\cite{CUR_PNAS}.  In
+this work, we consider using the PCA and CX decompositions for scalable and
+interpretable data analysis; in the remainder of this section, we briefly
+describe these decompositions.
+%and previous implementations of low-rank factorizations from the HPC and data analytics communities. 
+For an arbitrary matrix $A$, denote by $\a_i$
+its $i$-th row, $\a^j$ its $j$-th column and $\a_{ij}$ its $(i,j)$-th element.
 Throughout, we assume $A$ has size $m \times n$ and rank $r$.
 
 
 \subsection{SVD and PCA}
 
-The singular value decomposition (SVD) is the factorization of $A \in \reals^{m\times n}$ into the product of three matrices $U\Sigma V^T$ where $U \in \reals^{m\times r}$ and $V\in \reals^{n\times r}$ have orthonormal columns and $\Sigma\in \reals^{r\times r}$ is a diagonal matrix with positive real entries. 
-The columns of $U$ and $V$ are called left and right singular vectors and the diagonal entries of $\Sigma$ are called singular values. 
-For notation convenience, we assume the singular values are sorted such that $\sigma_1\geq \cdots \geq \sigma_r\geq 0$, and this means that the columns of $U$ and $V$ are sorted by the order given by the singular values.  
-
-%if optimality criterion to choose is the square loss ($\ell_2$ loss)
+The singular value decomposition (SVD) is the factorization of $A \in
+\reals^{m\times n}$ into the product of three matrices $U\Sigma V^T$ where $U
+\in \reals^{m\times r}$ and $V\in \reals^{n\times r}$ have orthonormal columns
+and $\Sigma\in \reals^{r\times r}$ is a diagonal matrix with positive real
+entries. The columns of $U$ and $V$ are called left and right singular vectors
+and the diagonal entries of $\Sigma$ are called singular values.  For notation
+convenience, we assume the singular values are sorted such that $\sigma_1\geq
+\cdots \geq \sigma_r\geq 0$, and that the columns of $U$ and $V$ are
+sorted by the order given by the singular values.  
  
-The SVD is of central interest because it provides the ``best'' low-rank matrix approximation with respect to any unitarily invariant matrix norm.
-In particular, for any target rank $k \leq r$, the SVD provides the minimizer of the optimization problem
+The SVD is of central interest because it provides the ``best'' low-rank matrix
+approximation with respect to any unitarily invariant matrix norm.  In
+particular, for any target rank $k \leq r$, the SVD provides the minimizer of
+the optimization problem
 \begin{equation}
  \label{eqn:obj}
   \min_{\text{rank}(\tilde A) = k} \| A - \tilde A \|_F,
@@ -48,92 +65,24 @@ low-rank methods are appropriate, the number of principal components needed to
 preserve most of the information in $A$ is far less than the number of original
 features, and thus the goal of dimension reduction is achieved.
 
-\subsection{Randomized SVD}
+To compute our PCA/SVD decompositions, we use the Implicitly Restarted Arnoldi Method~\cite{ArpackUserGuide}.
+This is an iterative method that works by finding increasingly accurate approximations to the top few eigenvalues
+and eigenvectors of $A^TA$, and can be terminated when the approximations are acceptably accurate. It  
+is amenable to distributed computing as it does not require access to the entries of $A$, 
+instead it requires only the ability to compute the application of $A$ to any vector. In more detail, let
+$A = U\Sigma V^T$ be the desired SVD (or PCA if $A$ is centered), then
+$A^TA = V \Sigma U,$ so the right singular vectors of $A$ can be obtained using
+the Implicitly Restarted Arnoldi Method. Once these are known $Y = AV = U \Sigma$,  
+$A = YV^T $ so taking the QR decomposition $Y = QR$ implies that $A = YV^T = Q RV^T$. 
 
-The computation of the SVD (and thus of PCA for a data matrix $A$) is
-expensive~\cite{GVL96}.  For example, to compute the truncated SVD with rank
-$k$ using traditional deterministic methods, the running time complexity is
-$\bigO(mnk)$, and $\bigO(k)$ passes over the dataset are needed.  This becomes
-prohibitively expensive when dealing with datasets of even moderately-large
-size, e.g., $m = 10^6$, $n = 10^4$ and $k = 20$.  To address these and related
-issues, recent work in Randomized Linear Algebra (RLA) has focused on using
-randomized approximation to perform scalable linear algebra computations for
-large-scale data problems.  For an overview of the RLA area,
-see~\cite{Mah-mat-rev_BOOK}; for a review of using RLA methods for low-rank
-matrix approximation, see~\cite{HMT09_SIREV}; and for a review of the theory
-underlying implementing RLA methods in parallel/distributed environments,
-see~\cite{YMM15_TR}.
-
-Here, we will use an algorithm introduced in \cite{MRT06,MRT11}
-that uses a random projection to construct a rank-$k$ approximation to $A$
-which approximates $A$ nearly as well as $A_k$ does.  We refer the readers to
-\cite{HMT09_SIREV,Mah-mat-rev_BOOK} for more details.  Importantly, the
-algorithm runs in $\bigO(mn \log k)$ time, and the algorithm needs only a
-constant number of passes over the data matrix.  These properties becomes
-extremely desirable in many large-scale data analytics.  This algorithm, which
-we refer to as \textsc{RandomizedSVD}, is summarized in
-Algorithm~\ref{alg:rsvd}.  (Algorithm~\ref{alg:rsvd} calls
-\textsc{MultiplyGramian}, which is summarized in Algorithm~\ref{alg:gram}, as
-well as three algorithms, \textsc{Multiply}, \textsc{ThinQR}, and
-\textsc{ThinSVD}, which are standard in numerical linear algebra~\cite{GVL96}.)
-The running time cost for \textsc{RandomizedSVD} is dominated by the
-matrix-matrix multiplication, which involve passing over the entire data
-matrix, appearing in Step 3 and Step 7 of Algorithm~\ref{alg:rsvd}.  
-These steps can be parallelized, and hence \textsc{RandomizedSVD} is 
-amenable to distributed computing.
-% \footnote{We should mention that Step 3 of
-%Algorithm~\ref{alg:rsvd} involves a dense matrix-matrix multiplication, whereas
-%most RLA algorithms, including the variant of \textsc{RandomizedSVD}
-%in~\cite{HMT09_SIREV} uses an FFT-based random projection in order to obtain a
-%faster asymptotic running time.  While our version incurs more FLOPS, it is
-%more parallelizable and thus more suitable for distributed computational
-%environments.}
-
-
-\begin{algorithm}[tb]
- \caption{{\sc RandomizedSVD} Algorithm}
-  \label{alg:rsvd}
-  \begin{algorithmic}[1]
-    \Require $A \in \reals^{m\times n}$, \
-      number of power iterations $q \ge 1$, \
-      target rank $r > 0$, slack $\ell \ge 0$, and let $k=r+\ell$.
-
-    % TODO: domain of each result
-    \Ensure $U \Sigma V^T \approx \Call{ThinSVD}{A, r}$.
-
-    \State Initialize $B \in \reals^{n\times k}$ by sampling $B_{ij} \sim \mathcal{N}(0, 1)$.
-
-    \For{$q$ times}
-        \State $B \gets \Call{MultiplyGramian}{A, B}$
-        \State $(B, \_) \gets \Call{ThinQR}{B}$
-    \EndFor
-
-    \State Let $Q$ be the first $r$ columns of $B$.
-
-    \State Let $C = \Call{Multiply}{A, Q}$.
-
-    \State Compute $(U, \Sigma, \tilde V^T) = \Call{ThinSVD}{C}$.
-
-    \State Let $V = Q \tilde V$.
-    % alternative that doesn't require knowing the distributivity of transpose but looks silly:
-    %\State Let $V^T = \tilde V^T Q^T$.
-
-    \end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[tb]
-  \caption{{\sc MultiplyGramian} Algorithm}
-  \label{alg:gram}
-  \begin{algorithmic}[1]
-    \Require $A \in \reals^{m\times n}$, $B \in \reals^{n\times k}$.
-    \Ensure $X = A^T A B$.
-    \State Initialize $X = 0$.
-    \For{each row $a$ in $A$}
-        \State $X \gets X + a a^T B$.
-    \EndFor
-  \end{algorithmic}
-\end{algorithm}
-
+% The algorithms for computing the SVD/PCA of $A$ can be classified as either direct 
+% or iterative. Direct methods, or transformation methods, repeatedly apply transformations to $A$ to 
+% reduce it to an equivalent matrix of a more simple form whose SVD can be determined quickly. Iterative
+% methods instead work by repeatedly refining increasingly accurate approximations to the singular values
+% and singular vectors, and can be terminated whenever the approximations are acceptably accurate. To compute
+% our PCA decompositions, we use the Implicitly Restarted Arnoldi Method, an iterative method introduced in~. The advantage
+% of this method is that it does not require access to the entries of $A$, instead it requires only the ability to 
+% compute the application of $A$ to any vector.
 
 \subsection{CX/CUR decompositions}
 
@@ -145,7 +94,7 @@ combinations of up to all of the original variables.  A natural question
 arises: can we reconstruct the matrix using a small number of actual columns of
 $A$?
 
-CX/CUR decompositions affirmatively answer this question.  That is, these are
+CX/CUR decompositions affirmatively answer this question. These are
 low-rank matrix decompositions that are expressed in terms of a small number of
 actual columns/rows. As such, they have found applicability in scientific
 applications where coupling analytical techniques with domain knowledge is at a
@@ -168,6 +117,20 @@ of $A$; and second, use those scores as a sampling distribution to select $c$
 columns from $A$ and form $C$; finally once the matrix $C$ is determined, the
 optimal matrix $X$ with rank-$k$ that minimizes $\|A-CX\|_F$ can be computed
 accordingly; see~\cite{DMM08} for detailed construction. 
+
+\begin{algorithm}[tb]
+  \caption{\textsc{ThinSVD} Algorithm}
+  \label{alg:truncatedSVD}
+  \begin{algorithmic}[1]
+    \Require $A \in \reals^{m\times n}$, rank parameter $r \leq \textrm{rank}(A).$
+    \Ensure $U \Sigma V^T = \textsc{ThinSVD}(A, r).$
+    \State Let $(\tilde{V}, \tilde{\Sigma}) = \textsc{Arpack}(\textsc{MultiplyGramian}(A, \cdot), r).$
+    \State Let $Y = \textsc{Multiply}(A, \tilde{V}).$
+    \State Compute $(Q, R) = \textsc{ThinQR}(Y).$
+    \State Compute $(\tilde{U}, \Sigma, V^T) = \textsc{ThinSVD}(R \tilde{V}^T).$
+    \State Let $U = Q \tilde{U}.$  
+  \end{algorithmic}
+\end{algorithm}
 
 \begin{algorithm}[tb]
  \caption{\textsc{CXDecomposition}}
@@ -204,9 +167,9 @@ Given a target rank parameter $k$, for $i=1,\ldots,n$, the $i$-th leverage score
   \ell_i = \sum_{j=1}^k \v_{ij}^2.
 \end{equation}
 These scores quantify the amount of ``leverage'' each column of $A$ exerts on the best rank-$k$ approximation to $A$. 
-For each column of $A$, we have 
-  $$  \a_i = \sum_{j=1}^{r} (\sigma_j \u_j) \v_{ij} \approx \sum_{j=1}^k (\sigma_j \u_j) \v_{ij}.  $$
-  That is, the $i$-th column of $A$ can be expressed as a linear combination of the basis of the dominant $k$-dimensional left singular space with $\v_{ij}$ as the coefficients.
+%For each column of $A$, we have 
+%  $$  \a_i = \sum_{j=1}^{r} (\sigma_j \u_j) \v_{ij} \approx \sum_{j=1}^k (\sigma_j \u_j) \v_{ij}.  $$
+%  That is, the $i$-th column of $A$ can be expressed as a linear combination of the basis of the dominant $k$-dimensional left singular space with $\v_{ij}$ as the coefficients.
 If, for $i=1,\ldots,n$, we define the {\it normalized leverage scores} as
 \begin{equation}
 \label{eqn:nlev}
@@ -214,16 +177,92 @@ If, for $i=1,\ldots,n$, we define the {\it normalized leverage scores} as
 \end{equation}      
 where $\ell_i$ is defined in~\eqref{eqn:lev}, and choose columns from $A$ according to those normalized leverage scores, then (by~\cite{DMM08,CUR_PNAS}) the selected columns are able to reconstruct the matrix $A$ nearly as well as $A_k$ does.
 
+\subsection{Randomized SVD}
+
 The running time for \textsc{CXdecomposition} is determined by the
 computation of the importance sampling distribution.  To compute the leverage
 scores based on \eqref{eqn:lev}, one needs to compute the top
 $k$ right-singular vectors $V_k$. This can be prohibitive on
-large matrices.  However, we can once again
-use \textsc{RandomizedSVD} to compute {\it approximate} leverage scores. This
-approach, originally proposed by Drineas et al.~\cite{DMMW12_JMLR}, runs in
+large matrices. However, since there is already stochasticity in the 
+CX decomposition from the probabilistic selection of the columns, we 
+do not need to exactly compute $V_k$--- a high-quality approximation suffices. 
+This approach, originally proposed by Drineas et al.~\cite{DMMW12_JMLR}, runs in
 ``random projection time,'' so requires fewer FLOPS and fewer passes over
 the data matrix than deterministic algorithms that compute the
 leverage scores~exactly.
+
+% The computation of the SVD (and thus of PCA for a data matrix $A$) is
+% expensive~\cite{GVL96}.  For example, to compute the truncated SVD with rank
+% $k$ using traditional deterministic methods, the running time complexity is
+% $\bigO(mnk)$, and $\bigO(k)$ passes over the dataset are needed.  This can be
+% expensive when dealing with datasets of even moderately-large
+% size, e.g., $m = 10^6$, $n = 10^4$ and $k = 20$.  To address these and related
+% issues, recent work in Randomized Linear Algebra (RLA) has focused on using
+% randomized approximation to perform scalable linear algebra computations for
+% large-scale data problems.  For an overview of the RLA area,
+% see~\cite{Mah-mat-rev_BOOK}; for a review of using RLA methods for low-rank
+% matrix approximation, see~\cite{HMT09_SIREV}; and for a review of the theory
+% underlying implementing RLA methods in parallel/distributed environments,
+% see~\cite{YMM15_TR}.
+
+To approximate $V_k$, we use an algorithm introduced in \cite{MRT06,MRT11}
+that uses a random projection to construct a rank-$k$ approximation to $A$
+which approximates $A$ nearly as well as $A_k$ does.  We refer the readers to
+\cite{HMT09_SIREV,Mah-mat-rev_BOOK} for more details.  Importantly, the
+algorithm runs in $\bigO(mn \log k)$ time, and the algorithm needs only a
+constant number of passes over the data matrix.  This algorithm, which
+we refer to as \textsc{RandomizedSVD}, is summarized in
+Algorithm~\ref{alg:rsvd}.  (Algorithm~\ref{alg:rsvd} calls
+\textsc{MultiplyGramian}, which is summarized in Algorithm~\ref{alg:gram}, as
+well as three algorithms, \textsc{Multiply}, \textsc{ThinQR}, and
+\textsc{ThinSVD}, which are standard in numerical linear algebra~\cite{GVL96}.)
+The running time cost for \textsc{RandomizedSVD} is dominated by the
+matrix-matrix multiplication, which involve passing over the entire data
+matrix, appearing in Step 3 and Step 7 of Algorithm~\ref{alg:rsvd}.  
+These steps can be parallelized, and hence \textsc{RandomizedSVD} is 
+amenable to distributed computing.
+
+\begin{algorithm}[tb]
+ \caption{{\sc RandomizedSVD} Algorithm}
+  \label{alg:rsvd}
+  \begin{algorithmic}[1]
+    \Require $A \in \reals^{m\times n}$, \
+      number of power iterations $q \ge 1$, \
+      target rank $r > 0$, slack $\ell \ge 0$, and let $k=r+\ell$.
+
+    % TODO: domain of each result
+    \Ensure $U \Sigma V^T \approx \Call{ThinSVD}{A, r}$.
+
+    \State Initialize $B \in \reals^{n\times k}$ by sampling $B_{ij} \sim \mathcal{N}(0, 1)$.
+
+    \For{$q$ times}
+        \State $B \gets \Call{MultiplyGramian}{A, B}$
+        \State $(B, \_) \gets \Call{ThinQR}{B}$
+    \EndFor
+
+    \State Let $Q$ be the first $r$ columns of $B$.
+
+    \State Let $C = \Call{Multiply}{A, Q}$.
+
+    \State Compute $(U, \Sigma, \tilde V^T) = \Call{ThinSVD}{C}$.
+
+    \State Let $V = Q \tilde V$.
+
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[tb]
+  \caption{{\sc MultiplyGramian} Algorithm}
+  \label{alg:gram}
+  \begin{algorithmic}[1]
+    \Require $A \in \reals^{m\times n}$, $B \in \reals^{n\times k}$.
+    \Ensure $X = A^T A B$.
+    \State Initialize $X = 0$.
+    \For{each row $a$ in $A$}
+        \State $X \gets X + a a^T B$.
+    \EndFor
+  \end{algorithmic}
+\end{algorithm}
 
 
 %Finally, we want to point out that,
