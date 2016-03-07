@@ -6,12 +6,14 @@ with broad applications in Big Data analytics. In this work, we have
 successfully developed highly optimized distributed multi-node
 versions of the CX algorithm.
 %%, both on a single node, as well as distributed multi-node implementations. 
-We utilize
+We use
 Spark as a contemporary productive data analytics framework for developing and deploying
 the CX algorithm, and successfully demonstrate the implementation scaling up to
 960 cores. 
-We also implemented a close-to-metal parallelized C version, which runs 21X
-faster than the Spark version (on Amazon EC2 system). Further examination of this performance gap; and it's attribution to various components of the Spark stack will be conducted in the near future. 
+We also implement a close-to-metal parallelized C version that runs 21X
+faster than the Spark version on the Amazon EC2 system. Further examination of
+this performance gap and its attribution to various components of the Spark
+stack will be conducted in the near future. 
 
 Using the Spark version, we evaluate our parallel implementation on HPC and EC2 class
 hardware; we find that faster interconnects enable the numerically intensive

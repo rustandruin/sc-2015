@@ -8,7 +8,7 @@ The differences in performance between the Cray{\textsuperscript{\tiny\textregis
   avoid using Lustre.
 \item Spark does not currently allow you to configure primary and backup
   scratch directories.  Instead you list all scratch directories in a single
-  list, and it distributes data in a round round fashion between them as long
+  list, and it distributes data in a round robin fashion between them as long
   as space is available.  You can bias it towards one storage device (e.g., RAM
   disk vs. Lustre) by listing multiple directories on the preferred device.
   Ideally, though, we would like to use a RAM disk (or other local storage)
@@ -21,9 +21,9 @@ The differences in performance between the Cray{\textsuperscript{\tiny\textregis
   from Lustre (or any other global file system).
 \item Alternatively, a push model of communication (as opposed to the current
   pull model) might be possible - however this would have implications for
-  reliability and handling of very large data sets.\footnote{Storing the
-    shuffle data to a large persistent block storage device, and only sending
-    it as needed, allows Spark to easily shuffle more data than could fit in
+  reliability and the handling of very large data sets.\footnote{Storing the
+    shuffle data to a large persistent block storage device and only sending
+    it as needed allows Spark to easily shuffle more data than could fit in
     the remote buffers.  In a push-based model, extra logic and synchronization
     would be necessary to ensure that the remote buffers do not overflow.}
 \end{itemize}

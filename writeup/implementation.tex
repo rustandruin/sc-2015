@@ -53,7 +53,7 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
     (2) One of the matrices is a dense matrix,   and    %%The sparse-sparse matrix multiplication is followed by a sparse-dense matrix multiplication. 
     (3) $n \gg k$ and $sm \gg k$.
 
-    Exploiting associativity of multiplication, we perform $C$ = $AB$, 
+    Exploiting associativity of multiplication, we compute $C$ = $AB$, 
     followed by $\mathrm{Res} = A^TC$. This reduces the run-time complexity from
     O({\it{n*(nsm)}}) to O({\it{k*(nsm)}}). Furthermore, we do not
     explicitly compute (or store) the transpose of $A$.  Consider the
@@ -99,20 +99,20 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
      $C_{\it{i}}$ ({\it{j}}$\in$[1..{\it{n}}]) ($C_{\it{i}}$ +=
      $A_{{\it{i}},{\it{j}}}$ x $B_{{\it{j}}}$). Note that there are
      {\it{k}} elements in $B_{{\it{j}}}$, which are also stored
-     consecutively (matrix stored in a row-major fashion).
+     consecutively (the matrix is stored in row-major form).
 %%
-     On modern computing platforms, SIMD width (number of simultaneous
+On modern computing platforms, the SIMD width (number of simultaneous
      operations that can be performed) is
      growing~\cite{intel2}. SSE can perform 4
      single-precision floating point computations in a single op, while
      AVX %%(our SPARK platform) 
      performs 8 ops. Let $\mathcal{S}$ denote the SIMD width
-     (defined as number of double-precision floating point ops. per op
-     -- which is half of single-precision ops).
+     (defined as the number of double-precision floating point ops. per op
+     -- which is half of the number of single-precision ops).
     %% 
      The pseudo-code~\footnote{Exact syntax varies with the ISA and
      compiler version.} for computing $C_{\it{i}}$ ($\forall$
-     $A_{{\it{i}},{\it{j}}}$ $\neq$ 0):
+     $A_{{\it{i}},{\it{j}}}$ $\neq$ 0) is
      \vspace*{0.03in}
 
      \hspace*{-0.13in}xmm\_a = {\it{vec\_load\_and\_splat}}($A_{{\it{i}},{\it{j}}}$); \\
@@ -126,10 +126,10 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
      \}\\
 
      \vspace*{-0.05in}
-     As evident from the code, for each
-     $A_{{\it{i}},{\it{j}}}$ $\neq$ 0 (number of nonzeros ({\it{nnz}}) in  $A$), 
+     As is evident from the code, for each
+     $A_{{\it{i}},{\it{j}}}$ $\neq$ 0 (the number of nonzeros ({\it{nnz}}) in  $A$), 
      we execute ($\lceil$$\frac{k}{\mathcal{S}}$$\rceil$) 
-     {\it{add}} (and {\it{mul}}) operations: total of
+     {\it{add}} (and {\it{mul}}) operations, taking a total of
      $\lceil$$\frac{2*{\it{nnz}}*{\it{k}}}{\mathcal{S}}$$\rceil$ ops,
      a potential speedup of $\mathcal{S}$.  
      %%in terms of floating point operations executed.
@@ -139,7 +139,7 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
      requires incrementing X$_{{\it{j}}}$ 
      by $A_{{\it{i}},{\it{j}}}$ x $C$$_{{\it{i}}}$ 
      (both X$_{{\it{j}}}$ and $C$$_{{\it{i}}}$ have {\it{k}} elements each.)
-    We execute a similar code to perform 
+     We use similar code to perform this computation at a cost of
     $\lceil$$\frac{2*{\it{nnz}}*{\it{k}}}{\mathcal{S}}$$\rceil$
     ops, a speedup of $\mathcal{S}$.
     %%in terms of floating point operations executed.
@@ -160,24 +160,24 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
 
      \vspace*{0.05in}
      {\it{2. Exploiting multiple cores}}: As explained above, we
-     decompose matrix multiplication into two steps, %each for each row of $C$$_{{\it{i}}}$, 
+     decompose matrix multiplication into two steps: %each for each row of $C$$_{{\it{i}}}$, 
      we {\it{first}} compute
-     $C$$_{{\it{i}}}$ ({\it{k}} elements), followed by updating 
+     $C$$_{{\it{i}}}$ ({\it{k}} elements), then update 
      Res$_{{\it{j}}}$ for each row {\it{j}}. The %%number of 
      executed 
      flops %%(and memory loads/stores) 
-     is proportional to number of
+     is proportional to the number of
      non-zeros in the specific row of $A$. Thus a straightforward way
      to divide work %%between the the cores ($\mathcal{C}$ in total) 
      is to divide the rows %%between the cores
-     such that each of the cores perform work on the same number of {\it{nnz's}}. 
+     such that each of the cores work on the same number of {\it{nnz's}}. 
 
      %However, this might result in some of the rows being split between cores.
      %For reasonable sized matrices, it suffices to assign a complete
      %row to a core, without any slowdown.
 
      Thus each core (or thread) 
-     computes the starting and ending row
+     computes its starting and ending row
      index, and for each assigned row {\it{i}}, computes
      $C$$_{{\it{i}}}$. The next step is to update Res.
 %%
@@ -188,7 +188,7 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
      However, even for moderately sized datasets, (e.g. $k$ = 32,
      {\it{n}} = 32K %%, and 8-bytes/element 
     $\sim$  
-     4 MB/thread), working set 
+    4 MB/thread), the working set 
      {\it{exceeds}} the cache per core.
      %%Hence, with this approach, 
      %%For each assigned row,  would load and store the complete $Res$ matrix. 
@@ -231,31 +231,31 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
      describe the computation of the working set, and our algorithm
      for performing cache-friendly updates.
 
-     During the execution of the algoritm, the matrix $B$ is
-     accessed, which is shared between all the cores. Matrix $A$ is a
-     streaming read from the memory, and does not contribute to
-     the working set. Let's say each thread maintains  its local copy
-     of the $Res$ matrix, thereby the total working set being
+     During the execution of the algorithm, the matrix $B$ is
+     accessed, which is shared between all the cores. Matrix $A$ is 
+     streamed from the memory, so does not contribute to
+     the working set. If each thread were to maintain its local copy
+     of the $Res$ matrix, the total working set would occupy
      8{\it{kn}}*($\mathcal{T}$ + 1) bytes ($\mathcal{T}$ threads). For
      our system,  
      %%architecture, %%with $\mathcal{C}$ = 24, and matrix parameters of {\it{k}} = 32 and {\it{n}} = 128K, 
-     the working set becomes
+     the working set would be
      around 1 GB, which is too large to fit in the
-     caches~\footnote{In this discussion, caches refers to the last
-     level cache}. Instead,
-     maintaining a shared copy of the $Res$ matrix reduces it to
+     caches.\footnote{In this discussion, caches refers to the last
+       level cache.} Instead,
+   maintaining a shared copy of the $Res$ matrix reduces the working set size to
      8{\it{kn}} bytes, around 128 MB. Note that the
-     total size is indepent of number of cores, and thus future
+     total size is independent of the number of cores, and thus future
      proofs our implementation.
      %%%%with respect to increasing number of cores on a single node. 
-     However, it is still dependent on  the
-     number of columns in $A$, and thus we devise the
+     However, the working set size would still depend on the
+     number of columns in $A$. We devise the
      following scheme to reduce it further to a given cache size.
      %of the computing platform..
 
      Instead of performing the computation for {\it{n}} columns, we
      divide it into chunks of {\it{n}}$'$ columns, such that
-     2*8*{\it{k}}*{\it{n}}$'$ $\sim$ $\mathcal{C}$ (cache size). Hence, with
+     2*8*{\it{k}}*{\it{n}}$'$ $\sim$ $\mathcal{C}$ (the cache size). Hence, with
      $\mathcal{C}$ = 15 MB,  {\it{n}}$'$$\sim$ 64K elements (we set
      {\it{n}} to be a multiple of {\it{n}}$'$). %%%for ease of implementation). 
      We thus perform the computation in
@@ -282,8 +282,8 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
      round. This format of representing $A$  helps 
      exploit the complete computational power of the processor, 
      %%keep the computation bound by the compute flops, 
-     and only incurs
-     one-time cost of rearranging  the elements of $A$.
+     and only incurs a
+     one-time cost for rearranging the elements of $A$.
      %{\it{n}}$'$ = 64K seems to be a resonable size for current architectures.
 
      %%%%%%%%%\Comment{Jatin}{How to store A might be an interesting way -- Say like n = 64K}.
@@ -306,11 +306,11 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
 
      %For our current application, %in order to reduce the inter-socket communication, 
      We divide the allocation of $Res$ equally between
-     the sockets. For e.g., for a CPU with 2 sockets, we divide the
+     the sockets. For e.g., a CPU with 2 sockets, we divide the
      number of rows ({\it{n}}) by 2, and allocate the memory for each
      relevant part of the matrix on its individual socket. This
      ensures that %%(at an average), 
-     each socket has (avg.) similar number of
+     each socket makes, on average, a similar number of
      remote accesses. For our experiments, this
      %%prescribed style of memory allocation 
      provided a boost of
@@ -343,7 +343,7 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
 \subsubsection{Optimizing $AB$}
 
     This step refers to Step 7 in the algorithm description in
-    Algorithm~\ref{alg:rsvd}. The data- and thread-level paralleization optimizations described 
+    Algorithm~\ref{alg:rsvd}. The data- and thread-level parallelization optimizations described 
     in the previous subsection (optimizing $A^TAB$) apply here, since
     there we explicitly  compute $C$ = $AB$. As far as cache blocking is
     concerned, since $C$ does not have to be memory resident, we now have
@@ -376,7 +376,7 @@ Secondly, we implement the CX method in Spark, an emerging standard for parallel
 Consider $A^TAB$.
 Similar to the multi-core implementation, we achieve load balancing by
 dividing the rows %%between the computational nodes 
-such that each node operates on the same number of non zeros. 
+such that each node operates on the same number of nonzeros. 
 %Since only the total number of non zeros in $A$ (and the number of rows) is known at the start of the CX computation, 
 We perform this partitioning using a two step
 process. In the first step, we equally divide the number of rows, 
@@ -387,10 +387,10 @@ followed by a redistribution step, where each node computes
 and distributes the relevant rows.
 %so that each node has rows whose count of non zero elements is similar. 
 The amount of data transferred between nodes is only a small fraction of the total input size
-(measured $<$ 0.01\%), and this step is only performed once during the execution of
+(measured to be $<$ 0.01\%), and this step is only performed once during the execution of
 the algorithm.
 %%%%%%%%%%%%%
-Each node computes the local resultant matrix $Res$, which is then
+Each node computes a local copy of $Res$, which is then
 reduced globally to compute the final matrix. Note that $Res$ consists
 of {\it{n}} X {\it{k}} elements, which occupies a few MBs even
 for our largest 1 TB datset  (recall {\it{m}} $\gg$ {\it{n}}). 
@@ -404,9 +404,8 @@ to all other nodes at the end of the computation.
 %%
 %%
 A similar work division scheme is used to compute $AB$ (Step 7) in a
-distributed fashion. The final two steps (ThinSVD and small matrix
-multiplication) are performed on a single-node (given the small matrix
-sizes).
+distributed fashion. The final two steps (the ThinSVD and the small matrix
+multiplication) are performed on a single-node.
 %%%
 %%In practice, we achieved near-linear scaling for our test systems with less than 50 nodes.
 

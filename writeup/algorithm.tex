@@ -22,7 +22,7 @@ Throughout, we assume $A$ has size $m \times n$ and rank $r$.
 
 The singular value decomposition (SVD) is the factorization of $A \in \reals^{m\times n}$ into the product of three matrices $U\Sigma V^T$ where $U \in \reals^{m\times r}$ and $V\in \reals^{n\times r}$ have orthonormal columns and $\Sigma\in \reals^{r\times r}$ is a diagonal matrix with positive real entries. 
 The columns of $U$ and $V$ are called left and right singular vectors and the diagonal entries of $\Sigma$ are called singular values. 
-For notation convenience, we assume the singular values are sorted such that $\sigma_1\geq \cdots \geq \sigma_r\geq 0$, and this means that the columns of $U$ and $V$ are sorted by the order given by the singular values.  
+For notational convenience, we assume the singular values are sorted such that $\sigma_1\geq \cdots \geq \sigma_r\geq 0$.
 
 %if optimality criterion to choose is the square loss ($\ell_2$ loss)
  
@@ -50,7 +50,7 @@ features, and thus the goal of dimension reduction is achieved.
 
 \subsection{Randomized SVD}
 
-The computation of the SVD (and thus of PCA for a data matrix $A$) is
+The computation of the SVD (and thus of PCA) for a data matrix $A$ is
 expensive~\cite{GVL96}.  For example, to compute the truncated SVD with rank
 $k$ using traditional deterministic methods, the running time complexity is
 $\bigO(mnk)$, and $\bigO(k)$ passes over the dataset are needed.  This becomes

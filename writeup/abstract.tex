@@ -1,1 +1,15 @@
-We investigate the performance and scalability of the randomized CX low-rank matrix factorization and demonstrate its applicability through the analysis of a 1TB mass spectrometry imaging (MSI) dataset, using Apache Spark on an Amazon~EC2 cluster, a Cray~XC40 system, and an experimental Cray cluster. We implemented this factorization both as a parallelized C implementation with hand-tuned optimizations and in Scala using the Apache Spark high-level cluster computing framework. We obtained consistent performance across the three platforms: using Spark we were able to process the 1TB size dataset in under 30 minutes with 960 cores on all systems, with the fastest times obtained on the experimental Cray cluster. In comparison, the C implementation was 21X faster (on the Amazon~EC2 system), due to careful cache optimizations, bandwidth-friendly access of matrices and vector computation using SIMD units. We report these results and their implications on the hardware and software issues arising in supporting data-centric workloads in parallel and distributed environments.
+We investigate the performance and scalability of the randomized CX low-rank
+matrix factorization and demonstrate its applicability through the analysis of
+a 1TB mass spectrometry imaging (MSI) dataset, using Apache Spark on an
+Amazon~EC2 cluster, a Cray~XC40 system, and an experimental Cray cluster. We
+implemented this factorization both as a parallelized C implementation with
+hand-tuned optimizations and in Scala using the Apache Spark high-level cluster
+computing framework. We obtained consistent performance across the three
+platforms: using Spark we were able to process the 1TB size dataset in under 30
+minutes with 960 cores on all systems, with the fastest times obtained on the
+experimental Cray cluster. In comparison, the C implementation was 21X faster
+on the Amazon~EC2 system, due to careful cache optimizations,
+bandwidth-friendly access of matrices and vector computation using SIMD units.
+We report these results and their implications on the hardware and software
+issues arising in supporting data-centric workloads in parallel and distributed
+environments.

@@ -1,5 +1,5 @@
 
-\subsection{CX and PCA Implementation in Spark}
+\subsection{CX Implementation in Spark}
 
 To support operating on datasets larger than can be stored and processed on a single node,
 we implement the algorithms using the Apache Spark cluster computing framework.
@@ -20,11 +20,11 @@ can be reused. %% rather than being recomputed.
 
 \subsection{Multi-node Spark Implementation}
 \label{sec:cx_spark}
-The main consideration when implementing CX and PCA %%in a parallel setting 
-are
+The main consideration when implementing CX %%in a parallel setting 
+is
 efficient implementations of operations involving the data matrix $A$.
-All access of $A$ by the CX and PCA algorithms occurs through the
-\textsc{RandomizedSVD} routine shared in common.
+All access of $A$ by the CX algorithm occurs through the
+\textsc{RandomizedSVD} routine.
 \textsc{RandomizedSVD} in turn accesses $A$ only through the \textsc{MultiplyGramian} and
 \textsc{Multiply} routines, with repeated invocations of \textsc{MultiplyGramian}
 accounting for the majority of the %%algorithm's 

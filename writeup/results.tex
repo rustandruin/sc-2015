@@ -12,7 +12,7 @@
    
 %%  \vspace*{0.1in}
 
-      In Table~\ref{tab:single_node}, we show the benefits of various
+In Table~\ref{tab:single_node}, we show the benefits of the
       optimizations described in
       Sec.~\ref{sxn:single_node_opt}. 
       %%%%
@@ -30,7 +30,7 @@
       output matrix is maintained, %% across all the threads (for the matrix multiplication).
       which resulted in a speedup of 6.5X, primarily due to
       the reduction in the amount of data traffic between 
-      main memory and caches. 
+      the main memory and the caches. 
       %%last-level cache and main memory (there was around 19X measured reduction in traffic). 
       We then implemented our cache blocking scheme, which led to a
       further  2.4X speedup (overall 15.6X).
@@ -41,7 +41,7 @@
       SIMD width is 4, 
         %%($\mathcal{S}$ = 4),
         there are overheads of address
-        computation, stores, and not all computations (e.g. QR) were
+        computation, stores, and not all computations (e.g. the QR decomposition) were
         vectorized.
         %%(QR code is still scalar).
 
@@ -60,31 +60,30 @@
         As far as the multi-node performance is concerned, 
  on the Amazon EC2 cluster, with 30 nodes (960-cores in total), and
  the 1 TB dataset as input, it
- took 151 seconds to perform CX computation (including time to load
+ took 151 seconds to perform CX computation (including the time to load
  the data into main memory). 
 %% and 92 seconds to load the data.
  %read in data into main memory. 
- As compared to the Scala code on the same platform (details in
- next sec.), we achieve a speedup of 21X.
+ Compared to the Scala code on the same platform (whose performance is detailed in the next sub-section), we achieve a speedup of 21X.
  %%(in terms of compute time) and 6.7X (data load  + compute time.)
 %
  % We did a head-to-head comparison of C code with the Scala node, 
  %%%%implementation on a single node, 
  %and measured a performance gap of around 21X.
  This performance gap can be attributed to the careful cache
- optimizations of maintaining single copy of the output matrix shared
- across threads, bandwidth friendly access of matrices and vector
- computation using SIMD units.
+ optimizations, maintaining a single copy of the output matrix shared
+ across threads, bandwidth friendly access of matrices, and vectorized
+ computations using SIMD units.
 
  Some of these optimizations can be implemented in Spark, such as arranging the
  order of memory accesses to make efficient use of memory. %%of the memory bus.
  However, other optimizations such as sharing the output matrix between threads
  and use of SIMD intrinsics fall outside the Spark programming model, and would
- require piercing the abstractions provided by Spark and JVM.
+ require piercing the abstractions provided by Spark and the JVM.
  %to more directly access and manipulate the hardware.
  Thus there is a tradeoff between optimizing performance 
- and ease of implementation, %% and efficient global scheduling, 
- available by expressing programs in the Spark programming model.
+ and the ease of implementation %% and efficient global scheduling, 
+ provided by expressing programs in the Spark programming model.
 
  
   \begin{table}
@@ -101,8 +100,8 @@
 
   \end{tabular}
   \end{center}
-  \caption{Single node opt. to CX C implementation and
-  subsequent speedup  each additional optimization provides.}
+  \caption{Single node optimizations to the CX C implementation and the
+  subsequent speedup each additional optimization provides.}
   \label{tab:single_node}
   \end{table}
  
@@ -113,7 +112,7 @@
 %  \textcolor{red}{Mike R, Jatin: we need a narrative here}
 
   \subsubsection{CX Spark Phases}
-  Our implementations of CX and PCA share the \textsc{RandomizedSVD} subroutine, which accounts for the bulk of the runtime and all of the distributed computations.
+  The \textsc{RandomizedSVD} subroutine accounts for the bulk of the runtime and all of the distributed computations in our Spark CX implementation.
   The execution of \textsc{RandomizedSVD} proceeds in four distributed phases listed below, along with a small amount of additional local computation.
   \begin{enumerate}
       \item \textbf{Load Matrix Metadata}
@@ -122,11 +121,11 @@
          A distributed read is performed to load the matrix entries into an in-memory cached
          RDD containing one entry per row of the matrix.
       \item \textbf{Power Iterations}
-          The \textsc{MultiplyGramian} loop (lines 2-5) of
-         \textsc{RandomizedSVD} is run to compute an approx. $Q$
+          The \textsc{MultiplyGramian} loop (lines 2-5 of
+          \textsc{RandomizedSVD}) is run to compute an approximate basis $Q$
          of the dominant right singular subspace.
        \item \textbf{Finalization (Post-Processing)}
-           Right multiplication by $Q$ (line 7) of \textsc{RandomizedSVD} to compute $C$.
+           Right multiplication by $Q$ (line 7 of \textsc{RandomizedSVD}) to compute $C$.
   \end{enumerate}
 
   \subsubsection{Empirical Results}
@@ -135,7 +134,7 @@
     \begin{centering}
     \includegraphics[scale=0.4]{images/CX_Strong_Scaling_New_Colors_Axes_Rank_32_Partitions_default.pdf}
     \end{centering}
-    \caption{ Strong scaling for the 4 phases of CX on an XC40 for 100GB dataset at $k=32$ and default partitioning as concurrency is increased.} 
+    \caption{ Strong scaling for the 4 phases of CX on an XC40 for a 100GB dataset at $k=32$ and default partitioning as concurrency is increased.} 
     \label{fig:xc40scaling}
     \end{figure} 
 
@@ -159,7 +158,7 @@ seconds) from 480 to 960 cores.
     \begin{centering}
       \includegraphics[scale=0.4]{images/CX_Size_Scaling_EXP_CC_xc40_ec2_Rank_16_and_32_Partitions_default.pdf}
     \end{centering}
-    \caption{ Run times for the various stages of computation of CX on the three platforms using $k=16$ and $k=32$ on the 1 TB size dataset, using the default partitioning on each platform.} 
+    \caption{ Run times for the various stages of computation of CX on the three platforms using $k=16$ and $k=32$ on the 1 TB size MSI dataset, using the default partitioning on each platform.} 
     \label{fig:h2hrank16} 
     \end{figure}
 
@@ -217,16 +216,16 @@ seconds) from 480 to 960 cores.
       \label{fig:cx_ions}
   \end{figure} 
 
-  The rows and columns of our data matrix $A$ correspond to pixels and $(\tau, m/z)$ values of ions, respectively. 
+  The rows and columns of our data matrix $A$ correspond to pixels and $(\tau, m/z)$ values of ions, respectively, where $\tau$ denotes drift time and $m/z$ denotes the mass to charge ratio. 
   We compute the CX decompositions of both $A$ and $A^T$ in order to identify important ions in addition to important pixels.
    
   In Figure~\ref{fig:cx_ions}, we present the distribution of the normalized
   ion leverage scores marginalized over $\tau$. That is, each score corresponds
   to an ion with $m/z$ value shown in the $x$-axis. Leverage scores of ions in
   three narrow regions have significantly larger magnitude than the rest. This
-  indicates that these ions are more informative and should be kept as basis
-  for reconstruction.  Encouragingly, several other ions with significant
-  leverage scores are chemically related to the ions with highest leverage
+  indicates that these ions are more informative and should be kept in the reconstruction basis.
+  Encouragingly, several other ions with significant
+  leverage scores are chemically related to the ions with the highest leverage
   scores.  For example, the ion with an $m/z$ value of 453.0983 has the second
   highest leverage score among the CX results.  Also identified as having
   significant leverage scores are ions at $m/z$ values of 439.0819, 423.0832,
