@@ -63,7 +63,7 @@ are much more numerous than the aggregation/read tasks (4800 vs 68 per
 iteration), thus they have a more significant impact on performance.  We see
 that the XC40 write tasks had a similar median time to the experimental
 cluster's write tasks, but a much wider distribution.  The large tail of slower
-"straggler" tasks is the result of some shuffle data going to the remote Lustre
+``straggler'' tasks is the result of some shuffle data going to the remote Lustre
 file system rather than being cached locally. We enabled Spark's optional
 speculative re-execution (\texttt{spark.speculation}) for the XC40 runs, and
 saw that some of these tasks were successfully speculatively executed on

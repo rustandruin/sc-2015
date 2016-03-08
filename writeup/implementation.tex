@@ -392,11 +392,11 @@ the algorithm.
 %%%%%%%%%%%%%
 Each node computes a local copy of $Res$, which is then
 reduced globally to compute the final matrix. Note that $Res$ consists
-of {\it{n}} X {\it{k}} elements, which occupies a few MBs even
-for our largest 1 TB datset  (recall {\it{m}} $\gg$ {\it{n}}). 
+of $n \times k$ elements, which occupies a few MBs even
+for our largest 1 TB datset  (recall $m \gg n$). 
 
-As far as $QR$ decompositon is concerned, given the small size of the
-matrix ({\it{n}} X {\it{k}}), it is performed on a
+As far as $QR$ decomposition is concerned, given the small size of the
+matrix ($n \times k$), it is performed on a
 single-node, but parallelized to exploit the multiple cores, with the resultant matrix being broadcast
 to all other nodes at the end of the computation.
 %%%%There is an explicit barrier at the end of each of the {\it{q}} iterations of Algorithm 1.
