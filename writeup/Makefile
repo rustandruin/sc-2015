@@ -5,3 +5,6 @@ all: pasc2016.tex
 	pdflatex pasc2016.tex
 	pdflatex pasc2016.tex
 
+clean:
+	rm -f *.log *.bbl *.blg *.aux *.out
+
