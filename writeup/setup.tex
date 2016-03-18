@@ -4,23 +4,29 @@
 \subsection{MSI Dataset}
 \paragraph{Mass spectrometry imaging with ion-mobility}
 Mass spectrometry measures ions that are derived from the molecules present in a complex biological sample.
-These spectra can be acquired at each location (pixel) of a heterogeneous sample, allowing for collection of spatially
+These spectra can be acquired at each location (pixel) of a heterogeneous sample, allowing for the collection of spatially
 resolved mass spectra.
 This mode of analysis is known as \textit{mass spectrometry imaging (MSI)}.
-The addition of \textit{ion-mobility separation (IMS)} to MSI adds another dimension, drift time
-The combination of IMS with MSI is finding increasing applications in the study of disease diagnostics, plant
-engineering, and microbial interactions. Unfortunately, the scale of MSI data and complexity of analysis presents a significant challenge to
-scientists: a single 2D-image may be many gigabytes and comparison of multiple images is beyond the capabilities
-available to many scientists. The addition of IMS exacerbates these problems. CX decompositions mitigate the storage problem by 
-identifying small numbers of columns in the original data that
-reliably explain a large portion of the variation in the data.  This
-facilitates rapidly pinpointing important ions and locations in MSI
-applications.
+The addition of \textit{ion-mobility separation (IMS)} to MSI adds another
+dimension, drift time.  The combination of IMS with MSI is finding increasing
+applications in the study of disease diagnostics, plant engineering, and
+microbial interactions. Unfortunately, the scale of MSI data and complexity of
+analysis presents a significant challenge to scientists: a single 2D-image may
+be many gigabytes and comparison of multiple images is beyond the capabilities
+available to many scientists. The addition of IMS exacerbates these problems.
+CX decompositions mitigate the storage problem by identifying small numbers of
+columns in the original data that reliably explain a large portion of the
+variation in the data.  This facilitates rapidly pinpointing important ions and
+locations in MSI applications.
 
 In this paper, we analyze one of the largest (1TB sized) mass-spec imaging
-datasets in the field. The sheer size of this dataset has previously made
-complex analytics intractable. This paper presents first-time science results
-from the successful application of CX to TB-sized data.
+datasets in the field, obtained from a sample of the plant {\it Lewis Dalisay
+  Peltatum}. The MSI measurements are formed into a matrix whose rows and
+columns correspond to pixel and ($\tau$, $m/z$) values of ions, respectively.
+Here $\tau$ denotes drift time and $m/z$ is the mass-to-charge ratio. The sheer
+size of this dataset has previously made complex analytics intractable. This
+paper presents first-time science results from the successful application of CX
+to TB-sized data.
 
 \subsection{Empirical Orthogonal Function analysis of ocean temperatures}
 The most widely used tool for extracting important patterns from the
@@ -40,9 +46,10 @@ many layers of the ocean.
 
 We applied our PCA implementation in Spark to the analysis of the ocean
 temperature fields from 31 years worth of ocean temperature measurements taken
-at 6 hours increments over a global 360-by-720-by-40 global grid, extracted
+at 6 hours increments over a global 360-by-720-by-41 grid, extracted
 from the Climate Forecast System Reanalysis Product~\cite{Saha:2010ji}.
-Unfolding each set of observations into a long vector yields a 2.2 TB matrix.
+Unfolding each set of observations into a long vector and taking the vectors
+formed in this way to be columns of a matrix yields a 2.2 TB matrix.
 To the best of our knowledge, this is the first published work where a 3D
 climate field of this magnitude has been subjected to EOF analysis.
 

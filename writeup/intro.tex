@@ -3,21 +3,23 @@
 
 The low-rank approximation to a data matrix $A$ that is provided by performing
 a truncated SVD (singular value decomposition)---or PCA (principal component
-analysis) or CX/CUR decompositions---is a very complicated object compared with
+analysis) or CX decomposition---is a very complicated object compared with
 what is conveniently supported by traditional database
 operations~\cite{Skillicorn07}. Recall that PCA finds mutually orthogonal
-directions that maximize the variance captured by the factorization, and CX/CUR
+directions that maximize the variance captured by the factorization, and CX
 provides an interpretable low-rank factorization by selecting a small number of
-columns/rows from the original data matrix.  Described in more detail in
+columns from the original data matrix.  Described in more detail in
 Section~\ref{sxn:low-rank-methods}, these low-rank approximation methods are
 useful in scientific data analysis applications for exploratory data analysis
 and for providing compact and interpretable representations of complex
 matrix-based data, but their implementation at scale in distributed data
-analytics frameworks such as Spark remains uninvestigated.
+analytics frameworks such as Spark remains uninvestigated. 
 
+%Among the bestiary of low-rank approximations, the PCA and CX algorithms stand out due to the 
+%ubiquity af the PCA in scientific applications and the interpretability of the CX decomposition.
 In this paper, we address the following research questions:
 \begin{itemize}
-  \item Can we successfully apply low rank matrix factorization methods such as
+  \item Can we successfully apply low-rank matrix factorization methods such as
     CX and PCA to TB-scale scientific datasets in a contemporary data analytics
     framework such as Spark?
 
@@ -27,6 +29,8 @@ In this paper, we address the following research questions:
   \item How do Spark-based implementations scale on modern HPC and data-center
     hardware platforms?
 \end{itemize}
+This work is part of an on-going project to provide linear algebra implementations 
+in Spark that are capable of handling terabyte-scale scientific datasets.
 
 We start with a description of matrix factorization algorithms in
 Section~\ref{sxn:low-rank-methods}, followed by single node and multi-node

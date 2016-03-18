@@ -7,16 +7,15 @@ implementation of the CX algorithm and quantified its performance relative to
 an optimized parallelized C baseline, and developed a similarly distributed
 implementation of the PCA algorithm. We used Spark, a contemporary data
 analytics framework, to develop and deploy our CX and PCA implementations, and
-demonstrated that they scale up to 960 cores. We
-evaluated our Spark CX implementation on HPC and EC2 class hardware and found
-that faster interconnects enable numerically intensive computations to run
-more efficiently on HPC systems. The CX implementation was used
-to analyze a TB-sized mass-spec imaging dataset; the resulting ion and
-spatial patterns obtained from the analysis are providing biologists with novel
-insights on complex molecular mechanisms in cells. The PCA implementation was used
-to analyze a 2 TB-sized ocean temperature dataset, and has enable climate scientists
-to see structures in the full 3D field that were obfuscated in the 2D
-projections they previously dealt with for computational convenience. Further
+demonstrated that they scale up to 960 cores. We evaluated our Spark CX
+implementation on HPC and EC2 class hardware and found that faster
+interconnects enable numerically intensive computations to run more efficiently
+on HPC systems. The CX implementation was used to analyze a TB-sized mass-spec
+imaging dataset; the resulting ion and spatial patterns obtained from the
+analysis are providing biologists with novel insights on complex molecular
+mechanisms in cells. The PCA implementation was used to analyze a 2 TB-sized
+ocean temperature dataset, and has enabled climate scientists to see structures
+in the full 3D field that were obfuscated in prior 2D projections. Further
 examination of the performance gap of the Spark CX implementation from the
 optimized C implementation, and the attribution to various components of the
 Spark stack will be conducted in the near future. Likewise, future work

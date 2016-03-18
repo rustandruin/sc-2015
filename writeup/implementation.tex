@@ -4,21 +4,23 @@
 
 We compare implementations of the CX and PCA algorithms.  The standard
 numerical linear algebra libraries do not provide CX implementations, so we
-produce a highly optimized, close-to-the-metal C implementation that focuses on
+produce a highly optimized C implementation that focuses on
 obtaining peak efficiency from conventional multi-core CPU chipsets and extend
 it to multiple nodes.  Secondly, we implement the CX and PCA methods in Spark,
-an emerging standard for parallel data analytics frameworks. 
+an emerging standard platform for parallel data analytics. We assume that
+the inputs to the CX algorithm are sparse matrices, and those to the PCA
+algorithm are dense.
 
 \subsection {C+MPI CX implementation}
 \label{sxn:single_node_opt}
 
 We began by optimizing the steps in Algorithm~\ref{alg:cx}. Our first optimization is to perform $C$ = $AB$, 
-followed by $\mathrm{Res} = A^TC$. This reduces the run-time complexity from
+followed by $Res = A^TC$. This reduces the run-time complexity from
 O({\it{n*(nsm)}}) to O({\it{k*(nsm)}}). Note that we do not
 explicitly compute (or store) the transpose of $A$. We are able to exploit SIMD in the
-computation of $\mathrm{Res}$ to speed up the computation by a factor equal to
+computation of $AB$ to speed up the computation by a factor equal to
 the SIMD width (the number of simultaneous operations that can be performed).
-Similarly, the computation of $A^TC$ is sped-up by a factor equal to the SIMD width.
+Similarly, the computation of $Res$ is sped-up by a factor equal to the SIMD width.
 
 We achieve load balancing in our computation of $Res$ by dividing
 the rows such that each node operates on the same number of non zeros.  We
@@ -28,25 +30,26 @@ part of the matrix, and computes the number of non-zeros read. This is followed
 by a redistribution step, where each node computes and distributes the relevant
 rows amongst the cores in order to better balance the computation. We also use
 cache blocking to efficiently distribute the matrix $A$ so that most of the
-fetching comes from the last level cache; this mitigates the tendency of the
-computation to be bound by the available memory bandwidth when $n$ is large, so
-each processor requires more memory to do its assigned tasks. The amount of
-data transferred between nodes is only a small fraction of the total input size
-(measured $<$ 0.01\%), and this step is only performed once during the
-execution of the algorithm. Each node computes the local resultant matrix
-$Res$, which is then reduced globally to compute the final matrix. Note that
-$Res$ consists of {\it{n}} $\times$ {\it{k}} elements, which occupies a few MBs
-even for our 1 TB datset (recall {\it{m}} $\gg$ {\it{n}}).  A similar work
-division scheme is used to compute $AQ$ (Step 7) in a distributed fashion.
-Because of the small size of the matrices involved, the final two steps
-(\textsc{ThinSVD} and a matrix multiplication) are performed on a single node.
+fetching comes from the last level cache.
+%; this mitigates the tendency of the computation to be bound by the available memory bandwidth when $n$ is large, so
+%each processor requires more memory to do its assigned tasks.
+The amount of data transferred between nodes is only a small fraction of the
+total input size (measured at less than 0.01\%), and this step is only performed once
+during the execution of the algorithm. Each node computes a local resultant
+matrix $Res$, which is then reduced globally to compute the final matrix. Note
+that $Res$ consists of {\it{n}} $\times$ {\it{k}} elements, which occupies only
+a few MBs even for terabyte-scale matrices (recall {\it{m}} $\gg$ {\it{n}}).  A
+similar work division scheme is used to compute $AQ$ (Step 7 of Algorithm~\ref{alg:rsvd}) in a distributed
+fashion.  Because of the small size of the matrices involved, the final two
+steps (\textsc{ThinSVD} and a matrix multiplication) are performed on a single
+node.
 
-Given the small size of the matrix involved in the QR step,
-({\it{n}} $\times$ {\it{k}}), the QR is performed on a single-node, but
+Given the small size of the matrix, ({\it{n}} $\times$ {\it{k}}), involved in the QR (Step 4),
+the QR is performed on a single-node, but
 parallelized to exploit the multiple cores available, with the resultant matrix
 being broadcast to all other nodes at the end of the computation.
 
-Our final optimization is to account for multi-socket architectures, wherein
+Our final optimization accounts for multi-socket architectures, wherein
 each socket has its own compute and memory resources. All cross-socket traffic
 passes through a cross-socket link, which has lower bandwidth than access to
 local DRAM/caches. Hence, we need to optimize for the amount of data

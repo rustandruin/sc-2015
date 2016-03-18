@@ -12,7 +12,7 @@
    
 %%  \vspace*{0.1in}
 
-      In Table~\ref{tab:single_node}, we show the benefits of various
+In Table~\ref{tab:single_node}, we show the benefits of the
       optimizations described in
       Sec.~\ref{sxn:single_node_opt}. 
       %%%%
@@ -53,21 +53,21 @@
 
         As far as the multi-node performance is concerned, 
  on the Amazon EC2 cluster, with 30 nodes (960-cores in total), and
- the 1 TB dataset as input, it
- took 151 seconds to perform CX computation (including time to load
+ the 1 TB dataset as input, the C code
+ took 151 seconds to perform the CX computation (including the time to load
  the data into main memory). 
- As compared to the Scala code on the same platform (details in
- next sec.), we achieve a speedup of 21X.
+ Compared to the Scala code on the same platform (details in the
+ next section), we achieved a speedup of 21X.
 
  Some of these optimizations can be implemented in Spark, such as arranging the
  order of memory accesses to make efficient use of memory. %%of the memory bus.
  However, other optimizations such as sharing the output matrix between threads
- and use of SIMD intrinsics fall outside the Spark programming model, and would
- require piercing the abstractions provided by Spark and JVM.
+ and the use of SIMD intrinsics fall outside the Spark programming model, and would
+ require piercing the abstractions provided by Spark and the JVM.
  %to more directly access and manipulate the hardware.
  Thus there is a tradeoff between optimizing performance 
- and ease of implementation, %% and efficient global scheduling, 
- available by expressing programs in the Spark programming model.
+ and the ease of implementation %% and efficient global scheduling, 
+ available when expressing programs in the Spark programming model.
 
  
   \begin{table}
@@ -84,8 +84,8 @@
 
   \end{tabular}
   \end{center}
-  \caption{Single node opt. to CX C implementation and
-  subsequent speedup  each additional optimization provides.}
+  \caption{Single node optimizations to the CX C implementation and
+    the subsequent speedup each additional optimization provides.}
   \label{tab:single_node}
   \end{table}
  
@@ -104,7 +104,7 @@
          RDD containing one entry per row of the matrix. PCA uses an additional pass over the matrix to compute and remove the column means.
        \item \textbf{Power Iterations / MultiplyGramian}
          In the case of the CX algorithm, the \textsc{MultiplyGramian} loop (lines 2-5) of
-         \textsc{RandomizedSVD} is run to compute an approx. $Q$
+         \textsc{RandomizedSVD} is run to compute an approximate basis $Q$
          of the dominant right singular subspace. For the PCA algorithm, the ARPACK routine calls the \textsc{MultiplyGramian} function
          until the approximate eigenvectors converge to the desired top eigenspace of $AA^T.$
        \item \textbf{Finalization (Post-Processing)}
@@ -122,7 +122,7 @@
     \label{fig:xc40scaling}
     \end{figure} 
 
-Fig.~\ref{fig:xc40scaling} shows how the distributed Spark portion of our CX code scales.
+Figure~\ref{fig:xc40scaling} shows how the distributed Spark portion of our CX code scales.
 We considered 240, 480, and 960 cores.  An additional doubling (to 1920 cores) would be ineffective as there are only 1654 partitions, 
 so many cores would remain unused.  
 When we go from 240 to 480 cores, we achieve a speedup of 1.6x:
@@ -148,9 +148,9 @@ results in the dataset not fitting in memory.
 
     \begin{figure} [h!btp]
       \begin{centering}
-        \includegraphics[scale=0.3]{images/phase_stackplot_ec2_ranks_10_and_20}
+        \includegraphics[scale=0.3]{images/phase_stackplot_ec2}
       \end{centering}
-      \caption{Run times for the various stages of computation of PCA on the EC2 and Cori platforms using $k=10$ and $k=20$ on the 2.2 TB size dataset, using the default partitioning.}
+      \caption{Run times for the various stages of computation of PCA on the EC2 and Cori platforms using $k=10, k=20,$ and $k=40$ on the 2.2 TB size dataset, using the default partitioning.}
       \label{fig:pca_h2hranks}
     \end{figure}
     
@@ -166,9 +166,6 @@ results in the dataset not fitting in memory.
       \label{fig:cx_ions}
   \end{figure} 
 
-  The rows and columns of our data matrix $A$ correspond to pixels and $(\tau, m/z)$ values of ions, respectively. 
-  We compute the CX decompositions of both $A$ and $A^T$ in order to identify important ions in addition to important pixels.
-   
   In Figure~\ref{fig:cx_ions}, we present the distribution of the normalized
   ion leverage scores marginalized over $\tau$. That is, each score corresponds
   to an ion with $m/z$ value shown in the $x$-axis. Leverage scores of ions in
@@ -202,8 +199,7 @@ results in the dataset not fitting in memory.
     \caption{The power spectra of the first 20 modes of the CFSR ocean temperature field.}
     \label{fig:climate_spectra}
   \end{figure} 
-The rows and columns of our data matrix $A$ correspond to observation intervals
-and (lat, lon, depth) points, respectively. The first two EOFs fully capture the annual cycles, so in
+The first two EOFs fully capture the annual cycles, so in
 Figure~\ref{fig:climate_timeseries}, we present the time series corresponding to the
 third, sixth, and seventh modes. The time series show the chaotic nature of the
 large-scale modes of variability in the ocean, as well as the dominant

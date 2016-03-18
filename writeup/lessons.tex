@@ -3,12 +3,12 @@ The differences in performance between the Cray{\textsuperscript{\tiny\textregis
   \item Spark cleans its local scratch space inefficiently.
   In particular, shuffle data is not immediately cleaned up after a shuffle
   completes. This makes fault recovery more efficient, but results in higher
-  storage requirements for scratch space. A more efficient cleaning process would
-  make it more feasible to fit the scratch data entirely in a local RAM disk and
+  storage requirements for scratch space. A more efficient cleaning process could
+  allow the scratch data to fit entirely in a local RAM disk and
   avoid using Lustre.
 \item Spark does not currently allow you to configure primary and backup
   scratch directories.  Instead you list all scratch directories in a single
-  list, and it distributes data in a round round fashion between them as long
+  list, and it distributes data in a round-robin fashion between them as long
   as space is available.  You can bias it towards one storage device (e.g., RAM
   disk vs. Lustre) by listing multiple directories on the preferred device.
   Ideally, though, we would like to use a RAM disk (or other local storage)
