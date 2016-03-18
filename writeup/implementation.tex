@@ -2,7 +2,8 @@
 \section{High Performance Implementation}
 \label{sec:implementation}
 
-We compare implementations of the CX and PCA algorithms.  The standard
+We compare implementations of the PCA and randomized SVD algorithms on 
+an XC40 Cray platform and the EC2 platform.  The standard
 numerical linear algebra libraries do not provide CX implementations, so we
 produce a highly optimized, close-to-the-metal C implementation that focuses on
 obtaining peak efficiency from conventional multi-core CPU chipsets and extend

@@ -10,18 +10,18 @@ That is, they aim to find matrices $Y$ and $Z$ such that
     \underset{m\times n}{A} \approx \underset{m\times k}{Y} \times \underset{k\times n}{Z} , 
 \end{equation}
 where $Y \times Z$ is a rank-$k$ approximation to the original matrix $A$.
-%Low-rank matrix factorization methods are ubiquitous in linear algebra
-%and numerical analysis, and they find use in a variety of scientific fields and
-%scientific computing as well as in machine learning and data analysis
-%applications such as pattern recognition and personalized recommendation.
+Low-rank matrix factorization methods are ubiquitous in linear algebra
+and numerical analysis, and they find use in a variety of scientific fields and
+scientific computing as well as in machine learning and data analysis
+applications such as pattern recognition and personalized recommendation.
 
 Depending on the application, various low-rank factorization techniques are of
 interest.  Popular choices include the singular value
 decomposition~\cite{GVL96}, principal component analysis~\cite{pcaBook},
 rank-revealing QR factorization~\cite{GE96}, nonnegative matrix
 factorization~\cite{NMFalg}, and CUR/CX decompositions~\cite{CUR_PNAS}.  In
-this work, we consider using the PCA and CX decompositions for scalable and
-interpretable data analysis; in the remainder of this section, we briefly
+this work, we consider using the PCA and randomized SVD decompositions for scalable 
+scientific data analysis; in the remainder of this section, we briefly
 describe these decompositions.
 %and previous implementations of low-rank factorizations from the HPC and data analytics communities. 
 For an arbitrary matrix $A$, denote by $\a_i$
@@ -76,38 +76,13 @@ classical that one can obtain the truncated PCA/SVD decomposition of $A$ from th
 details are provided in Algorithm~\ref{alg:thinSVD}. In our implementation, we use a Java binding of the 
 Parallel ARPACK library to compute the IRAM primitive~\cite{maschho1996portable}.
 
-\subsection{CX/CUR decompositions}
+\subsection{Randomized SVD decompositions}
 
-In addition to developing improved algorithms for PCA/SVD and related problems,
-work in RLA has also focused on so-called CX/CUR
-decompositions~\cite{DMM08,CUR_PNAS}.  As a motivation, observe that singular
-vectors are eigenvectors of the Gram matrix $A^TA$, and thus they are linear
-combinations of up to all of the original variables.  A natural question
-arises: can we reconstruct the matrix using a small number of actual columns of
-$A$?
-
-CX/CUR decompositions affirmatively answer this question. These are
-low-rank matrix decompositions that are expressed in terms of a small number of
-actual columns/rows. As such, they have found applicability in scientific
-applications where coupling analytical techniques with domain knowledge is at a
-premium, including genetics~\cite{Paschou07b}, astronomy~\cite{Yip14-AJ}, and
-mass spectrometry imaging~\cite{YRPMB15}.
-
-In more detail, CX decomposition factorizes an $m \times n$ matrix $A$ into two
-matrices $C$ and $X$, where $C$ is an $m\times c$ matrix that consists of $c$
-actual columns of $A$, and $X$ is a $c \times n$ matrix such that $A\approx
-CX$.  (CUR decompositions further choose $X=UR$, where $R$ is a small number of
-actual rows of $A$~\cite{DMM08,CUR_PNAS}.) For CX, using the same optimality
-criterion defined in~\eqref{eqn:obj}, we seek matrices $C$ and $X$ such that
-the residual error $\|A-CX\|_F$ is small.
-
-The algorithm of~\cite{DMM08} that computes a $1\pm\epsilon$ relative-error
-low-rank CX matrix approximation consists of three basic steps: first, compute
-(exactly or approximately) the {\it statistical leverage scores} of the columns
-of $A$; and second, use those scores as a sampling distribution to select $c$
-columns from $A$ and form $C$; finally once the matrix $C$ is determined, the
-optimal matrix $X$ with rank-$k$ that minimizes $\|A-CX\|_F$ can be computed
-accordingly; see~\cite{DMM08} for detailed construction. 
+The PCA decomposition is useful when the principal components are the objects of interest, and they are
+desired to be known to a high degree of accuracy. When instead a low-rank approximation of $A$ is desired,
+the randomized linear algebra community has developed algorithms which use randomized projections to
+construct rank-$k$ approximations to $A$ that approximate $A$ nearly as well as $A_k$ does. Importantly,
+these algorithms run in $\mathcal{O}(mn k)$ time and need only a constant number of passes over the data matrix.
 
 \begin{algorithm}[tb]
   \caption{\textsc{ThinSVD} Algorithm}
@@ -123,80 +98,32 @@ accordingly; see~\cite{DMM08} for detailed construction.
   \end{algorithmic}
 \end{algorithm}
 
-\begin{algorithm}[tb]
- \caption{\textsc{CXDecomposition}}
-  \label{alg:cx}
-  \begin{algorithmic}[1]
-    \Require $A \in \reals^{m\times n}$, rank parameter $k \leq \textrm{rank}(A)$, number of power iterations $q$.
-
-    \Ensure $C$.
-    
-    %\Function{ColSelect}{$A,k,r$}
-
-    %\State Using algorithm of\cite{DMMW12_JMLR}, compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using \textsc{RandomizedSVD} with $q$ power iterations.
-    \State Compute an approximation of the top-$k$ right singular vectors of $A$ denoted by $\tilde V_k$, using \textsc{RandomizedSVD} with $q$ power iterations.
-    
-    \State Let $\ell_i = \sum_{j=1}^k \tilde \v_{ij}^2$, where $\tilde \v_{ij}^2$ is the $(i,j)$-th element of $\tilde V_k$, for $i = 1, \ldots, n$. 
-    
-    \State Define $p_i = \ell_i / \sum_{j=1}^d \ell_j$ for $i=1,\ldots,n$.
-    
-    \State Randomly sample $c$ columns from $A$ in i.i.d. trials, using the importance sampling distribution $\{p_i\}_{i=1}^n$ .
-
-    %\State \Return The indices with the top $r$ $\ell_i$s.
-    
-    %\EndFunction
-
-    \end{algorithmic}
-\end{algorithm}
-
-The algorithm for approximating the leverage scores is
-provided in Algorithm~\ref{alg:cx}.
-Let $A=U\Sigma V^T$ be the SVD of $A$.
-Given a target rank parameter $k$, for $i=1,\ldots,n$, the $i$-th leverage score is defined as
-\begin{equation}
- \label{eqn:lev}
-  \ell_i = \sum_{j=1}^k \v_{ij}^2.
-\end{equation}
-These scores quantify the amount of ``leverage'' each column of $A$ exerts on the best rank-$k$ approximation to $A$. 
-If, for $i=1,\ldots,n$, we define the {\it normalized leverage scores} as
-\begin{equation}
-\label{eqn:nlev}
-  p_i = \frac{\ell_i}{\sum_{j=1}^n \ell_j},
-\end{equation}      
-where $\ell_i$ is defined in~\eqref{eqn:lev}, and choose columns from $A$
-according to those normalized leverage scores, then (by~\cite{DMM08,CUR_PNAS})
-the selected columns are able to reconstruct the matrix $A$ nearly as well as
-$A_k$ does.
-
-\subsection{Randomized SVD}
-
-The running time for \textsc{CXdecomposition} is determined by the
-computation of the importance sampling distribution.  To compute the leverage
-scores based on \eqref{eqn:lev}, one needs to compute the top
-$k$ right-singular vectors $V_k$. Since there is already stochasticity in the 
-CX decomposition from the probabilistic selection of the columns, we 
-do not need to exactly compute $V_k$--- a high-quality approximation suffices. 
-This approach, originally proposed by Drineas et al.~\cite{DMMW12_JMLR}, runs in
-``random projection time,'' so requires fewer FLOPS and fewer passes over
-the data matrix than deterministic algorithms that compute the
-leverage scores~exactly.
-
-To approximate $V_k$, we use an algorithm introduced in \cite{MRT06,MRT11}
-that uses a random projection to construct a rank-$k$ approximation to $A$
-which approximates $A$ nearly as well as $A_k$ does.  We refer the readers to
-\cite{HMT09_SIREV,Mah-mat-rev_BOOK} for more details.  Importantly, the
-algorithm runs in $\bigO(mn \log k)$ time, and needs only a
-constant number of passes over the data matrix.  This algorithm, which
+We use an algorithm introduced in \cite{MRT06,MRT11}.
+This algorithm, which
 we refer to as \textsc{RandomizedSVD}, is summarized in
 Algorithm~\ref{alg:rsvd}.  (Algorithm~\ref{alg:rsvd} calls
 \textsc{MultiplyGramian}, which is summarized in Algorithm~\ref{alg:gram}, as
 well as three algorithms, \textsc{Multiply}, \textsc{ThinQR}, and
 \textsc{ThinSVD}, which are standard in numerical linear algebra~\cite{GVL96}.)
+
+Intuitively, Steps 1--6 of Algorithm~\ref{alg:rsvd} find a randomized approximation of the
+top right singular vectors of $A$. Since $Q$ is a good approximation to the right singular vectors of
+$A$, the matrix $AQQ^T$ is a good low-rank approximation to $A$. Steps 7--9 calculate the SVD
+of this low-rank approximation without explicitly forming $AQQ^T.$ 
+In terms of the parameters $r$ and $\ell$, it is known that the approximation error of Algorithm~\ref{alg:rsvd} satisfies
+\[
+  \|A - U\Sigma V^T\|_F \leq \left(1 + \frac{r}{\ell - 1}\right)^{1/2} \|A - A_r\|_F 
+\]
+on average~\cite{HMT09_SIREV}. Similar guarantees hold with high probability, and as $q$ increases, the error of the approximation decreases; we refer the readers
+to~\cite{HMT09_SIREV,Mah-mat-rev_BOOK} for more details. 
+
 The running time cost for \textsc{RandomizedSVD} is dominated by the
 matrix-matrix multiplication, which involve passing over the entire data
-matrix, appearing in Step 3 and Step 7 of Algorithm~\ref{alg:rsvd}.  
-These steps can be parallelized, and hence \textsc{RandomizedSVD} is 
-amenable to distributed computing.
+matrix, appearing in Step 3 and Step 7 of Algorithm~\ref{alg:rsvd}.  These
+steps can be parallelized, and hence \textsc{RandomizedSVD} is amenable to
+distributed computing.
+
+
 
 \begin{algorithm}[tb]
  \caption{{\sc RandomizedSVD} Algorithm}

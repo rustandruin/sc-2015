@@ -2,23 +2,36 @@
 \label{sec:intro}
 
 The low-rank approximation to a data matrix $A$ that is provided by performing
-a truncated SVD (singular value decomposition)---or PCA (principal component
-analysis) or CX/CUR decompositions---is a very complicated object compared with
+a truncated SVD (singular value decomposition) or PCA (principal component
+analysis) is a very complicated object compared with
 what is conveniently supported by traditional database
 operations~\cite{Skillicorn07}. Recall that PCA finds mutually orthogonal
-directions that maximize the variance captured by the factorization, and CX/CUR
-provides an interpretable low-rank factorization by selecting a small number of
-columns/rows from the original data matrix.  Described in more detail in
-Section~\ref{sxn:low-rank-methods}, these low-rank approximation methods are
+directions that maximize the variance captured by the factorization. The SVD
+can also be understood in similar terms, but is often used as a tool for
+obtaining low-rank approximations to data matrices, rather than specifically
+finding such directions. For this use case, the randomized SVD provides an alternative
+to the classical SVD that is more computationally efficient and is guaranteed to 
+provide a low-rank approximation with only slightly worse error than the SVD.
+Described in more detail in Section~\ref{sxn:low-rank-methods}, the PCA and randomized SVD are
 useful in scientific data analysis applications for exploratory data analysis
 and for providing compact and interpretable representations of complex
-matrix-based data, but their implementation at scale in distributed data
+matrix-based data, but their implementation at the terabyte scale in distributed data
 analytics frameworks such as Spark remains uninvestigated.
+
+While there are some very large-scale HPC (high-performance computing)
+implementations of algorithms for common matrix
+problems~\cite{elemental,trilinos,survey-of-large-scale}, these 
+require the use of systems-level programming languages; expect fined-tuned control over processors and
+communication, e.g., with MPI (message passing interface); lack fault
+tolerance; and often do not provide convenient I/O routines. These
+implementations are therefore ill-suited to use in multi-purpose scientific 
+pipelines. In particular, these implementations do not mesh well with many of
+the systems that have become popular recently in large-scale data analysis. 
 
 In this paper, we address the following research questions:
 \begin{itemize}
   \item Can we successfully apply low rank matrix factorization methods such as
-    CX and PCA to TB-scale scientific datasets in a contemporary data analytics
+    PCA and the randomized SVD to TB-scale scientific datasets in a contemporary data analytics
     framework such as Spark?
 
   \item What is the performance gap between C+MPI implementations of these
@@ -28,8 +41,8 @@ In this paper, we address the following research questions:
     hardware platforms?
 \end{itemize}
 
-We start with a description of matrix factorization algorithms in
-Section~\ref{sxn:low-rank-methods}, followed by single node and multi-node
+We start with a description of the matrix factorization algorithms in
+Section~\ref{sxn:low-rank-methods}, followed by MPI multi-node
 implementation details in Section~\ref{sec:implementation}. We review the
 experimental setup for our performance tests in Section~\ref{sec:setup},
 followed by results and discussion in Section~\ref{sec:results}.
