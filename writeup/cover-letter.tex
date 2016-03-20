@@ -1,0 +1,30 @@
+\documentclass{letter}
+\signature{Co-authors}
+\begin{document}
+\begin{letter}{}
+\opening{Dear Reviewers:}
+
+Thank you for your constructive comments. We have addressed the expressed concerns as follows:
+\begin{enumerate}
+\item Page 1: "How did you select PCA and CX as the two low rank factorization to
+  investigate?" --- We address this in the introduction: the PCA is useful for
+  capturing variance, and the CX is desirable for its interpretability.
+\item Page 2: "What is RLA?" --- We now explicitly state randomized linear algebra.
+\item Page 2: "The description of Algorithm 1 requires the reader to understand what is
+  meant by several terms, some of which are not explained and others explained
+  later in the paper. It would have been helpful to have a description similar
+  to algorithm 2." --- We have expanded upon the explanation of Algorithm 1 to provide an idea of why it works.
+\item Page 3: "What does `close to the metal C' refer to?" --- We meant highly optimized, but we have removed this term.
+\item Page 3: "Why did you select Spark?" --- Spark is a popular distributed data analytics framework, and we are interested in quantifying the gap between it and traditional HPC codes when applied to linear algebra. We clarify this in the introduction.
+\item Page 3: "`Non-zeros' - are the matrices sparse?" --- We now state that the MSI matrix is sparse and the climate matrix is dense.
+\item Page 3: "`1TB data set' - but you have not yet described the data." --- We describe the data when it is introduced now.
+\item Page 4: "Near top, left column - what is the QR step?" --- We specify it is Step 7 in Algorithm 3
+\item Page 5: "What are the matrices used in the MSI and climate data to which you are applying CX and PCA?" --- We discuss how the matrices are constructed from the respective datasets when we introduce them.
+\item Page 8: "Right column, analysis of MSI data - there are three numbers, but only two materials - CH2 and CH2O. what happened to the matereial with the highest score around 380?" --- We only have knowledge of the materials we discussed.
+\item Page 9: "Who evaluated the analysis results? Are there biologists and climate scientists involved in this effort?" --- Several of the co-authors are biologists, and several are climate scientists. They provided interpretations of the respective decompositions.
+\end{enumerate}
+Additionally, we updated the figure comparing the runtimes of the PCA algorithms on the XC40 and EC2.
+\closing{Sincerely,}
+\end{letter}
+\end{document}
+
