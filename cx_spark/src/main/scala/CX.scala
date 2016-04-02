@@ -150,6 +150,7 @@ object CX {
     val numIters = args(7).toInt
 
     val k = rank + slack
+    var formingIndexedRowMatrixStart: Long
     val mat0: IndexedRowMatrix =
       if(matkind == "csv") {
         val nonzeros = sc.textFile(inpath).map(_.split(",")).
@@ -169,6 +170,7 @@ object CX {
             case SQLRow(index: Long, vector: Vector) =>
               new IndexedRow(index, vector)
           }
+        formingIndexedRowMatrixStart = System.currentTimeMillis()
         new IndexedRowMatrix(rows, numRows, numCols)
       } else {
         throw new RuntimeException(s"unrecognized matkind: $matkind")
@@ -183,31 +185,43 @@ object CX {
         mat0
       }
 
+    val formingIndexedRowMatrixEnd: Long = System.currentTimeMillis()
+    println("Local Compute: Forming Indexed Row Matrix = " + (formingIndexedRowMatrixEnd - formingIndexedRowMatrixStart))
     mat.rows.cache()
-
+    println("Local Compute: Local Cache Call Time = " + (System.currentTimeMillis() - formingIndexedRowMatrixEnd))
     // force materialization of the RDD so we can separate I/O from compute
     mat.rows.count()
 
+    var qrStart: Long = 0
     /* perform randomized SVD of A' */
     var Y = gaussianProjection(mat, k).toBreeze.asInstanceOf[BDM[Double]]
     for(i <- 0 until numIters) {
       Y = multiplyGramianBy(mat, fromBreeze(Y)).toBreeze.asInstanceOf[BDM[Double]]
+      qrStart = System.currentTimeMillis()
       Y = qr.reduced.justQ(Y)
+      println("QR for iteration " + i + "took " + (System.currentTimeMillis() - qrStart))
     }
+
+    val postQRStart: Long = System.currentTimeMillis()
     println("performing QR")
     val Q = qr.reduced.justQ(Y)
     println("done performing QR")
+    println("Local Compute: Post Power Iteration QR = " + (System.currentTimeMillis() - postQRStart) )
     assert(Q.cols == k)
     val B = mat.multiply(fromBreeze(Q)).toBreeze.asInstanceOf[BDM[Double]].t
     println("performing SVD")
+    val slowSVDStart: Long = System.currentTimeMillis()
     val Bsvd = svd.reduced(B)
     println("done performing SVD")
+    val slowSVDEnd: Long = System.currentTimeMillis()
+    println("Local Compute: Slow SVD Time = " + (slowSVDEnd - slowSVDStart))
     // Since we computed the randomized SVD of A', unswap U and V here
     // to get back to svd(A) = U S V'
     val V = (Q * Bsvd.U).apply(::, 0 until rank)
     val S = Bsvd.S(0 until rank)
     val U = Bsvd.Vt(0 until rank, ::).t
-
+    val calcVSUEnd: Long = System.currentTimeMillis()
+    println("Local Compute: Calc VSU = " + (calcVSUEnd - slowSVDEnd))
     /* compute leverage scores */
     val rowlev = sum(U :^ 2.0, Axis._1)
     val rowp = rowlev / rank.toDouble
@@ -215,13 +229,18 @@ object CX {
     val colp = collev / rank.toDouble
     assert(rowp.length == mat.numRows)
     assert(colp.length == mat.numCols)
+    val computeLevEnd: Long = System.currentTimeMillis()
+    println("Local Compute: Calc Lev Scores = " + (computeLevEnd - calcVSUEnd))
 
+    //Maybe we should cut out this IO step unless Jatin is doing it
     /* write output */
     val outf = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(new File(outpath))))
     dump(outf, S)
     dump(outf, rowp)
     dump(outf, colp)
     outf.close()
+    val dumpMatEnd: Long = System.currentTimeMillis()
+    println("Local Compute: Matrix IO Dump Time = " + (dumpMatEnd - computeLevEnd))
   }
 
   def dump(outf: DataOutputStream, v: BDV[Double]) = {
