@@ -150,7 +150,7 @@ object CX {
     val numIters = args(7).toInt
 
     val k = rank + slack
-    var formingIndexedRowMatrixStart: Long
+    var formingIndexedRowMatrixStart: Long = 0
     val mat0: IndexedRowMatrix =
       if(matkind == "csv") {
         val nonzeros = sc.textFile(inpath).map(_.split(",")).
